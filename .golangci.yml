@@ -1,0 +1,24 @@
+run:
+  # timeout for analysis
+  deadline: 4m
+
+  # Linting uses a lot of memory. Keep it under control by only running a single
+  # worker.
+  concurrency: 1
+
+linters-settings:
+  govet:
+    # Don't report about shadowed variables
+    check-shadowing: false
+  gofmt:
+    # simplify code: gofmt with `-s` option, true by default
+    simplify: true
+
+linters:
+  enable-all: true
+  disable:
+    # Init functions are used by loggers throughout the codebase.
+    - gochecknoinits
+
+    # Global variables are used by loggers.
+    - gochecknoglobals
