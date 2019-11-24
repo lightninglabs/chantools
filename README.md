@@ -1,4 +1,4 @@
-# Channel summary
+# Channel tools
 
 This tool works with the output of lnd's `listchannels` command and creates
 a summary of the on-chain state of these channels.

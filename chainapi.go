@@ -1,10 +1,15 @@
-package chansummary
+package chantools
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+)
+
+var (
+	ErrTxNotFound = errors.New("transaction not found")
 )
 
 type chainApi struct {
@@ -17,17 +22,18 @@ type transaction struct {
 }
 
 type vin struct {
-	Tixid   string `json:"txid"`
-	Vout    int    `json:"vout"`
-	Prevout *vout  `json:"prevout"`
+	Tixid    string `json:"txid"`
+	Vout     int    `json:"vout"`
+	Prevout  *vout  `json:"prevout"`
+	Sequence uint32 `json:"sequence"`
 }
 
 type vout struct {
 	ScriptPubkey     string `json:"scriptpubkey"`
 	ScriptPubkeyAsm  string `json:"scriptpubkey_asm"`
 	ScriptPubkeyType string `json:"scriptpubkey_type"`
-	ScriptPubkeyAddr string `json:"scriptpubkey_addr"`
-	Value            uint64  `json:"value"`
+	ScriptPubkeyAddr string `json:"scriptpubkey_address"`
+	Value            uint64 `json:"value"`
 	outspend         *outspend
 }
 
@@ -76,5 +82,11 @@ func Fetch(url string, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	return json.Unmarshal(body.Bytes(), target)
+	err = json.Unmarshal(body.Bytes(), target)
+	if err != nil {
+		if string(body.Bytes()) == "Transaction not found" {
+			return ErrTxNotFound
+		}
+	}
+	return err
 }

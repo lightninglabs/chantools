@@ -1,4 +1,4 @@
-PKG := github.com/guggero/chansummary
+PKG := github.com/guggero/chantools
 
 GOTEST := GO111MODULE=on go test -v
 
@@ -33,12 +33,12 @@ unit:
 	$(UNIT)
 
 build:
-	@$(call print, "Building chansummary.")
-	$(GOBUILD) $(PKG)/cmd/chansummary
+	@$(call print, "Building chantools.")
+	$(GOBUILD) $(PKG)/cmd/chantools
 
 install:
-	@$(call print, "Installing chansummary.")
-	$(GOINSTALL) $(PKG)/cmd/chansummary
+	@$(call print, "Installing chantools.")
+	$(GOINSTALL) $(PKG)/cmd/chantools
 
 fmt:
 	@$(call print, "Formatting source.")

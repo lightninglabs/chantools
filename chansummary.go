@@ -1,108 +1,117 @@
-package chansummary
+package chantools
 
 import (
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
+	"io/ioutil"
+	"time"
 )
 
-type channel struct {
-	RemotePubkey  string `json:"remote_pubkey"`
-	ChannelPoint  string `json:"channel_point"`
-	Capacity      string `json:"capacity"`
-	Initiator     bool   `json:"initiator"`
-	LocalBalance  string `json:"local_balance"`
-	RemoteBalance string `json:"remote_balance"`
-}
-
-func (c *channel) FundingTXID() string {
-	parts := strings.Split(c.ChannelPoint, ":")
-	if len(parts) != 2 {
-		panic(fmt.Errorf("channel point not in format <txid>:<idx>"))
+func collectChanSummary(cfg *config, channels []*SummaryEntry) error {
+	summaryFile := &SummaryEntryFile{
+		Channels: channels,
 	}
-	return parts[0]
-}
-
-func (c *channel) FundingTXIndex() int {
-	parts := strings.Split(c.ChannelPoint, ":")
-	if len(parts) != 2 {
-		panic(fmt.Errorf("channel point not in format <txid>:<idx>"))
-	}
-	return parseInt(parts[1])
-}
-
-func (c *channel) localBalance() uint64 {
-	return uint64(parseInt(c.LocalBalance))
-}
-
-func (c *channel) remoteBalance() uint64 {
-	return uint64(parseInt(c.RemoteBalance))
-}
-
-func collectChanSummary(cfg *config, channels []*channel) error {
-	var (
-		chansClosed  = 0
-		chansOpen    = 0
-		valueUnspent = uint64(0)
-		valueSalvage = uint64(0)
-		valueSafe    = uint64(0)
-	)
 
 	chainApi := &chainApi{baseUrl: cfg.ApiUrl}
 
 	for idx, channel := range channels {
-		tx, err := chainApi.Transaction(channel.FundingTXID())
+		tx, err := chainApi.Transaction(channel.FundingTXID)
+		if err == ErrTxNotFound {
+			log.Errorf("Funding TX %s not found. Ignoring.",
+				channel.FundingTXID)
+			continue
+		}
 		if err != nil {
+			log.Errorf("Problem with channel %d (%s): %v.",
+				idx, channel.FundingTXID, err)
 			return err
 		}
-		outspend := tx.Vout[channel.FundingTXIndex()].outspend
+		outspend := tx.Vout[channel.FundingTXIndex].outspend
 		if outspend.Spent {
-			chansClosed++
+			summaryFile.ClosedChannels++
+			channel.ClosingTX = &ClosingTX{
+				TXID: outspend.Txid,
+			}
 
-			s, f, err := reportOutspend(chainApi, channel, outspend)
+			err := reportOutspend(
+				chainApi, summaryFile, channel, outspend,
+			)
 			if err != nil {
+				log.Errorf("Problem with channel %d (%s): %v.",
+					idx, channel.FundingTXID, err)
 				return err
 			}
-			valueSalvage += s
-			valueSafe += f
 		} else {
-			chansOpen++
-			valueUnspent += channel.localBalance()
+			summaryFile.OpenChannels++
+			summaryFile.FundsOpenChannels += channel.LocalBalance
+			channel.ClosingTX = nil
 		}
 
 		if idx%50 == 0 {
-			fmt.Printf("Queried channel %d of %d.\n", idx,
+			log.Infof("Queried channel %d of %d.", idx,
 				len(channels))
 		}
 	}
 
-	fmt.Printf("Finished scanning.\nClosed channels: %d\nOpen channels: "+
-		"%d\nSats in open channels: %d\nSats that can possibly be "+
-		"salvaged: %d\nSats in co-op close channels: %d\n", chansClosed,
-		chansOpen, valueUnspent, valueSalvage, valueSafe)
+	log.Info("Finished scanning.")
+	log.Infof("Open channels: %d", summaryFile.OpenChannels)
+	log.Infof("Sats in open channels: %d", summaryFile.FundsOpenChannels)
+	log.Infof("Closed channels: %d", summaryFile.ClosedChannels)
+	log.Infof(" --> force closed channels: %d",
+		summaryFile.ForceClosedChannels)
+	log.Infof(" --> coop closed channels: %d",
+		summaryFile.CoopClosedChannels)
+	log.Infof(" --> closed channels with all outputs spent: %d",
+		summaryFile.FullySpentChannels)
+	log.Infof(" --> closed channels with unspent outputs: %d",
+		summaryFile.ChannelsWithPotential)
+	log.Infof("Sats in closed channels: %d", summaryFile.FundsClosedChannels)
+	log.Infof(" --> closed channel sats that have been swept/spent: %d",
+		summaryFile.FundsClosedSpent)
+	log.Infof(" --> closed channel sats that are in force-close outputs: %d",
+		summaryFile.FundsForceClose)
+	log.Infof(" --> closed channel sats that are in coop close outputs: %d",
+		summaryFile.FundsCoopClose)
 
-	return nil
+	summaryBytes, err := json.MarshalIndent(summaryFile, "", " ")
+	if err != nil {
+		return err
+	}
+	fileName := fmt.Sprintf("results/summary-%s.json",
+		time.Now().Format("2006-01-02-15-04-05"))
+	log.Infof("Writing result to %s", fileName)
+	return ioutil.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func reportOutspend(api *chainApi, ch *channel, os *outspend) (uint64, uint64,
-	error) {
+func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
+	entry *SummaryEntry, os *outspend) error {
 
 	spendTx, err := api.Transaction(os.Txid)
 	if err != nil {
-		return 0, 0, err
+		return err
 	}
 
+	summaryFile.FundsClosedChannels += entry.LocalBalance
+
+	if isCoopClose(spendTx) {
+		summaryFile.CoopClosedChannels++
+		summaryFile.FundsCoopClose += entry.LocalBalance
+		entry.ClosingTX.ForceClose = false
+		return nil
+	}
+
+	summaryFile.ForceClosedChannels++
+	entry.ClosingTX.ForceClose = true
+
 	numSpent := 0
-	salvageBalance := uint64(0)
-	safeBalance := uint64(0)
 	for _, vout := range spendTx.Vout {
 		if vout.outspend.Spent {
 			numSpent++
 		}
 	}
 	if numSpent != len(spendTx.Vout) {
-		fmt.Printf("Channel %s spent by %s:%d which has %d outputs of "+
-			"which %d are spent:\n", ch.ChannelPoint, os.Txid,
+		log.Debugf("Channel %s spent by %s:%d which has %d outputs of "+
+			"which %d are spent.", entry.ChannelPoint, os.Txid,
 			os.Vin, len(spendTx.Vout), numSpent)
 		var utxo []*vout
 		for _, vout := range spendTx.Vout {
@@ -110,9 +119,11 @@ func reportOutspend(api *chainApi, ch *channel, os *outspend) (uint64, uint64,
 				utxo = append(utxo, vout)
 			}
 		}
+		entry.ClosingTX.AllOutsSpent = false
+		summaryFile.ChannelsWithPotential++
 
-		if salvageable(ch, utxo) {
-			salvageBalance += utxo[0].Value
+		if couldBeOurs(entry, utxo) {
+			summaryFile.FundsForceClose += utxo[0].Value
 
 			outs := spendTx.Vout
 
@@ -121,42 +132,34 @@ func reportOutspend(api *chainApi, ch *channel, os *outspend) (uint64, uint64,
 				outs[0].ScriptPubkeyType == "v0_p2wpkh" &&
 				outs[0].outspend.Spent == false:
 
-				safeBalance += utxo[0].Value
-
-			case len(outs) == 2 &&
-				outs[0].ScriptPubkeyType == "v0_p2wpkh" &&
-				outs[1].ScriptPubkeyType == "v0_p2wpkh":
-
-				safeBalance += utxo[0].Value
+				entry.ClosingTX.OurAddr = outs[0].ScriptPubkeyAddr
 			}
 		} else {
 			for idx, vout := range spendTx.Vout {
 				if !vout.outspend.Spent {
-					fmt.Printf("UTXO %d of type %s with "+
-						"value %d\n", idx,
+					log.Debugf("UTXO %d of type %s with "+
+						"value %d", idx,
 						vout.ScriptPubkeyType,
 						vout.Value)
 				}
 			}
-			fmt.Printf("Local balance: %s\n", ch.LocalBalance)
-			fmt.Printf("Remote balance: %s\n", ch.RemoteBalance)
-			fmt.Printf("Initiator: %v\n", ch.Initiator)
+			log.Debugf("Local balance: %d", entry.LocalBalance)
+			log.Debugf("Remote balance: %d", entry.RemoteBalance)
+			log.Debugf("Initiator: %v", entry.Initiator)
 		}
-
+	} else {
+		entry.ClosingTX.AllOutsSpent = true
+		summaryFile.FundsClosedSpent += entry.LocalBalance
+		summaryFile.FullySpentChannels++
 	}
 
-	return salvageBalance, safeBalance, nil
+	return nil
 }
 
-func salvageable(ch *channel, utxo []*vout) bool {
-	return ch.localBalance() == utxo[0].Value ||
-		ch.remoteBalance() == 0
+func couldBeOurs(entry *SummaryEntry, utxo []*vout) bool {
+	return utxo[0].ScriptPubkeyType == "v0_p2wpkh" && entry.LocalBalance != 0
 }
 
-func parseInt(str string) int {
-	index, err := strconv.Atoi(str)
-	if err != nil {
-		panic(fmt.Errorf("error parsing '%s' as int: %v", str, err))
-	}
-	return index
+func isCoopClose(tx *transaction) bool {
+	return tx.Vin[0].Sequence == 0xffffffff
 }
