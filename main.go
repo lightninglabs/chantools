@@ -2,7 +2,8 @@ package chantools
 
 import (
 	"fmt"
-	
+	"path"
+
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/build"
@@ -19,8 +20,8 @@ type config struct {
 	ListChannels    string `long:"listchannels" description:"The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin."`
 	PendingChannels string `long:"pendingchannels" description:"The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin."`
 	FromSummary     string `long:"fromsummary" description:"The channel input is in the format of this tool's channel summary. Specify '-' to read from stdin."`
-	FromChannelDB   string `long:"fromchanneldb" description:"The channel input is in the format of an lnd channel.db file. Specify '-' to read from stdin."`
-	RescueDB        string `long:"rescuedb" description:"The lnd channel.db file to use for rescuing remote force-closed channels."`
+	FromChannelDB   string `long:"fromchanneldb" description:"The channel input is in the format of an lnd channel.db file."`
+	ChannelDB       string `long:"channeldb" description:"The lnd channel.db file to use for rescuing or force-closing channels."`
 }
 
 var (
@@ -44,6 +45,11 @@ func Main() error {
 		"rescueclosed", "Try finding the private keys for funds that "+
 			"are in outputs of remotely force-closed channels", "",
 		&rescueClosedCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"forceclose", "Force-close the last state that is in the " +
+			"channel.db provided", "",
+		&forceCloseCommand{},
 	)
 
 	_, err := parser.Parse()
@@ -73,11 +79,11 @@ func (c *rescueClosedCommand) Execute(args []string) error {
 		return fmt.Errorf("error parsing root key: %v", err)
 	}
 
-	// Check that we have a rescue DB.
-	if cfg.RescueDB == "" {
+	// Check that we have a channel DB.
+	if cfg.ChannelDB == "" {
 		return fmt.Errorf("rescue DB is required")
 	}
-	db, err := channeldb.Open(cfg.RescueDB)
+	db, err := channeldb.Open(path.Dir(cfg.ChannelDB))
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
@@ -88,6 +94,28 @@ func (c *rescueClosedCommand) Execute(args []string) error {
 		return err
 	}
 	return bruteForceChannels(cfg, entries, db)
+}
+
+type forceCloseCommand struct {
+	Publish bool `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
+}
+
+func (c *forceCloseCommand) Execute(args []string) error {
+	// Check that we have a channel DB.
+	if cfg.ChannelDB == "" {
+		return fmt.Errorf("rescue DB is required")
+	}
+	db, err := channeldb.Open(path.Dir(cfg.ChannelDB))
+	if err != nil {
+		return fmt.Errorf("error opening rescue DB: %v", err)
+	}
+
+	// Parse channel entries from any of the possible input files.
+	entries, err := ParseInput(cfg)
+	if err != nil {
+		return err
+	}
+	return forceCloseChannels(cfg, entries, db, c.Publish)
 }
 
 func setupLogging() {

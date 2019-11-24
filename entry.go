@@ -8,16 +8,38 @@ type ClosingTX struct {
 	SweepPrivkey string `json:"sweep_privkey"`
 }
 
+type Basepoint struct {
+	Family uint16 `json:"family"`
+	Index  uint32 `json:"index"`
+	Pubkey string `json:"pubkey"`
+}
+
+type Out struct {
+	Script    string `json:"script"`
+	ScriptAsm string `json:"script_asm"`
+	Value     uint64 `json:"value"`
+}
+
+type ForceClose struct {
+	TXID           string     `json:"txid"`
+	Serialized     string     `json:"serialized"`
+	CSVDelay       uint16     `json:"csv_delay"`
+	DelayBasepoint *Basepoint `json:"delay_basepoint"`
+	CommitPoint    string     `json:"commit_point"`
+	Outs           []*Out     `json:"outs"`
+}
+
 type SummaryEntry struct {
-	RemotePubkey   string     `json:"remote_pubkey"`
-	ChannelPoint   string     `json:"channel_point"`
-	FundingTXID    string     `json:"funding_txid"`
-	FundingTXIndex uint32     `json:"funding_tx_index"`
-	Capacity       uint64     `json:"capacity"`
-	Initiator      bool       `json:"initiator"`
-	LocalBalance   uint64     `json:"local_balance"`
-	RemoteBalance  uint64     `json:"remote_balance"`
-	ClosingTX      *ClosingTX `json:"closing_tx,omitempty"`
+	RemotePubkey   string      `json:"remote_pubkey"`
+	ChannelPoint   string      `json:"channel_point"`
+	FundingTXID    string      `json:"funding_txid"`
+	FundingTXIndex uint32      `json:"funding_tx_index"`
+	Capacity       uint64      `json:"capacity"`
+	Initiator      bool        `json:"initiator"`
+	LocalBalance   uint64      `json:"local_balance"`
+	RemoteBalance  uint64      `json:"remote_balance"`
+	ClosingTX      *ClosingTX  `json:"closing_tx,omitempty"`
+	ForceClose     *ForceClose `json:"force_close"`
 }
 
 type SummaryEntryFile struct {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 var (
@@ -68,6 +69,20 @@ func (a *chainApi) Transaction(txid string) (*transaction, error) {
 		vout.outspend = &outspend
 	}
 	return tx, nil
+}
+
+func (a *chainApi) PublishTx(rawTxHex string) (string, error) {
+	url := fmt.Sprintf("%s/tx", a.baseUrl)
+	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
+	if err != nil {
+		return "", err
+	}
+	body := new(bytes.Buffer)
+	_, err = body.ReadFrom(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return body.String(), nil
 }
 
 func Fetch(url string, target interface{}) error {

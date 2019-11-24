@@ -223,14 +223,3 @@ func deriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 	}
 	return currentKey, nil
 }
-
-func addrFromDesc(desc *keychain.KeyDescriptor) (string, error) {
-	hash160 := btcutil.Hash160(desc.PubKey.SerializeCompressed())
-	addr, err := btcutil.NewAddressWitnessPubKeyHash(
-		hash160, chainParams,
-	)
-	if err != nil {
-		return "", err
-	}
-	return addr.String(), nil
-}
