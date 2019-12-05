@@ -109,28 +109,9 @@ func bruteForceChannels(cfg *config, entries []*SummaryEntry,
 }
 
 func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
-	// First parse address to get targetPubKeyHash from it later.
-	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
+	targetPubKeyHash, err := parseAddr(addr)
 	if err != nil {
-		return "", err
-	}
-
-	var targetPubKeyHash []byte
-	// Make the check on the decoded address according to the active
-	// network (testnet or mainnet only).
-	if !targetAddr.IsForNet(chainParams) {
-		return "", fmt.Errorf(
-			"address: %v is not valid for this network: %v",
-			targetAddr.String(), chainParams.Name,
-		)
-	}
-
-	// Must be a bech32 native SegWit address.
-	switch targetAddr.(type) {
-	case *btcutil.AddressWitnessPubKeyHash:
-		targetPubKeyHash = targetAddr.ScriptAddress()
-	default:
-		return "", fmt.Errorf("address: must be a bech32 P2WPKH address")
+		return "", fmt.Errorf("error parsing addr: %v", err)
 	}
 
 	// Loop through all cached payment base point keys, tweak each of it
@@ -222,4 +203,31 @@ func deriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 		}
 	}
 	return currentKey, nil
+}
+
+func parseAddr(addr string) ([]byte, error) {
+	// First parse address to get targetPubKeyHash from it later.
+	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
+	if err != nil {
+		return nil, err
+	}
+
+	var targetPubKeyHash []byte
+	// Make the check on the decoded address according to the active
+	// network (testnet or mainnet only).
+	if !targetAddr.IsForNet(chainParams) {
+		return nil, fmt.Errorf(
+			"address: %v is not valid for this network: %v",
+			targetAddr.String(), chainParams.Name,
+		)
+	}
+
+	// Must be a bech32 native SegWit address.
+	switch targetAddr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		targetPubKeyHash = targetAddr.ScriptAddress()
+	default:
+		return nil, fmt.Errorf("address: must be a bech32 P2WPKH address")
+	}
+	return targetPubKeyHash, nil
 }

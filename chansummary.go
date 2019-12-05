@@ -30,7 +30,8 @@ func collectChanSummary(cfg *config, channels []*SummaryEntry) error {
 		if outspend.Spent {
 			summaryFile.ClosedChannels++
 			channel.ClosingTX = &ClosingTX{
-				TXID: outspend.Txid,
+				TXID:       outspend.Txid,
+				ConfHeight: uint32(outspend.Status.BlockHeight),
 			}
 
 			err := reportOutspend(

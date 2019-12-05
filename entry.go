@@ -6,11 +6,12 @@ type ClosingTX struct {
 	AllOutsSpent bool   `json:"all_outputs_spent"`
 	OurAddr      string `json:"our_addr"`
 	SweepPrivkey string `json:"sweep_privkey"`
+	ConfHeight   uint32 `json:"conf_height"`
 }
 
 type Basepoint struct {
-	Family uint16 `json:"family"`
-	Index  uint32 `json:"index"`
+	Family uint16 `json:"family,omitempty"`
+	Index  uint32 `json:"index,omitempty"`
 	Pubkey string `json:"pubkey"`
 }
 
@@ -21,12 +22,13 @@ type Out struct {
 }
 
 type ForceClose struct {
-	TXID           string     `json:"txid"`
-	Serialized     string     `json:"serialized"`
-	CSVDelay       uint16     `json:"csv_delay"`
-	DelayBasepoint *Basepoint `json:"delay_basepoint"`
-	CommitPoint    string     `json:"commit_point"`
-	Outs           []*Out     `json:"outs"`
+	TXID                string     `json:"txid"`
+	Serialized          string     `json:"serialized"`
+	CSVDelay            uint16     `json:"csv_delay"`
+	DelayBasepoint      *Basepoint `json:"delay_basepoint"`
+	RevocationBasepoint *Basepoint `json:"revocation_basepoint"`
+	CommitPoint         string     `json:"commit_point"`
+	Outs                []*Out     `json:"outs"`
 }
 
 type SummaryEntry struct {

@@ -9,13 +9,11 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
-	"github.com/lightningnetwork/lnd/keychain"
 )
 
 func forceCloseChannels(cfg *config, entries []*SummaryEntry,
@@ -25,8 +23,8 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 	if err != nil {
 		return err
 	}
-	
-	chainApi := &chainApi{baseUrl:cfg.ApiUrl}
+
+	chainApi := &chainApi{baseUrl: cfg.ApiUrl}
 
 	extendedKey, err := hdkeychain.NewKeyFromString(cfg.RootKey)
 	if err != nil {
@@ -85,6 +83,7 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 
 		// Calculate commit point.
 		basepoint := channel.LocalChanCfg.DelayBasePoint
+		revpoint := channel.RemoteChanCfg.RevocationBasePoint
 		revocationPreimage, err := channel.RevocationProducer.AtIndex(
 			localCommit.CommitHeight,
 		)
@@ -98,11 +97,20 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 			DelayBasepoint: &Basepoint{
 				Family: uint16(basepoint.Family),
 				Index:  basepoint.Index,
+				Pubkey: hex.EncodeToString(
+					basepoint.PubKey.SerializeCompressed(),
+				),
+			},
+			RevocationBasepoint: &Basepoint{
+				Pubkey: hex.EncodeToString(
+					revpoint.PubKey.SerializeCompressed(),
+				),
 			},
 			CommitPoint: hex.EncodeToString(
 				point.SerializeCompressed(),
 			),
-			Outs: make([]*Out, len(localCommitTx.TxOut)),
+			Outs:     make([]*Out, len(localCommitTx.TxOut)),
+			CSVDelay: channel.LocalChanCfg.CsvDelay,
 		}
 		for idx, out := range localCommitTx.TxOut {
 			script, err := txscript.DisasmString(out.PkScript)
@@ -115,7 +123,7 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 				Value:     uint64(out.Value),
 			}
 		}
-		
+
 		// Publish TX.
 		if publish {
 			response, err := chainApi.PublishTx(serialized)
@@ -137,50 +145,6 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
-}
-
-type signer struct {
-	extendedKey *hdkeychain.ExtendedKey
-}
-
-func (s *signer) SignOutputRaw(tx *wire.MsgTx,
-	signDesc *input.SignDescriptor) ([]byte, error) {
-	witnessScript := signDesc.WitnessScript
-
-	// First attempt to fetch the private key which corresponds to the
-	// specified public key.
-	privKey, err := s.fetchPrivKey(&signDesc.KeyDesc)
-	if err != nil {
-		return nil, err
-	}
-
-	amt := signDesc.Output.Value
-	sig, err := txscript.RawTxInWitnessSignature(
-		tx, signDesc.SigHashes, signDesc.InputIndex, amt,
-		witnessScript, signDesc.HashType, privKey,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Chop off the sighash flag at the end of the signature.
-	return sig[:len(sig)-1], nil
-}
-
-func (s *signer) fetchPrivKey(descriptor *keychain.KeyDescriptor) (
-	*btcec.PrivateKey, error) {
-
-	key, err := deriveChildren(s.extendedKey, []uint32{
-		hardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		hardenedKeyStart + chainParams.HDCoinType,
-		hardenedKeyStart + uint32(descriptor.Family),
-		0,
-		descriptor.Index,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return key.ECPrivKey()
 }
 
 type LightningChannel struct {

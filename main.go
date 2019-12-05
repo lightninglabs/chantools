@@ -51,6 +51,11 @@ func Main() error {
 			"channel.db provided", "",
 		&forceCloseCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"sweeptimelock", "Sweep the force-closed state after the time " +
+			"lock has expired", "",
+		&sweepTimeLockCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
@@ -116,6 +121,34 @@ func (c *forceCloseCommand) Execute(args []string) error {
 		return err
 	}
 	return forceCloseChannels(cfg, entries, db, c.Publish)
+}
+
+type sweepTimeLockCommand struct {
+	Publish bool `long:"publish" description:"Should the sweep TX be published to the chain API?"`
+	SweepAddr string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
+}
+
+func (c *sweepTimeLockCommand) Execute(args []string) error {
+	// Check that root key is valid.
+	if cfg.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	_, err := hdkeychain.NewKeyFromString(cfg.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+	
+	// Make sure sweep addr is set.
+	if c.SweepAddr == "" {
+		return fmt.Errorf("sweep addr is required")
+	}
+
+	// Parse channel entries from any of the possible input files.
+	entries, err := ParseInput(cfg)
+	if err != nil {
+		return err
+	}
+	return sweepTimeLock(cfg, entries, c.SweepAddr, c.Publish)
 }
 
 func setupLogging() {
