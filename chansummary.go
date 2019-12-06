@@ -44,7 +44,7 @@ func collectChanSummary(cfg *config, channels []*SummaryEntry) error {
 			}
 		} else {
 			summaryFile.OpenChannels++
-			summaryFile.FundsOpenChannels += channel.LocalBalance
+			summaryFile.FundsOpenChannels += uint64(channel.LocalBalance)
 			channel.ClosingTX = nil
 		}
 
@@ -92,11 +92,11 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 		return err
 	}
 
-	summaryFile.FundsClosedChannels += entry.LocalBalance
+	summaryFile.FundsClosedChannels += uint64(entry.LocalBalance)
 
 	if isCoopClose(spendTx) {
 		summaryFile.CoopClosedChannels++
-		summaryFile.FundsCoopClose += entry.LocalBalance
+		summaryFile.FundsCoopClose += uint64(entry.LocalBalance)
 		entry.ClosingTX.ForceClose = false
 		return nil
 	}
@@ -104,36 +104,29 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 	summaryFile.ForceClosedChannels++
 	entry.ClosingTX.ForceClose = true
 
-	numSpent := 0
+	var utxo []*vout
 	for _, vout := range spendTx.Vout {
-		if vout.outspend.Spent {
-			numSpent++
+		if !vout.outspend.Spent {
+			utxo = append(utxo, vout)
 		}
 	}
-	if numSpent != len(spendTx.Vout) {
+	if len(utxo) > 0 {
 		log.Debugf("Channel %s spent by %s:%d which has %d outputs of "+
-			"which %d are spent.", entry.ChannelPoint, os.Txid,
-			os.Vin, len(spendTx.Vout), numSpent)
-		var utxo []*vout
-		for _, vout := range spendTx.Vout {
-			if !vout.outspend.Spent {
-				utxo = append(utxo, vout)
-			}
-		}
+			"which %d are unspent.", entry.ChannelPoint, os.Txid,
+			os.Vin, len(spendTx.Vout), len(utxo))
+
 		entry.ClosingTX.AllOutsSpent = false
 		summaryFile.ChannelsWithPotential++
 
 		if couldBeOurs(entry, utxo) {
 			summaryFile.FundsForceClose += utxo[0].Value
 
-			outs := spendTx.Vout
-
 			switch {
-			case len(outs) == 1 &&
-				outs[0].ScriptPubkeyType == "v0_p2wpkh" &&
-				outs[0].outspend.Spent == false:
+			case len(utxo) == 1 &&
+				utxo[0].ScriptPubkeyType == "v0_p2wpkh" &&
+				utxo[0].outspend.Spent == false:
 
-				entry.ClosingTX.OurAddr = outs[0].ScriptPubkeyAddr
+				entry.ClosingTX.OurAddr = utxo[0].ScriptPubkeyAddr
 			}
 		} else {
 			for idx, vout := range spendTx.Vout {
@@ -150,7 +143,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 		}
 	} else {
 		entry.ClosingTX.AllOutsSpent = true
-		summaryFile.FundsClosedSpent += entry.LocalBalance
+		summaryFile.FundsClosedSpent += uint64(entry.LocalBalance)
 		summaryFile.FullySpentChannels++
 	}
 

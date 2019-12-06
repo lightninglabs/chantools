@@ -45,14 +45,14 @@ func sweepTimeLock(cfg *config, entries []*SummaryEntry, sweepAddr string,
 		txindex := -1
 		if len(fc.Outs) == 1 {
 			txindex = 0
-			if fc.Outs[0].Value != entry.LocalBalance {
+			if fc.Outs[0].Value != uint64(entry.LocalBalance) {
 				log.Errorf("Potential value mismatch! %d vs %d (%s)",
 					fc.Outs[0].Value, entry.LocalBalance,
 					entry.ChannelPoint)
 			}
 		} else {
 			for idx, out := range fc.Outs {
-				if out.Value == entry.LocalBalance {
+				if out.Value == uint64(entry.LocalBalance) {
 					txindex = idx
 				}
 			}

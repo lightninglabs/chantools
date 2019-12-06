@@ -12,6 +12,24 @@ import (
 	"strings"
 )
 
+type NumberString uint64
+
+func (n *NumberString) UnmarshalJSON(b []byte) error {
+	if b[0] != '"' {
+		return json.Unmarshal(b, (*uint64)(n))
+	}
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return err
+	}
+	*n = NumberString(i)
+	return nil
+}
+
 type InputFile interface {
 	AsSummaryEntries() ([]*SummaryEntry, error)
 }
@@ -84,12 +102,12 @@ func (f *listChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 }
 
 type listChannelsChannel struct {
-	RemotePubkey     string `json:"remote_pubkey"`
-	ChannelPoint     string `json:"channel_point"`
-	CapacityStr      string `json:"capacity"`
-	Initiator        bool   `json:"initiator"`
-	LocalBalanceStr  string `json:"local_balance"`
-	RemoteBalanceStr string `json:"remote_balance"`
+	RemotePubkey  string       `json:"remote_pubkey"`
+	ChannelPoint  string       `json:"channel_point"`
+	Capacity      NumberString `json:"capacity"`
+	Initiator     bool         `json:"initiator"`
+	LocalBalance  NumberString `json:"local_balance"`
+	RemoteBalance NumberString `json:"remote_balance"`
 }
 
 func (c *listChannelsChannel) AsSummaryEntry() *SummaryEntry {
@@ -98,10 +116,10 @@ func (c *listChannelsChannel) AsSummaryEntry() *SummaryEntry {
 		ChannelPoint:   c.ChannelPoint,
 		FundingTXID:    fundingTXID(c.ChannelPoint),
 		FundingTXIndex: fundingTXIndex(c.ChannelPoint),
-		Capacity:       uint64(parseInt(c.CapacityStr)),
+		Capacity:       uint64(c.Capacity),
 		Initiator:      c.Initiator,
-		LocalBalance:   uint64(parseInt(c.LocalBalanceStr)),
-		RemoteBalance:  uint64(parseInt(c.RemoteBalanceStr)),
+		LocalBalance:   uint64(c.LocalBalance),
+		RemoteBalance:  uint64(c.RemoteBalance),
 	}
 }
 
@@ -138,11 +156,11 @@ func (f *pendingChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 
 type pendingChannelsChannel struct {
 	Channel struct {
-		RemotePubkey     string `json:"remote_node_pub"`
-		ChannelPoint     string `json:"channel_point"`
-		CapacityStr      string `json:"capacity"`
-		LocalBalanceStr  string `json:"local_balance"`
-		RemoteBalanceStr string `json:"remote_balance"`
+		RemotePubkey  string       `json:"remote_node_pub"`
+		ChannelPoint  string       `json:"channel_point"`
+		Capacity      NumberString `json:"capacity"`
+		LocalBalance  NumberString `json:"local_balance"`
+		RemoteBalance NumberString `json:"remote_balance"`
 	} `json:"channel"`
 }
 
@@ -152,10 +170,10 @@ func (c *pendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
 		ChannelPoint:   c.Channel.ChannelPoint,
 		FundingTXID:    fundingTXID(c.Channel.ChannelPoint),
 		FundingTXIndex: fundingTXIndex(c.Channel.ChannelPoint),
-		Capacity:       uint64(parseInt(c.Channel.CapacityStr)),
+		Capacity:       uint64(c.Channel.Capacity),
 		Initiator:      false,
-		LocalBalance:   uint64(parseInt(c.Channel.LocalBalanceStr)),
-		RemoteBalance:  uint64(parseInt(c.Channel.RemoteBalanceStr)),
+		LocalBalance:   uint64(c.Channel.LocalBalance),
+		RemoteBalance:  uint64(c.Channel.RemoteBalance),
 	}
 }
 
@@ -179,10 +197,10 @@ func (c *channelDBFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 			FundingTXIndex: channel.FundingOutpoint.Index,
 			Capacity:       uint64(channel.Capacity),
 			Initiator:      channel.IsInitiator,
-			LocalBalance:   uint64(
+			LocalBalance: uint64(
 				channel.LocalCommitment.LocalBalance.ToSatoshis(),
 			),
-			RemoteBalance:  uint64(
+			RemoteBalance: uint64(
 				channel.LocalCommitment.RemoteBalance.ToSatoshis(),
 			),
 		}
@@ -212,10 +230,10 @@ func fundingTXIndex(chanPoint string) uint32 {
 	return uint32(parseInt(parts[1]))
 }
 
-func parseInt(str string) int {
+func parseInt(str string) uint64 {
 	index, err := strconv.Atoi(str)
 	if err != nil {
 		panic(fmt.Errorf("error parsing '%s' as int: %v", str, err))
 	}
-	return index
+	return uint64(index)
 }
