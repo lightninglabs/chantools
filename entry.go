@@ -1,5 +1,7 @@
 package chantools
 
+import "github.com/lightningnetwork/lnd/keychain"
+
 type ClosingTX struct {
 	TXID         string `json:"txid"`
 	ForceClose   bool   `json:"force_close"`
@@ -9,10 +11,19 @@ type ClosingTX struct {
 	ConfHeight   uint32 `json:"conf_height"`
 }
 
-type Basepoint struct {
+type BasePoint struct {
 	Family uint16 `json:"family,omitempty"`
 	Index  uint32 `json:"index,omitempty"`
-	Pubkey string `json:"pubkey"`
+	PubKey string `json:"pubkey"`
+}
+
+func (b *BasePoint) toDesc() *keychain.KeyDescriptor {
+	return &keychain.KeyDescriptor{
+		KeyLocator: keychain.KeyLocator{
+			Family: keychain.KeyFamily(b.Family),
+			Index:  b.Index,
+		},
+	}
 }
 
 type Out struct {
@@ -25,8 +36,8 @@ type ForceClose struct {
 	TXID                string     `json:"txid"`
 	Serialized          string     `json:"serialized"`
 	CSVDelay            uint16     `json:"csv_delay"`
-	DelayBasepoint      *Basepoint `json:"delay_basepoint"`
-	RevocationBasepoint *Basepoint `json:"revocation_basepoint"`
+	DelayBasePoint      *BasePoint `json:"delay_basepoint"`
+	RevocationBasePoint *BasePoint `json:"revocation_basepoint"`
 	CommitPoint         string     `json:"commit_point"`
 	Outs                []*Out     `json:"outs"`
 }

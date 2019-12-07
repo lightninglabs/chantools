@@ -31,10 +31,10 @@ type cacheEntry struct {
 	pubKey  *btcec.PublicKey
 }
 
-func bruteForceChannels(cfg *config, entries []*SummaryEntry,
-	chanDb *channeldb.DB) error {
+func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
+	entries []*SummaryEntry, chanDb *channeldb.DB) error {
 
-	err := fillCache(cfg.RootKey)
+	err := fillCache(extendedKey)
 	if err != nil {
 		return err
 	}
@@ -148,12 +148,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	return "", errAddrNotFound
 }
 
-func fillCache(rootKey string) error {
-	extendedKey, err := hdkeychain.NewKeyFromString(rootKey)
-	if err != nil {
-		return err
-	}
-
+func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 	cache = make([]*cacheEntry, cacheSize)
 
 	for i := 0; i < cacheSize; i++ {

@@ -7,12 +7,11 @@ import (
 	"time"
 )
 
-func collectChanSummary(cfg *config, channels []*SummaryEntry) error {
+func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 	summaryFile := &SummaryEntryFile{
 		Channels: channels,
 	}
-
-	chainApi := &chainApi{baseUrl: cfg.ApiUrl}
+	chainApi := &chainApi{baseUrl: apiUrl}
 
 	for idx, channel := range channels {
 		tx, err := chainApi.Transaction(channel.FundingTXID)
@@ -44,7 +43,7 @@ func collectChanSummary(cfg *config, channels []*SummaryEntry) error {
 			}
 		} else {
 			summaryFile.OpenChannels++
-			summaryFile.FundsOpenChannels += uint64(channel.LocalBalance)
+			summaryFile.FundsOpenChannels += channel.LocalBalance
 			channel.ClosingTX = nil
 		}
 
@@ -92,11 +91,11 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 		return err
 	}
 
-	summaryFile.FundsClosedChannels += uint64(entry.LocalBalance)
+	summaryFile.FundsClosedChannels += entry.LocalBalance
 
 	if isCoopClose(spendTx) {
 		summaryFile.CoopClosedChannels++
-		summaryFile.FundsCoopClose += uint64(entry.LocalBalance)
+		summaryFile.FundsCoopClose += entry.LocalBalance
 		entry.ClosingTX.ForceClose = false
 		return nil
 	}
@@ -143,7 +142,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 		}
 	} else {
 		entry.ClosingTX.AllOutsSpent = true
-		summaryFile.FundsClosedSpent += uint64(entry.LocalBalance)
+		summaryFile.FundsClosedSpent += entry.LocalBalance
 		summaryFile.FullySpentChannels++
 	}
 

@@ -16,12 +16,10 @@ const (
 
 type config struct {
 	ApiUrl          string `long:"apiurl" description:"API URL to use (must be esplora compatible)."`
-	RootKey         string `long:"rootkey" description:"BIP32 HD root key to use."`
 	ListChannels    string `long:"listchannels" description:"The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin."`
 	PendingChannels string `long:"pendingchannels" description:"The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin."`
 	FromSummary     string `long:"fromsummary" description:"The channel input is in the format of this tool's channel summary. Specify '-' to read from stdin."`
 	FromChannelDB   string `long:"fromchanneldb" description:"The channel input is in the format of an lnd channel.db file."`
-	ChannelDB       string `long:"channeldb" description:"The lnd channel.db file to use for rescuing or force-closing channels."`
 }
 
 var (
@@ -47,12 +45,12 @@ func Main() error {
 		&rescueClosedCommand{},
 	)
 	_, _ = parser.AddCommand(
-		"forceclose", "Force-close the last state that is in the " +
+		"forceclose", "Force-close the last state that is in the "+
 			"channel.db provided", "",
 		&forceCloseCommand{},
 	)
 	_, _ = parser.AddCommand(
-		"sweeptimelock", "Sweep the force-closed state after the time " +
+		"sweeptimelock", "Sweep the force-closed state after the time "+
 			"lock has expired", "",
 		&sweepTimeLockCommand{},
 	)
@@ -69,26 +67,29 @@ func (c *summaryCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	return collectChanSummary(cfg, entries)
+	return summarizeChannels(cfg.ApiUrl, entries)
 }
 
-type rescueClosedCommand struct{}
+type rescueClosedCommand struct {
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for rescuing force-closed channels."`
+}
 
 func (c *rescueClosedCommand) Execute(args []string) error {
 	// Check that root key is valid.
-	if cfg.RootKey == "" {
+	if c.RootKey == "" {
 		return fmt.Errorf("root key is required")
 	}
-	_, err := hdkeychain.NewKeyFromString(cfg.RootKey)
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
 		return fmt.Errorf("error parsing root key: %v", err)
 	}
 
 	// Check that we have a channel DB.
-	if cfg.ChannelDB == "" {
+	if c.ChannelDB == "" {
 		return fmt.Errorf("rescue DB is required")
 	}
-	db, err := channeldb.Open(path.Dir(cfg.ChannelDB))
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
@@ -98,19 +99,29 @@ func (c *rescueClosedCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	return bruteForceChannels(cfg, entries, db)
+	return rescueClosedChannels(extendedKey, entries, db)
 }
 
 type forceCloseCommand struct {
-	Publish bool `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for force-closing channels."`
+	Publish   bool   `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
 }
 
 func (c *forceCloseCommand) Execute(args []string) error {
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
 	// Check that we have a channel DB.
-	if cfg.ChannelDB == "" {
+	if c.ChannelDB == "" {
 		return fmt.Errorf("rescue DB is required")
 	}
-	db, err := channeldb.Open(path.Dir(cfg.ChannelDB))
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
@@ -120,24 +131,26 @@ func (c *forceCloseCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	return forceCloseChannels(cfg, entries, db, c.Publish)
+	return forceCloseChannels(extendedKey, entries, db, c.Publish)
 }
 
 type sweepTimeLockCommand struct {
-	Publish bool `long:"publish" description:"Should the sweep TX be published to the chain API?"`
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	Publish   bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
 	SweepAddr string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
+	MaxCsvLimit int `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
 }
 
 func (c *sweepTimeLockCommand) Execute(args []string) error {
 	// Check that root key is valid.
-	if cfg.RootKey == "" {
+	if c.RootKey == "" {
 		return fmt.Errorf("root key is required")
 	}
-	_, err := hdkeychain.NewKeyFromString(cfg.RootKey)
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
 		return fmt.Errorf("error parsing root key: %v", err)
 	}
-	
+
 	// Make sure sweep addr is set.
 	if c.SweepAddr == "" {
 		return fmt.Errorf("sweep addr is required")
@@ -148,7 +161,15 @@ func (c *sweepTimeLockCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	return sweepTimeLock(cfg, entries, c.SweepAddr, c.Publish)
+	
+	// Set default value
+	if c.MaxCsvLimit == 0 {
+		c.MaxCsvLimit = 2000
+	}
+	return sweepTimeLock(
+		extendedKey, cfg.ApiUrl, entries, c.SweepAddr, c.MaxCsvLimit,
+		c.Publish,
+	)
 }
 
 func setupLogging() {

@@ -16,20 +16,14 @@ import (
 	"github.com/lightningnetwork/lnd/input"
 )
 
-func forceCloseChannels(cfg *config, entries []*SummaryEntry,
-	chanDb *channeldb.DB, publish bool) error {
+func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
+	entries []*SummaryEntry, chanDb *channeldb.DB, publish bool) error {
 
 	channels, err := chanDb.FetchAllChannels()
 	if err != nil {
 		return err
 	}
-
 	chainApi := &chainApi{baseUrl: cfg.ApiUrl}
-
-	extendedKey, err := hdkeychain.NewKeyFromString(cfg.RootKey)
-	if err != nil {
-		return err
-	}
 	signer := &signer{extendedKey: extendedKey}
 
 	// Go through all channels in the DB, find the still open ones and
@@ -51,8 +45,8 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 		localCommit := channel.LocalCommitment
 		localCommitTx := localCommit.CommitTx
 		if localCommitTx == nil {
-			log.Errorf("Cannot force-close, no local commit TX for "+
-				"channel %s", channelEntry.ChannelPoint)
+			log.Errorf("Cannot force-close, no local commit TX "+
+				"for channel %s", channelEntry.ChannelPoint)
 			continue
 		}
 
@@ -91,18 +85,22 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 			return err
 		}
 		point := input.ComputeCommitmentPoint(revocationPreimage[:])
+
+		// Store all information that we collected into the channel
+		// entry file so we don't need to use the channel.db file for
+		// the next step.
 		channelEntry.ForceClose = &ForceClose{
 			TXID:       hash.String(),
 			Serialized: serialized,
-			DelayBasepoint: &Basepoint{
+			DelayBasePoint: &BasePoint{
 				Family: uint16(basepoint.Family),
 				Index:  basepoint.Index,
-				Pubkey: hex.EncodeToString(
+				PubKey: hex.EncodeToString(
 					basepoint.PubKey.SerializeCompressed(),
 				),
 			},
-			RevocationBasepoint: &Basepoint{
-				Pubkey: hex.EncodeToString(
+			RevocationBasePoint: &BasePoint{
+				PubKey: hex.EncodeToString(
 					revpoint.PubKey.SerializeCompressed(),
 				),
 			},
@@ -130,8 +128,8 @@ func forceCloseChannels(cfg *config, entries []*SummaryEntry,
 			if err != nil {
 				return err
 			}
-			log.Infof("Published TX %s, response: %s", hash.String(),
-				response)
+			log.Infof("Published TX %s, response: %s",
+				hash.String(), response)
 		}
 	}
 

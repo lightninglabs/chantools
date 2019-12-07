@@ -2,6 +2,7 @@ package chantools
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -24,12 +25,8 @@ func (s *signer) SignOutputRaw(tx *wire.MsgTx,
 	if err != nil {
 		return nil, err
 	}
-	
-	privKey, err = maybeTweakPrivKey(signDesc, privKey)
-	if err != nil {
-		return nil, err
-	}
 
+	privKey = maybeTweakPrivKey(signDesc, privKey)
 	amt := signDesc.Output.Value
 	sig, err := txscript.RawTxInWitnessSignature(
 		tx, signDesc.SigHashes, signDesc.InputIndex, amt,
@@ -64,26 +61,14 @@ func (s *signer) fetchPrivKey(descriptor *keychain.KeyDescriptor) (
 	return key.ECPrivKey()
 }
 
-// maybeTweakPrivKey examines the single and double tweak parameters on the
-// passed sign descriptor and may perform a mapping on the passed private key
-// in order to utilize the tweaks, if populated.
+// maybeTweakPrivKey examines the single tweak parameters on the passed sign
+// descriptor and may perform a mapping on the passed private key in order to
+// utilize the tweaks, if populated.
 func maybeTweakPrivKey(signDesc *input.SignDescriptor,
-	privKey *btcec.PrivateKey) (*btcec.PrivateKey, error) {
+	privKey *btcec.PrivateKey) *btcec.PrivateKey {
 
-	var retPriv *btcec.PrivateKey
-	switch {
-
-	case signDesc.SingleTweak != nil:
-		retPriv = input.TweakPrivKey(privKey,
-			signDesc.SingleTweak)
-
-	case signDesc.DoubleTweak != nil:
-		retPriv = input.DeriveRevocationPrivKey(privKey,
-			signDesc.DoubleTweak)
-
-	default:
-		retPriv = privKey
+	if signDesc.SingleTweak != nil {
+		return input.TweakPrivKey(privKey, signDesc.SingleTweak)
 	}
-
-	return retPriv, nil
+	return privKey
 }
