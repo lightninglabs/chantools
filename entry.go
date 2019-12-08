@@ -51,6 +51,8 @@ type SummaryEntry struct {
 	Initiator      bool        `json:"initiator"`
 	LocalBalance   uint64      `json:"local_balance"`
 	RemoteBalance  uint64      `json:"remote_balance"`
+	ChanExists     bool        `json:"chan_exists_onchain"`
+	HasPotential   bool        `json:"has_potential_funds"`
 	ClosingTX      *ClosingTX  `json:"closing_tx,omitempty"`
 	ForceClose     *ForceClose `json:"force_close"`
 }
@@ -62,6 +64,7 @@ type SummaryEntryFile struct {
 	ForceClosedChannels   uint32          `json:"force_closed_channels"`
 	CoopClosedChannels    uint32          `json:"coop_closed_channels"`
 	FullySpentChannels    uint32          `json:"fully_spent_channels"`
+	ChannelsWithUnspent   uint32          `json:"channels_with_unspent_funds"`
 	ChannelsWithPotential uint32          `json:"channels_with_potential_funds"`
 	FundsOpenChannels     uint64          `json:"funds_open_channels"`
 	FundsClosedChannels   uint64          `json:"funds_closed_channels"`

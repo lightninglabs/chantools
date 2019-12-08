@@ -18,6 +18,7 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 		if err == ErrTxNotFound {
 			log.Errorf("Funding TX %s not found. Ignoring.",
 				channel.FundingTXID)
+			channel.ChanExists = false
 			continue
 		}
 		if err != nil {
@@ -25,6 +26,7 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 				idx, channel.FundingTXID, err)
 			return err
 		}
+		channel.ChanExists = true
 		outspend := tx.Vout[channel.FundingTXIndex].outspend
 		if outspend.Spent {
 			summaryFile.ClosedChannels++
@@ -45,6 +47,7 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 			summaryFile.OpenChannels++
 			summaryFile.FundsOpenChannels += channel.LocalBalance
 			channel.ClosingTX = nil
+			channel.HasPotential = true
 		}
 
 		if idx%50 == 0 {
@@ -64,6 +67,8 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 	log.Infof(" --> closed channels with all outputs spent: %d",
 		summaryFile.FullySpentChannels)
 	log.Infof(" --> closed channels with unspent outputs: %d",
+		summaryFile.ChannelsWithUnspent)
+	log.Infof(" --> closed channels with potentially our outputs: %d",
 		summaryFile.ChannelsWithPotential)
 	log.Infof("Sats in closed channels: %d", summaryFile.FundsClosedChannels)
 	log.Infof(" --> closed channel sats that have been swept/spent: %d",
@@ -92,42 +97,56 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 	}
 
 	summaryFile.FundsClosedChannels += entry.LocalBalance
-
-	if isCoopClose(spendTx) {
-		summaryFile.CoopClosedChannels++
-		summaryFile.FundsCoopClose += entry.LocalBalance
-		entry.ClosingTX.ForceClose = false
-		return nil
-	}
-
-	summaryFile.ForceClosedChannels++
-	entry.ClosingTX.ForceClose = true
-
 	var utxo []*vout
 	for _, vout := range spendTx.Vout {
 		if !vout.outspend.Spent {
 			utxo = append(utxo, vout)
 		}
 	}
+
+	if isCoopClose(spendTx) {
+		summaryFile.CoopClosedChannels++
+		summaryFile.FundsCoopClose += entry.LocalBalance
+		entry.ClosingTX.ForceClose = false
+		entry.ClosingTX.AllOutsSpent = len(utxo) == 0
+		entry.HasPotential = entry.LocalBalance > 0 && len(utxo) != 0
+		return nil
+	}
+
+	summaryFile.ForceClosedChannels++
+	entry.ClosingTX.ForceClose = true
+	entry.HasPotential = false
+	
 	if len(utxo) > 0 {
 		log.Debugf("Channel %s spent by %s:%d which has %d outputs of "+
 			"which %d are unspent.", entry.ChannelPoint, os.Txid,
 			os.Vin, len(spendTx.Vout), len(utxo))
 
 		entry.ClosingTX.AllOutsSpent = false
-		summaryFile.ChannelsWithPotential++
+		summaryFile.ChannelsWithUnspent++
 
 		if couldBeOurs(entry, utxo) {
+			summaryFile.ChannelsWithPotential++
 			summaryFile.FundsForceClose += utxo[0].Value
+			entry.HasPotential = true
 
-			switch {
-			case len(utxo) == 1 &&
+			// Could maybe be brute forced.
+			if len(utxo) == 1 &&
 				utxo[0].ScriptPubkeyType == "v0_p2wpkh" &&
-				utxo[0].outspend.Spent == false:
+				utxo[0].outspend.Spent == false {
 
 				entry.ClosingTX.OurAddr = utxo[0].ScriptPubkeyAddr
 			}
 		} else {
+			// It's theirs, ignore.
+			if entry.LocalBalance == 0 || 
+				(len(utxo) == 1 && 
+				utxo[0].Value == entry.RemoteBalance) {
+				
+				return nil
+			}
+			
+			// We don't know what this output is, logging for debug.
 			for idx, vout := range spendTx.Vout {
 				if !vout.outspend.Spent {
 					log.Debugf("UTXO %d of type %s with "+
@@ -142,6 +161,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 		}
 	} else {
 		entry.ClosingTX.AllOutsSpent = true
+		entry.HasPotential = false
 		summaryFile.FundsClosedSpent += entry.LocalBalance
 		summaryFile.FullySpentChannels++
 	}
@@ -150,7 +170,11 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 }
 
 func couldBeOurs(entry *SummaryEntry, utxo []*vout) bool {
-	return utxo[0].ScriptPubkeyType == "v0_p2wpkh" && entry.LocalBalance != 0
+	if len(utxo) == 1 && utxo[0].Value == entry.RemoteBalance {
+		return false
+	}
+	
+	return entry.LocalBalance != 0
 }
 
 func isCoopClose(tx *transaction) bool {
