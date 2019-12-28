@@ -116,7 +116,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 	summaryFile.ForceClosedChannels++
 	entry.ClosingTX.ForceClose = true
 	entry.HasPotential = false
-	
+
 	if len(utxo) > 0 {
 		log.Debugf("Channel %s spent by %s:%d which has %d outputs of "+
 			"which %d are unspent.", entry.ChannelPoint, os.Txid,
@@ -139,13 +139,13 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 			}
 		} else {
 			// It's theirs, ignore.
-			if entry.LocalBalance == 0 || 
-				(len(utxo) == 1 && 
-				utxo[0].Value == entry.RemoteBalance) {
-				
+			if entry.LocalBalance == 0 ||
+				(len(utxo) == 1 &&
+					utxo[0].Value == entry.RemoteBalance) {
+
 				return nil
 			}
-			
+
 			// We don't know what this output is, logging for debug.
 			for idx, vout := range spendTx.Vout {
 				if !vout.outspend.Spent {
@@ -173,7 +173,7 @@ func couldBeOurs(entry *SummaryEntry, utxo []*vout) bool {
 	if len(utxo) == 1 && utxo[0].Value == entry.RemoteBalance {
 		return false
 	}
-	
+
 	return entry.LocalBalance != 0
 }
 

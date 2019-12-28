@@ -1,7 +1,7 @@
 # Channel tools
 
-This tool provides four helper functions that can be used to rescue funds locked
-in lnd channels in case lnd itself cannot run properly any more.
+This tool provides helper functions that can be used to rescue funds locked in
+lnd channels in case lnd itself cannot run properly any more.
 
 **WARNING**: This tool was specifically built for a certain rescue operation and
 might not be well-suited for your use case. Or not all edge cases for your needs
@@ -28,9 +28,10 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
+  dumpchannels   Dump all channel information from lnd's channel database
   forceclose     Force-close the last state that is in the channel.db provided
   rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels
-  summary        Compile a summary about the current state of channels.
+  summary        Compile a summary about the current state of channels
   sweeptimelock  Sweep the force-closed state after the time lock has expired
 ```
 
@@ -147,4 +148,23 @@ chantools --fromsummary results/forceclose-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx \
   --publish \
   --sweepaddr bc1q.....
+```
+
+## dumpchannels command
+
+```text
+Usage:
+  chantools [OPTIONS] dumpchannels [dumpchannels-OPTIONS]
+
+[dumpchannels command options]
+          --channeldb=   The lnd channel.db file to dump the channels from.
+```
+
+This command dumps all open and pending channels from the given lnd `channel.db`
+file in a human readable format.
+
+Example command:
+
+```bash
+chantools dumpchannels --channeldb ~/.lnd/data/graph/mainnet/channel.db
 ```

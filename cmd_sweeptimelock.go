@@ -113,8 +113,8 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 
 		// Create the sign descriptor for the input.
 		signDesc := &input.SignDescriptor{
-			KeyDesc:       *delayDesc,
-			SingleTweak:   input.SingleTweakBytes(
+			KeyDesc: *delayDesc,
+			SingleTweak: input.SingleTweakBytes(
 				commitPoint, delayBase,
 			),
 			WitnessScript: script,

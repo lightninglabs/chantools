@@ -37,7 +37,7 @@ func Main() error {
 	parser := flags.NewParser(cfg, flags.Default)
 	_, _ = parser.AddCommand(
 		"summary", "Compile a summary about the current state of "+
-			"channels.", "", &summaryCommand{},
+			"channels", "", &summaryCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"rescueclosed", "Try finding the private keys for funds that "+
@@ -54,6 +54,11 @@ func Main() error {
 			"lock has expired", "",
 		&sweepTimeLockCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"dumpchannels", "Dump all channel information from lnd's "+
+			"channel database", "",
+		&dumpChannelsCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
@@ -61,7 +66,7 @@ func Main() error {
 
 type summaryCommand struct{}
 
-func (c *summaryCommand) Execute(args []string) error {
+func (c *summaryCommand) Execute(_ []string) error {
 	// Parse channel entries from any of the possible input files.
 	entries, err := ParseInput(cfg)
 	if err != nil {
@@ -75,7 +80,7 @@ type rescueClosedCommand struct {
 	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for rescuing force-closed channels."`
 }
 
-func (c *rescueClosedCommand) Execute(args []string) error {
+func (c *rescueClosedCommand) Execute(_ []string) error {
 	// Check that root key is valid.
 	if c.RootKey == "" {
 		return fmt.Errorf("root key is required")
@@ -108,7 +113,7 @@ type forceCloseCommand struct {
 	Publish   bool   `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
 }
 
-func (c *forceCloseCommand) Execute(args []string) error {
+func (c *forceCloseCommand) Execute(_ []string) error {
 	// Check that root key is valid.
 	if c.RootKey == "" {
 		return fmt.Errorf("root key is required")
@@ -135,13 +140,13 @@ func (c *forceCloseCommand) Execute(args []string) error {
 }
 
 type sweepTimeLockCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
-	Publish   bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
-	SweepAddr string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
-	MaxCsvLimit int `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
+	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use."`
+	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
+	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
+	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
 }
 
-func (c *sweepTimeLockCommand) Execute(args []string) error {
+func (c *sweepTimeLockCommand) Execute(_ []string) error {
 	// Check that root key is valid.
 	if c.RootKey == "" {
 		return fmt.Errorf("root key is required")
@@ -161,7 +166,7 @@ func (c *sweepTimeLockCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Set default value
 	if c.MaxCsvLimit == 0 {
 		c.MaxCsvLimit = 2000
@@ -170,6 +175,22 @@ func (c *sweepTimeLockCommand) Execute(args []string) error {
 		extendedKey, cfg.ApiUrl, entries, c.SweepAddr, c.MaxCsvLimit,
 		c.Publish,
 	)
+}
+
+type dumpChannelsCommand struct {
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to dump the channels from."`
+}
+
+func (c *dumpChannelsCommand) Execute(_ []string) error {
+	// Check that we have a channel DB.
+	if c.ChannelDB == "" {
+		return fmt.Errorf("rescue DB is required")
+	}
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
+	if err != nil {
+		return fmt.Errorf("error opening rescue DB: %v", err)
+	}
+	return dumpChannelInfo(db)
 }
 
 func setupLogging() {
