@@ -73,9 +73,11 @@ func dumpChannelInfo(chanDb *channeldb.DB) error {
 	dumpChannels := make([]dumpInfo, len(channels))
 	for idx, channel := range channels {
 		var buf bytes.Buffer
-		err = channel.FundingTxn.Serialize(&buf)
-		if err != nil {
-			return err
+		if channel.FundingTxn != nil {
+			err = channel.FundingTxn.Serialize(&buf)
+			if err != nil {
+				return err
+			}
 		}
 		revPreimage, err := channel.RevocationProducer.AtIndex(
 			channel.LocalCommitment.CommitHeight,
