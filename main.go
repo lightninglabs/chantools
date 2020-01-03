@@ -1,13 +1,21 @@
 package chantools
 
 import (
+	"bufio"
 	"fmt"
+	"os"
 	"path"
+	"strings"
+	"syscall"
 
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/jessevdk/go-flags"
+	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/build"
+	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -15,6 +23,7 @@ const (
 )
 
 type config struct {
+	Testnet         bool   `long:"testnet" description:"Set to true if testnet parameters should be used."`
 	ApiUrl          string `long:"apiurl" description:"API URL to use (must be esplora compatible)."`
 	ListChannels    string `long:"listchannels" description:"The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin."`
 	PendingChannels string `long:"pendingchannels" description:"The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin."`
@@ -28,6 +37,7 @@ var (
 	cfg       = &config{
 		ApiUrl: defaultApiUrl,
 	}
+	chainParams = &chaincfg.MainNetParams
 )
 
 func Main() error {
@@ -37,27 +47,32 @@ func Main() error {
 	parser := flags.NewParser(cfg, flags.Default)
 	_, _ = parser.AddCommand(
 		"summary", "Compile a summary about the current state of "+
-			"channels", "", &summaryCommand{},
+			"channels.", "", &summaryCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"rescueclosed", "Try finding the private keys for funds that "+
-			"are in outputs of remotely force-closed channels", "",
+			"are in outputs of remotely force-closed channels.", "",
 		&rescueClosedCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"forceclose", "Force-close the last state that is in the "+
-			"channel.db provided", "",
-		&forceCloseCommand{},
+			"channel.db provided.", "", &forceCloseCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"sweeptimelock", "Sweep the force-closed state after the time "+
-			"lock has expired", "",
-		&sweepTimeLockCommand{},
+			"lock has expired.", "", &sweepTimeLockCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"dumpchannels", "Dump all channel information from lnd's "+
-			"channel database", "",
-		&dumpChannelsCommand{},
+			"channel database.", "", &dumpChannelsCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"showrootkey", "Extract and show the BIP32 HD root key from "+
+			"the 24 word lnd aezeed.", "", &showRootKeyCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"dumpbackup", "Dump the content of a channel.backup file.", "",
+		&dumpBackupCommand{},
 	)
 
 	_, err := parser.Parse()
@@ -184,13 +199,104 @@ type dumpChannelsCommand struct {
 func (c *dumpChannelsCommand) Execute(_ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("rescue DB is required")
+		return fmt.Errorf("channel DB is required")
 	}
 	db, err := channeldb.Open(path.Dir(c.ChannelDB))
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
 	return dumpChannelInfo(db)
+}
+
+type showRootKeyCommand struct{}
+
+func (c *showRootKeyCommand) Execute(_ []string) error {
+	// We'll now prompt the user to enter in their 24-word mnemonic.
+	fmt.Printf("Input your 24-word mnemonic separated by spaces: ")
+	reader := bufio.NewReader(os.Stdin)
+	mnemonicStr, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+
+	// We'll trim off extra spaces, and ensure the mnemonic is all
+	// lower case, then populate our request.
+	mnemonicStr = strings.TrimSpace(mnemonicStr)
+	mnemonicStr = strings.ToLower(mnemonicStr)
+
+	cipherSeedMnemonic := strings.Split(mnemonicStr, " ")
+
+	fmt.Println()
+
+	if len(cipherSeedMnemonic) != 24 {
+		return fmt.Errorf("wrong cipher seed mnemonic "+
+			"length: got %v words, expecting %v words",
+			len(cipherSeedMnemonic), 24)
+	}
+
+	// Additionally, the user may have a passphrase, that will also
+	// need to be provided so the daemon can properly decipher the
+	// cipher seed.
+	fmt.Printf("Input your cipher seed passphrase (press enter if " +
+		"your seed doesn't have a passphrase): ")
+	passphrase, err := terminal.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return err
+	}
+
+	var mnemonic aezeed.Mnemonic
+	copy(mnemonic[:], cipherSeedMnemonic[:])
+
+	// If we're unable to map it back into the ciphertext, then either the
+	// mnemonic is wrong, or the passphrase is wrong.
+	cipherSeed, err := mnemonic.ToCipherSeed(passphrase)
+	if err != nil {
+		return err
+	}
+	rootKey, err := hdkeychain.NewMaster(cipherSeed.Entropy[:], chainParams)
+	if err != nil {
+		return fmt.Errorf("failed to derive master extended key")
+	}
+	fmt.Printf("\nYour BIP32 HD root key is: %s\n", rootKey.String())
+	return nil
+}
+
+type dumpBackupCommand struct {
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup."`
+	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to dump."`
+}
+
+func (c *dumpBackupCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+
+	// Check that we have a backup file.
+	if c.MultiFile == "" {
+		return fmt.Errorf("backup file is required")
+	}
+	multiFile := chanbackup.NewMultiFile(c.MultiFile)
+	multi, err := multiFile.ExtractMulti(&channelBackupEncryptionRing{
+		extendedKey: extendedKey,
+		chainParams: chainParams,
+	})
+	if err != nil {
+		return fmt.Errorf("could not extract multi file: %v", err)
+	}
+	return dumpChannelBackup(multi)
+}
+
+func setupChainParams(cfg *config) {
+	if cfg.Testnet {
+		chainParams = &chaincfg.TestNet3Params
+	}
 }
 
 func setupLogging() {

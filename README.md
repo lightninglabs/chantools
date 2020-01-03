@@ -11,6 +11,15 @@ you use it for anything serious.
 **WARNING 2**: This tool will query public block explorer APIs, your privacy
 might not be preserved. Use at your own risk.
 
+## Installation
+
+To install this tool, make sure you have `go 1.13.x` (or later) and `make`
+installed and run the following command:
+
+```bash
+make install
+```
+
 ## Overview
 
 ```text
@@ -18,6 +27,7 @@ Usage:
   chantools [OPTIONS] <command>
 
 Application Options:
+      --testnet          Set to true if testnet parameters should be used.
       --apiurl=          API URL to use (must be esplora compatible). (default: https://blockstream.info/api)
       --listchannels=    The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin.
       --pendingchannels= The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin.
@@ -28,11 +38,13 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
-  dumpchannels   Dump all channel information from lnd's channel database
-  forceclose     Force-close the last state that is in the channel.db provided
-  rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels
-  summary        Compile a summary about the current state of channels
-  sweeptimelock  Sweep the force-closed state after the time lock has expired
+  dumpbackup     Dump the content of a channel.backup file.
+  dumpchannels   Dump all channel information from lnd's channel database.
+  forceclose     Force-close the last state that is in the channel.db provided.
+  rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels.
+  showrootkey    Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
+  summary        Compile a summary about the current state of channels.
+  sweeptimelock  Sweep the force-closed state after the time lock has expired.
 ```
 
 ## summary command
@@ -167,4 +179,37 @@ Example command:
 
 ```bash
 chantools dumpchannels --channeldb ~/.lnd/data/graph/mainnet/channel.db
+```
+
+## showrootkey command
+
+This command converts the 24 word lnd aezeed phrase and password to the BIP32
+HD root key that is used as the `rootkey` parameter in other commands of this
+tool.
+
+Example command:
+
+```bash
+chantools showrootkey
+```
+
+## dumpbackup command
+
+```text
+Usage:
+  chantools [OPTIONS] dumpbackup [dumpbackup-OPTIONS]
+
+[dumpbackup command options]
+          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup.
+          --multi_file=  The lnd channel.backup file to dump.
+```
+
+This command dumps all information that is inside a `channel.backup` file in a
+human readable format.
+
+Example command:
+
+```bash
+chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+  --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```

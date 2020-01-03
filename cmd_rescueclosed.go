@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -18,8 +17,6 @@ import (
 )
 
 var (
-	hardenedKeyStart = uint32(hdkeychain.HardenedKeyStart)
-	chainParams      = &chaincfg.MainNetParams
 	cacheSize        = 2000
 	cache            []*cacheEntry
 
@@ -182,22 +179,6 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 
 	}
 	return nil
-}
-
-func deriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
-	*hdkeychain.ExtendedKey, error) {
-
-	var (
-		currentKey = key
-		err        error
-	)
-	for _, pathPart := range path {
-		currentKey, err = currentKey.Child(pathPart)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return currentKey, nil
 }
 
 func parseAddr(addr string) ([]byte, error) {
