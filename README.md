@@ -7,6 +7,7 @@
 * [Commands](#commands)
   + [dumpbackup](#dumpbackup)
   + [dumpchannels](#dumpchannels)
+  + [filterbackup](#filterbackup)
   + [forceclose](#forceclose)
   + [rescueclosed](#rescueclosed)
   + [showrootkey](#showrootkey)
@@ -54,6 +55,7 @@ Available commands:
   derivekey      Derive a key with a specific derivation path from the BIP32 HD root key.
   dumpbackup     Dump the content of a channel.backup file.
   dumpchannels   Dump all channel information from lnd's channel database.
+  filterbackup   Filter an lnd channel.backup file and remove certain channels.
   forceclose     Force-close the last state that is in the channel.db provided.
   rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels.
   showrootkey    Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
@@ -124,6 +126,29 @@ Example command:
 
 ```bash
 chantools dumpchannels --channeldb ~/.lnd/data/graph/mainnet/channel.db
+```
+
+### filterbackup
+
+```text
+Usage:
+  chantools [OPTIONS] filterbackup [filterbackup-OPTIONS]
+
+[filterbackup command options]
+          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed.
+          --multi_file=  The lnd channel.backup file to filter.
+          --discard=     A comma separated list of channel funding outpoints (format <fundingTXID>:<index>) to remove from the backup file.
+```
+
+Filter an lnd `channel.backup` file by removing certain channels (identified by
+their funding transaction outpoints). 
+
+Example command:
+
+```bash
+chantools filterbackup --rootkey xprvxxxxxxxxxx \
+  --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup \
+  --discard 2abcdef2b2bffaaa...db0abadd:1,4abcdef2b2bffaaa...db8abadd:0
 ```
 
 ### forceclose

@@ -93,6 +93,10 @@ func runCommandParser() error {
 		"derivekey", "Derive a key with a specific derivation path "+
 			"from the BIP32 HD root key.", "", &deriveKeyCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"filterbackup", "Filter an lnd channel.backup file and " +
+			"remove certain channels.", "", &filterBackupCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err

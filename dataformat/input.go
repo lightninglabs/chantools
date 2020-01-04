@@ -61,8 +61,8 @@ func (c *ListChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	return &SummaryEntry{
 		RemotePubkey:   c.RemotePubkey,
 		ChannelPoint:   c.ChannelPoint,
-		FundingTXID:    fundingTXID(c.ChannelPoint),
-		FundingTXIndex: fundingTXIndex(c.ChannelPoint),
+		FundingTXID:    FundingTXID(c.ChannelPoint),
+		FundingTXIndex: FundingTXIndex(c.ChannelPoint),
 		Capacity:       uint64(c.Capacity),
 		Initiator:      c.Initiator,
 		LocalBalance:   uint64(c.LocalBalance),
@@ -115,8 +115,8 @@ func (c *PendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	return &SummaryEntry{
 		RemotePubkey:   c.Channel.RemotePubkey,
 		ChannelPoint:   c.Channel.ChannelPoint,
-		FundingTXID:    fundingTXID(c.Channel.ChannelPoint),
-		FundingTXIndex: fundingTXIndex(c.Channel.ChannelPoint),
+		FundingTXID:    FundingTXID(c.Channel.ChannelPoint),
+		FundingTXIndex: FundingTXIndex(c.Channel.ChannelPoint),
 		Capacity:       uint64(c.Channel.Capacity),
 		Initiator:      false,
 		LocalBalance:   uint64(c.Channel.LocalBalance),
@@ -159,7 +159,7 @@ func (f *SummaryEntryFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	return f.Channels, nil
 }
 
-func fundingTXID(chanPoint string) string {
+func FundingTXID(chanPoint string) string {
 	parts := strings.Split(chanPoint, ":")
 	if len(parts) != 2 {
 		panic(fmt.Errorf("channel point not in format <txid>:<idx>: %s",
@@ -168,7 +168,7 @@ func fundingTXID(chanPoint string) string {
 	return parts[0]
 }
 
-func fundingTXIndex(chanPoint string) uint32 {
+func FundingTXIndex(chanPoint string) uint32 {
 	parts := strings.Split(chanPoint, ":")
 	if len(parts) != 2 {
 		panic(fmt.Errorf("channel point %s not in format <txid>:<idx>",

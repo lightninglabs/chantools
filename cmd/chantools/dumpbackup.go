@@ -8,6 +8,7 @@ import (
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dump"
 	"github.com/lightningnetwork/lnd/chanbackup"
+	"github.com/lightningnetwork/lnd/keychain"
 )
 
 type dumpBackupCommand struct {
@@ -40,17 +41,20 @@ func (c *dumpBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("backup file is required")
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
-	multi, err := multiFile.ExtractMulti(&btc.ChannelBackupEncryptionRing{
+	keyRing := &btc.ChannelBackupEncryptionRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
-	})
+	}
+	return dumpChannelBackup(multiFile, keyRing)
+}
+
+func dumpChannelBackup(multiFile *chanbackup.MultiFile,
+	ring keychain.KeyRing) error {
+
+	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {
 		return fmt.Errorf("could not extract multi file: %v", err)
 	}
-	return dumpChannelBackup(multi)
-}
-
-func dumpChannelBackup(multi *chanbackup.Multi) error {
 	dumpSingles := make([]dump.BackupSingle, len(multi.StaticBackups))
 	for idx, single := range multi.StaticBackups {
 		dumpSingles[idx] = dump.BackupSingle{
