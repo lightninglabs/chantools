@@ -1,19 +1,20 @@
-package chantools
+package btc
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/keychain"
-	"strconv"
-	"strings"
 )
 
 const (
-	hardenedKeyStart = uint32(hdkeychain.HardenedKeyStart)
+	HardenedKeyStart = uint32(hdkeychain.HardenedKeyStart)
 )
 
-func deriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
+func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 	*hdkeychain.ExtendedKey, error) {
 
 	var (
@@ -29,7 +30,7 @@ func deriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 	return currentKey, nil
 }
 
-func parsePath(path string) ([]uint32, error) {
+func ParsePath(path string) ([]uint32, error) {
 	path = strings.TrimSpace(path)
 	if len(path) == 0 {
 		return nil, fmt.Errorf("path cannot be empty")
@@ -43,7 +44,7 @@ func parsePath(path string) ([]uint32, error) {
 		index := uint32(0)
 		part := parts[i]
 		if strings.Contains(parts[i], "'") {
-			index += hardenedKeyStart
+			index += HardenedKeyStart
 			part = strings.TrimRight(parts[i], "'")
 		}
 		parsed, err := strconv.Atoi(part)
@@ -56,25 +57,25 @@ func parsePath(path string) ([]uint32, error) {
 	return indices, nil
 }
 
-type channelBackupEncryptionRing struct {
-	extendedKey *hdkeychain.ExtendedKey
-	chainParams *chaincfg.Params
+type ChannelBackupEncryptionRing struct {
+	ExtendedKey *hdkeychain.ExtendedKey
+	ChainParams *chaincfg.Params
 }
 
-func (r *channelBackupEncryptionRing) DeriveNextKey(_ keychain.KeyFamily) (
+func (r *ChannelBackupEncryptionRing) DeriveNextKey(_ keychain.KeyFamily) (
 	keychain.KeyDescriptor, error) {
 
 	return keychain.KeyDescriptor{}, nil
 }
 
-func (r *channelBackupEncryptionRing) DeriveKey(keyLoc keychain.KeyLocator) (
+func (r *ChannelBackupEncryptionRing) DeriveKey(keyLoc keychain.KeyLocator) (
 	keychain.KeyDescriptor, error) {
 
 	var empty = keychain.KeyDescriptor{}
-	keyBackup, err := deriveChildren(r.extendedKey, []uint32{
-		hardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		hardenedKeyStart + r.chainParams.HDCoinType,
-		hardenedKeyStart + uint32(keyLoc.Family),
+	keyBackup, err := DeriveChildren(r.ExtendedKey, []uint32{
+		HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+		HardenedKeyStart + r.ChainParams.HDCoinType,
+		HardenedKeyStart + uint32(keyLoc.Family),
 		0,
 		keyLoc.Index,
 	})

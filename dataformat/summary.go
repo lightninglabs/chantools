@@ -1,6 +1,8 @@
 package dataformat
 
-import "github.com/lightningnetwork/lnd/keychain"
+import (
+	"github.com/lightningnetwork/lnd/keychain"
+)
 
 type ClosingTX struct {
 	TXID         string `json:"txid"`

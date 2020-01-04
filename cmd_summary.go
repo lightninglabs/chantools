@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/guggero/chantools/chain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 )
 
@@ -16,11 +16,11 @@ func summarizeChannels(apiUrl string,
 	summaryFile := &dataformat.SummaryEntryFile{
 		Channels: channels,
 	}
-	chainApi := &chain.Api{BaseUrl: apiUrl}
+	chainApi := &btc.ExplorerApi{BaseUrl: apiUrl}
 
 	for idx, channel := range channels {
 		tx, err := chainApi.Transaction(channel.FundingTXID)
-		if err == chain.ErrTxNotFound {
+		if err == btc.ErrTxNotFound {
 			log.Errorf("Funding TX %s not found. Ignoring.",
 				channel.FundingTXID)
 			channel.ChanExists = false
@@ -93,8 +93,9 @@ func summarizeChannels(apiUrl string,
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func reportOutspend(api *chain.Api, summaryFile *dataformat.SummaryEntryFile,
-	entry *dataformat.SummaryEntry, os *chain.Outspend) error {
+func reportOutspend(api *btc.ExplorerApi,
+	summaryFile *dataformat.SummaryEntryFile,
+	entry *dataformat.SummaryEntry, os *btc.Outspend) error {
 
 	spendTx, err := api.Transaction(os.Txid)
 	if err != nil {
@@ -102,7 +103,7 @@ func reportOutspend(api *chain.Api, summaryFile *dataformat.SummaryEntryFile,
 	}
 
 	summaryFile.FundsClosedChannels += entry.LocalBalance
-	var utxo []*chain.Vout
+	var utxo []*btc.Vout
 	for _, vout := range spendTx.Vout {
 		if !vout.Outspend.Spent {
 			utxo = append(utxo, vout)
@@ -174,7 +175,7 @@ func reportOutspend(api *chain.Api, summaryFile *dataformat.SummaryEntryFile,
 	return nil
 }
 
-func couldBeOurs(entry *dataformat.SummaryEntry, utxo []*chain.Vout) bool {
+func couldBeOurs(entry *dataformat.SummaryEntry, utxo []*btc.Vout) bool {
 	if len(utxo) == 1 && utxo[0].Value == entry.RemoteBalance {
 		return false
 	}
@@ -182,6 +183,6 @@ func couldBeOurs(entry *dataformat.SummaryEntry, utxo []*chain.Vout) bool {
 	return entry.LocalBalance != 0
 }
 
-func isCoopClose(tx *chain.TX) bool {
+func isCoopClose(tx *btc.TX) bool {
 	return tx.Vin[0].Sequence == 0xffffffff
 }

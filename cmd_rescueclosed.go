@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/guggero/chantools/btc"
 	"io/ioutil"
 	"time"
 
@@ -150,10 +151,11 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 	cache = make([]*cacheEntry, cacheSize)
 
 	for i := 0; i < cacheSize; i++ {
-		key, err := deriveChildren(extendedKey, []uint32{
-			hardenedKeyStart + uint32(keychain.BIP0043Purpose),
-			hardenedKeyStart + chainParams.HDCoinType,
-			hardenedKeyStart + uint32(keychain.KeyFamilyPaymentBase),
+		key, err := btc.DeriveChildren(extendedKey, []uint32{
+			btc.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+			btc.HardenedKeyStart + chainParams.HDCoinType,
+			btc.HardenedKeyStart +
+				uint32(keychain.KeyFamilyPaymentBase),
 			0,
 			uint32(i),
 		})

@@ -13,6 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/aezeed"
@@ -291,9 +292,9 @@ func (c *dumpBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("backup file is required")
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
-	multi, err := multiFile.ExtractMulti(&channelBackupEncryptionRing{
-		extendedKey: extendedKey,
-		chainParams: chainParams,
+	multi, err := multiFile.ExtractMulti(&btc.ChannelBackupEncryptionRing{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
 	})
 	if err != nil {
 		return fmt.Errorf("could not extract multi file: %v", err)

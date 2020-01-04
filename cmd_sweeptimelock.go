@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/chain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/lightningnetwork/lnd/input"
 )
@@ -24,8 +24,11 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 	publish bool) error {
 
 	// Create signer and transaction template.
-	signer := &signer{extendedKey: extendedKey}
-	chainApi := &chain.Api{BaseUrl: apiUrl}
+	signer := &btc.Signer{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
+	}
+	chainApi := &btc.ExplorerApi{BaseUrl: apiUrl}
 
 	sweepTx := wire.NewMsgTx(2)
 	totalOutputValue := int64(0)
@@ -78,7 +81,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 			return fmt.Errorf("error parsing commit point: %v", err)
 		}
 		delayDesc := fc.DelayBasePoint.Desc()
-		delayPrivKey, err := signer.fetchPrivKey(delayDesc)
+		delayPrivKey, err := signer.FetchPrivKey(delayDesc)
 		if err != nil {
 			return fmt.Errorf("error getting private key: %v", err)
 		}

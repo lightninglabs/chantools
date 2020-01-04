@@ -1,4 +1,4 @@
-package chain
+package btc
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ var (
 	ErrTxNotFound = errors.New("transaction not found")
 )
 
-type Api struct {
+type ExplorerApi struct {
 	BaseUrl string
 }
 
@@ -51,9 +51,9 @@ type Status struct {
 	BlockHash   string `json:"block_hash"`
 }
 
-func (a *Api) Transaction(txid string) (*TX, error) {
+func (a *ExplorerApi) Transaction(txid string) (*TX, error) {
 	tx := &TX{}
-	err := Fetch(fmt.Sprintf("%s/tx/%s", a.BaseUrl, txid), tx)
+	err := fetchJSON(fmt.Sprintf("%s/tx/%s", a.BaseUrl, txid), tx)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (a *Api) Transaction(txid string) (*TX, error) {
 			"%s/tx/%s/outspend/%d", a.BaseUrl, txid, idx,
 		)
 		outspend := Outspend{}
-		err := Fetch(url, &outspend)
+		err := fetchJSON(url, &outspend)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (a *Api) Transaction(txid string) (*TX, error) {
 	return tx, nil
 }
 
-func (a *Api) PublishTx(rawTxHex string) (string, error) {
+func (a *ExplorerApi) PublishTx(rawTxHex string) (string, error) {
 	url := fmt.Sprintf("%s/tx", a.BaseUrl)
 	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
 	if err != nil {
@@ -85,7 +85,7 @@ func (a *Api) PublishTx(rawTxHex string) (string, error) {
 	return body.String(), nil
 }
 
-func Fetch(url string, target interface{}) error {
+func fetchJSON(url string, target interface{}) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return err

@@ -1,9 +1,10 @@
-package chantools
+package btc
 
 import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -11,17 +12,18 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
-type signer struct {
-	extendedKey *hdkeychain.ExtendedKey
+type Signer struct {
+	ExtendedKey *hdkeychain.ExtendedKey
+	ChainParams *chaincfg.Params
 }
 
-func (s *signer) SignOutputRaw(tx *wire.MsgTx,
+func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor) ([]byte, error) {
 	witnessScript := signDesc.WitnessScript
 
 	// First attempt to fetch the private key which corresponds to the
 	// specified public key.
-	privKey, err := s.fetchPrivKey(&signDesc.KeyDesc)
+	privKey, err := s.FetchPrivKey(&signDesc.KeyDesc)
 	if err != nil {
 		return nil, err
 	}
@@ -40,18 +42,19 @@ func (s *signer) SignOutputRaw(tx *wire.MsgTx,
 	return sig[:len(sig)-1], nil
 }
 
-func (s *signer) ComputeInputScript(tx *wire.MsgTx,
-	signDesc *input.SignDescriptor) (*input.Script, error) {
+func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
+	*input.Script, error) {
+
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (s *signer) fetchPrivKey(descriptor *keychain.KeyDescriptor) (
+func (s *Signer) FetchPrivKey(descriptor *keychain.KeyDescriptor) (
 	*btcec.PrivateKey, error) {
 
-	key, err := deriveChildren(s.extendedKey, []uint32{
-		hardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		hardenedKeyStart + chainParams.HDCoinType,
-		hardenedKeyStart + uint32(descriptor.Family),
+	key, err := DeriveChildren(s.ExtendedKey, []uint32{
+		HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+		HardenedKeyStart + s.ChainParams.HDCoinType,
+		HardenedKeyStart + uint32(descriptor.Family),
 		0,
 		descriptor.Index,
 	})

@@ -4,9 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/lightningnetwork/lnd/channeldb"
 	"strconv"
 	"strings"
+
+	"github.com/lightningnetwork/lnd/channeldb"
 )
 
 type NumberString uint64
