@@ -1,17 +1,18 @@
-package chantools
+package main
 
 import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/guggero/chantools/btc"
 	"io/ioutil"
+	"path"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
@@ -28,6 +29,38 @@ var (
 type cacheEntry struct {
 	privKey *btcec.PrivateKey
 	pubKey  *btcec.PublicKey
+}
+
+type rescueClosedCommand struct {
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for rescuing force-closed channels."`
+}
+
+func (c *rescueClosedCommand) Execute(_ []string) error {
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+
+	// Check that we have a channel DB.
+	if c.ChannelDB == "" {
+		return fmt.Errorf("rescue DB is required")
+	}
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
+	if err != nil {
+		return fmt.Errorf("error opening rescue DB: %v", err)
+	}
+
+	// Parse channel entries from any of the possible input files.
+	entries, err := parseInput(cfg)
+	if err != nil {
+		return err
+	}
+	return rescueClosedChannels(extendedKey, entries, db)
 }
 
 func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,

@@ -1,4 +1,4 @@
-package chantools
+package main
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"path"
 	"time"
 
 	"github.com/btcsuite/btcd/txscript"
@@ -16,6 +17,38 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 )
+
+type forceCloseCommand struct {
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for force-closing channels."`
+	Publish   bool   `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
+}
+
+func (c *forceCloseCommand) Execute(_ []string) error {
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+	// Check that we have a channel DB.
+	if c.ChannelDB == "" {
+		return fmt.Errorf("rescue DB is required")
+	}
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
+	if err != nil {
+		return fmt.Errorf("error opening rescue DB: %v", err)
+	}
+
+	// Parse channel entries from any of the possible input files.
+	entries, err := parseInput(cfg)
+	if err != nil {
+		return err
+	}
+	return forceCloseChannels(extendedKey, entries, db, c.Publish)
+}
 
 func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB,

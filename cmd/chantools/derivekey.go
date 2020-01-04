@@ -1,4 +1,4 @@
-package chantools
+package main
 
 import (
 	"fmt"
@@ -7,6 +7,27 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 )
+
+type deriveKeyCommand struct {
+	RootKey string `long:"rootkey" description:"BIP32 HD root key to derive the key from."`
+	Path    string `long:"path" description:"The BIP32 derivation path to derive. Must start with \"m/\"."`
+	Neuter  bool   `long:"neuter" description:"Do not output the private key, just the public key."`
+}
+
+func (c *deriveKeyCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+
+	return deriveKey(extendedKey, c.Path, c.Neuter)
+}
 
 func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	neuter bool) error {

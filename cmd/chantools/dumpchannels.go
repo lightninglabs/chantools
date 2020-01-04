@@ -1,14 +1,32 @@
-package chantools
+package main
 
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
+	"path"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/guggero/chantools/dump"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 )
+
+type dumpChannelsCommand struct {
+	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to dump the channels from."`
+}
+
+func (c *dumpChannelsCommand) Execute(_ []string) error {
+	// Check that we have a channel DB.
+	if c.ChannelDB == "" {
+		return fmt.Errorf("channel DB is required")
+	}
+	db, err := channeldb.Open(path.Dir(c.ChannelDB))
+	if err != nil {
+		return fmt.Errorf("error opening rescue DB: %v", err)
+	}
+	return dumpChannelInfo(db)
+}
 
 func dumpChannelInfo(chanDb *channeldb.DB) error {
 	channels, err := chanDb.FetchAllChannels()

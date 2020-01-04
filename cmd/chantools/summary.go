@@ -1,4 +1,4 @@
-package chantools
+package main
 
 import (
 	"encoding/json"
@@ -9,6 +9,17 @@ import (
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 )
+
+type summaryCommand struct{}
+
+func (c *summaryCommand) Execute(_ []string) error {
+	// Parse channel entries from any of the possible input files.
+	entries, err := parseInput(cfg)
+	if err != nil {
+		return err
+	}
+	return summarizeChannels(cfg.ApiUrl, entries)
+}
 
 func summarizeChannels(apiUrl string,
 	channels []*dataformat.SummaryEntry) error {

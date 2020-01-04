@@ -34,11 +34,11 @@ unit:
 
 build:
 	@$(call print, "Building chantools.")
-	$(GOBUILD) $(PKG)/cmd/chantools
+	$(GOBUILD) ./...
 
 install:
 	@$(call print, "Installing chantools.")
-	$(GOINSTALL) $(PKG)/cmd/chantools
+	$(GOINSTALL) ./...
 
 fmt:
 	@$(call print, "Formatting source.")

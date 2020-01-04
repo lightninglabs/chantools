@@ -1,4 +1,4 @@
-package chantools
+package main
 
 import (
 	"bytes"
@@ -18,6 +18,44 @@ import (
 const (
 	feeSatPerByte = 2
 )
+
+type sweepTimeLockCommand struct {
+	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use."`
+	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
+	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
+	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
+}
+
+func (c *sweepTimeLockCommand) Execute(_ []string) error {
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+
+	// Make sure sweep addr is set.
+	if c.SweepAddr == "" {
+		return fmt.Errorf("sweep addr is required")
+	}
+
+	// Parse channel entries from any of the possible input files.
+	entries, err := parseInput(cfg)
+	if err != nil {
+		return err
+	}
+
+	// Set default value
+	if c.MaxCsvLimit == 0 {
+		c.MaxCsvLimit = 2000
+	}
+	return sweepTimeLock(
+		extendedKey, cfg.ApiUrl, entries, c.SweepAddr, c.MaxCsvLimit,
+		c.Publish,
+	)
+}
 
 func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 	entries []*dataformat.SummaryEntry, sweepAddr string, maxCsvTimeout int,
