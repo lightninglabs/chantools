@@ -74,6 +74,10 @@ func Main() error {
 		"dumpbackup", "Dump the content of a channel.backup file.", "",
 		&dumpBackupCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"derivekey", "Derive a key with a specific derivation path "+
+			"from the BIP32 HD root key.", "", &deriveKeyCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
@@ -291,6 +295,27 @@ func (c *dumpBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("could not extract multi file: %v", err)
 	}
 	return dumpChannelBackup(multi)
+}
+
+type deriveKeyCommand struct {
+	RootKey string `long:"rootkey" description:"BIP32 HD root key to derive the key from."`
+	Path    string `long:"path" description:"The BIP32 derivation path to derive. Must start with \"m/\"."`
+	Neuter  bool   `long:"neuter" description:"Do not output the private key, just the public key."`
+}
+
+func (c *deriveKeyCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
+	// Check that root key is valid.
+	if c.RootKey == "" {
+		return fmt.Errorf("root key is required")
+	}
+	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
+	if err != nil {
+		return fmt.Errorf("error parsing root key: %v", err)
+	}
+
+	return deriveKey(extendedKey, c.Path, c.Neuter)
 }
 
 func setupChainParams(cfg *config) {

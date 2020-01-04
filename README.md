@@ -51,6 +51,7 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
+  derivekey      Derive a key with a specific derivation path from the BIP32 HD root key.
   dumpbackup     Dump the content of a channel.backup file.
   dumpchannels   Dump all channel information from lnd's channel database.
   forceclose     Force-close the last state that is in the channel.db provided.
@@ -61,6 +62,29 @@ Available commands:
 ```
 
 ## Commands
+
+### derivekey
+
+```text
+Usage:
+  chantools [OPTIONS] derivekey [derivekey-OPTIONS]
+
+[derivekey command options]
+          --rootkey=     BIP32 HD root key to derive the key from.
+          --path=        The BIP32 derivation path to derive. Must start with "m/".
+          --neuter       Do not output the private key, just the public key.
+```
+
+This command derives a single key with the given BIP32 derivation path from the
+root key and prints it to the console. Make sure to escape apostrophes in the
+derivation path.
+
+Example command:
+
+```bash
+chantools derivekey --rootkey xprvxxxxxxxxxx --path m/1017\'/0\'/5\'/0/0 \
+  --neuter
+```
 
 ### dumpbackup
 
