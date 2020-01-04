@@ -171,7 +171,7 @@ func fundingTXID(chanPoint string) string {
 func fundingTXIndex(chanPoint string) uint32 {
 	parts := strings.Split(chanPoint, ":")
 	if len(parts) != 2 {
-		panic(fmt.Errorf("channel point not in format <txid>:<idx>",
+		panic(fmt.Errorf("channel point %s not in format <txid>:<idx>",
 			chanPoint))
 	}
 	return uint32(parseInt(parts[1]))

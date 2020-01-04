@@ -27,7 +27,7 @@ type forceCloseCommand struct {
 func (c *forceCloseCommand) Execute(_ []string) error {
 	var (
 		extendedKey *hdkeychain.ExtendedKey
-		err error
+		err         error
 	)
 
 	// Check that root key is valid or fall back to console input.
@@ -67,7 +67,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return err
 	}
-	chainApi := &btc.ExplorerApi{BaseUrl: cfg.ApiUrl}
+	api := &btc.ExplorerAPI{BaseURL: cfg.APIURL}
 	signer := &btc.Signer{ExtendedKey: extendedKey}
 
 	// Go through all channels in the DB, find the still open ones and
@@ -170,7 +170,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 
 		// Publish TX.
 		if publish {
-			response, err := chainApi.PublishTx(serialized)
+			response, err := api.PublishTx(serialized)
 			if err != nil {
 				return err
 			}

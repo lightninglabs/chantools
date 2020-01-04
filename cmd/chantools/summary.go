@@ -18,19 +18,19 @@ func (c *summaryCommand) Execute(_ []string) error {
 	if err != nil {
 		return err
 	}
-	return summarizeChannels(cfg.ApiUrl, entries)
+	return summarizeChannels(cfg.APIURL, entries)
 }
 
-func summarizeChannels(apiUrl string,
+func summarizeChannels(apiURL string,
 	channels []*dataformat.SummaryEntry) error {
 
 	summaryFile := &dataformat.SummaryEntryFile{
 		Channels: channels,
 	}
-	chainApi := &btc.ExplorerApi{BaseUrl: apiUrl}
+	api := &btc.ExplorerAPI{BaseURL: apiURL}
 
 	for idx, channel := range channels {
-		tx, err := chainApi.Transaction(channel.FundingTXID)
+		tx, err := api.Transaction(channel.FundingTXID)
 		if err == btc.ErrTxNotFound {
 			log.Errorf("Funding TX %s not found. Ignoring.",
 				channel.FundingTXID)
@@ -52,7 +52,7 @@ func summarizeChannels(apiUrl string,
 			}
 
 			err := reportOutspend(
-				chainApi, summaryFile, channel, outspend,
+				api, summaryFile, channel, outspend,
 			)
 			if err != nil {
 				log.Errorf("Problem with channel %d (%s): %v.",
@@ -104,7 +104,7 @@ func summarizeChannels(apiUrl string,
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func reportOutspend(api *btc.ExplorerApi,
+func reportOutspend(api *btc.ExplorerAPI,
 	summaryFile *dataformat.SummaryEntryFile,
 	entry *dataformat.SummaryEntry, os *btc.Outspend) error {
 
@@ -150,7 +150,7 @@ func reportOutspend(api *btc.ExplorerApi,
 			// Could maybe be brute forced.
 			if len(utxo) == 1 &&
 				utxo[0].ScriptPubkeyType == "v0_p2wpkh" &&
-				utxo[0].Outspend.Spent == false {
+				!utxo[0].Outspend.Spent {
 
 				entry.ClosingTX.OurAddr = utxo[0].ScriptPubkeyAddr
 			}

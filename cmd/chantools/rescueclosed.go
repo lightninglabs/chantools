@@ -39,7 +39,7 @@ type rescueClosedCommand struct {
 func (c *rescueClosedCommand) Execute(_ []string) error {
 	var (
 		extendedKey *hdkeychain.ExtendedKey
-		err error
+		err         error
 	)
 
 	// Check that root key is valid or fall back to console input.
@@ -169,7 +169,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 			tweakedPubKey.SerializeCompressed(),
 		)
 		equal := subtle.ConstantTimeCompare(
-			targetPubKeyHash[:], hashedPubKey[:],
+			targetPubKeyHash, hashedPubKey,
 		)
 		if equal == 1 {
 			wif, err := btcutil.NewWIF(

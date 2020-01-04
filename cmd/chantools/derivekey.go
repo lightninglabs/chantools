@@ -19,9 +19,9 @@ func (c *deriveKeyCommand) Execute(_ []string) error {
 
 	var (
 		extendedKey *hdkeychain.ExtendedKey
-		err error
+		err         error
 	)
-	
+
 	// Check that root key is valid or fall back to console input.
 	switch {
 	case c.RootKey != "":

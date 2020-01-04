@@ -29,7 +29,7 @@ type sweepTimeLockCommand struct {
 func (c *sweepTimeLockCommand) Execute(_ []string) error {
 	var (
 		extendedKey *hdkeychain.ExtendedKey
-		err error
+		err         error
 	)
 
 	// Check that root key is valid or fall back to console input.
@@ -60,12 +60,12 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 		c.MaxCsvLimit = 2000
 	}
 	return sweepTimeLock(
-		extendedKey, cfg.ApiUrl, entries, c.SweepAddr, c.MaxCsvLimit,
+		extendedKey, cfg.APIURL, entries, c.SweepAddr, c.MaxCsvLimit,
 		c.Publish,
 	)
 }
 
-func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
+func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	entries []*dataformat.SummaryEntry, sweepAddr string, maxCsvTimeout int,
 	publish bool) error {
 
@@ -74,7 +74,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	chainApi := &btc.ExplorerApi{BaseUrl: apiUrl}
+	api := &btc.ExplorerAPI{BaseURL: apiURL}
 
 	sweepTx := wire.NewMsgTx(2)
 	totalOutputValue := int64(0)
@@ -230,7 +230,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 
 	// Publish TX.
 	if publish {
-		response, err := chainApi.PublishTx(
+		response, err := api.PublishTx(
 			hex.EncodeToString(buf.Bytes()),
 		)
 		if err != nil {

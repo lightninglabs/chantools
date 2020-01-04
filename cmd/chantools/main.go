@@ -5,28 +5,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/lightningnetwork/lnd/aezeed"
-	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"os"
 	"strings"
 	"syscall"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/jessevdk/go-flags"
+	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
-	defaultApiUrl = "https://blockstream.info/api"
+	defaultAPIURL = "https://blockstream.info/api"
 )
 
 type config struct {
 	Testnet         bool   `long:"testnet" description:"Set to true if testnet parameters should be used."`
-	ApiUrl          string `long:"apiurl" description:"API URL to use (must be esplora compatible)."`
+	APIURL          string `long:"apiurl" description:"API URL to use (must be esplora compatible)."`
 	ListChannels    string `long:"listchannels" description:"The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin."`
 	PendingChannels string `long:"pendingchannels" description:"The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin."`
 	FromSummary     string `long:"fromsummary" description:"The channel input is in the format of this tool's channel summary. Specify '-' to read from stdin."`
@@ -37,7 +37,7 @@ var (
 	logWriter = build.NewRotatingLogWriter()
 	log       = build.NewSubLogger("CHAN", logWriter.GenSubLogger)
 	cfg       = &config{
-		ApiUrl: defaultApiUrl,
+		APIURL: defaultAPIURL,
 	}
 	chainParams = &chaincfg.MainNetParams
 )
@@ -184,7 +184,7 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
 	}
 
 	var mnemonic aezeed.Mnemonic
-	copy(mnemonic[:], cipherSeedMnemonic[:])
+	copy(mnemonic[:], cipherSeedMnemonic)
 
 	// If we're unable to map it back into the ciphertext, then either the
 	// mnemonic is wrong, or the passphrase is wrong.

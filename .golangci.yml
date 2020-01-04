@@ -17,8 +17,13 @@ linters-settings:
 linters:
   enable-all: true
   disable:
-    # Init functions are used by loggers throughout the codebase.
-    - gochecknoinits
-
-    # Global variables are used by loggers.
     - gochecknoglobals
+    - gosec
+    - funlen
+    - maligned
+
+issues:
+  exclude-rules:
+    - path: cmd/chantools
+      linters:
+        - lll

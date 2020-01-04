@@ -13,8 +13,8 @@ var (
 	ErrTxNotFound = errors.New("transaction not found")
 )
 
-type ExplorerApi struct {
-	BaseUrl string
+type ExplorerAPI struct {
+	BaseURL string
 }
 
 type TX struct {
@@ -51,15 +51,15 @@ type Status struct {
 	BlockHash   string `json:"block_hash"`
 }
 
-func (a *ExplorerApi) Transaction(txid string) (*TX, error) {
+func (a *ExplorerAPI) Transaction(txid string) (*TX, error) {
 	tx := &TX{}
-	err := fetchJSON(fmt.Sprintf("%s/tx/%s", a.BaseUrl, txid), tx)
+	err := fetchJSON(fmt.Sprintf("%s/tx/%s", a.BaseURL, txid), tx)
 	if err != nil {
 		return nil, err
 	}
 	for idx, vout := range tx.Vout {
 		url := fmt.Sprintf(
-			"%s/tx/%s/outspend/%d", a.BaseUrl, txid, idx,
+			"%s/tx/%s/outspend/%d", a.BaseURL, txid, idx,
 		)
 		outspend := Outspend{}
 		err := fetchJSON(url, &outspend)
@@ -71,12 +71,13 @@ func (a *ExplorerApi) Transaction(txid string) (*TX, error) {
 	return tx, nil
 }
 
-func (a *ExplorerApi) PublishTx(rawTxHex string) (string, error) {
-	url := fmt.Sprintf("%s/tx", a.BaseUrl)
+func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
+	url := fmt.Sprintf("%s/tx", a.BaseURL)
 	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 	body := new(bytes.Buffer)
 	_, err = body.ReadFrom(resp.Body)
 	if err != nil {
@@ -99,7 +100,7 @@ func fetchJSON(url string, target interface{}) error {
 	}
 	err = json.Unmarshal(body.Bytes(), target)
 	if err != nil {
-		if string(body.Bytes()) == "Transaction not found" {
+		if body.String() == "Transaction not found" {
 			return ErrTxNotFound
 		}
 	}
