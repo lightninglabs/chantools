@@ -4,42 +4,11 @@ import (
 	"bytes"
 	"encoding/hex"
 
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
-	"github.com/btcsuite/btcutil"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/guggero/chantools/dump"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
-	"github.com/lightningnetwork/lnd/lnwire"
 )
-
-// dumpInfo is the information we want to dump from an open channel in lnd's
-// channel DB. See `channeldb.OpenChannel` for information about the fields.
-type dumpInfo struct {
-	ChanType                channeldb.ChannelType
-	ChainHash               chainhash.Hash
-	FundingOutpoint         string
-	ShortChannelID          lnwire.ShortChannelID
-	IsPending               bool
-	IsInitiator             bool
-	ChanStatus              channeldb.ChannelStatus
-	FundingBroadcastHeight  uint32
-	NumConfsRequired        uint16
-	ChannelFlags            lnwire.FundingFlag
-	IdentityPub             string
-	Capacity                btcutil.Amount
-	TotalMSatSent           lnwire.MilliSatoshi
-	TotalMSatReceived       lnwire.MilliSatoshi
-	PerCommitPoint          string
-	LocalChanCfg            dumpChanCfg
-	RemoteChanCfg           dumpChanCfg
-	LocalCommitment         channeldb.ChannelCommitment
-	RemoteCommitment        channeldb.ChannelCommitment
-	RemoteCurrentRevocation string
-	RemoteNextRevocation    string
-	FundingTxn              string
-	LocalShutdownScript     lnwire.DeliveryAddress
-	RemoteShutdownScript    lnwire.DeliveryAddress
-}
 
 func dumpChannelInfo(chanDb *channeldb.DB) error {
 	channels, err := chanDb.FetchAllChannels()
@@ -47,7 +16,7 @@ func dumpChannelInfo(chanDb *channeldb.DB) error {
 		return err
 	}
 
-	dumpChannels := make([]dumpInfo, len(channels))
+	dumpChannels := make([]dump.OpenChannel, len(channels))
 	for idx, channel := range channels {
 		var buf bytes.Buffer
 		if channel.FundingTxn != nil {
@@ -64,7 +33,7 @@ func dumpChannelInfo(chanDb *channeldb.DB) error {
 		}
 		perCommitPoint := input.ComputeCommitmentPoint(revPreimage[:])
 
-		dumpChannels[idx] = dumpInfo{
+		dumpChannels[idx] = dump.OpenChannel{
 			ChanType:               channel.ChanType,
 			ChainHash:              channel.ChainHash,
 			FundingOutpoint:        channel.FundingOutpoint.String(),
@@ -75,21 +44,25 @@ func dumpChannelInfo(chanDb *channeldb.DB) error {
 			FundingBroadcastHeight: channel.FundingBroadcastHeight,
 			NumConfsRequired:       channel.NumConfsRequired,
 			ChannelFlags:           channel.ChannelFlags,
-			IdentityPub: pubKeyToString(
+			IdentityPub: dump.PubKeyToString(
 				channel.IdentityPub,
 			),
 			Capacity:          channel.Capacity,
 			TotalMSatSent:     channel.TotalMSatSent,
 			TotalMSatReceived: channel.TotalMSatReceived,
-			PerCommitPoint:    pubKeyToString(perCommitPoint),
-			LocalChanCfg:      toDumpChanCfg(channel.LocalChanCfg),
-			RemoteChanCfg:     toDumpChanCfg(channel.RemoteChanCfg),
-			LocalCommitment:   channel.LocalCommitment,
-			RemoteCommitment:  channel.RemoteCommitment,
-			RemoteCurrentRevocation: pubKeyToString(
+			PerCommitPoint:    dump.PubKeyToString(perCommitPoint),
+			LocalChanCfg: dump.ToChannelConfig(
+				channel.LocalChanCfg,
+			),
+			RemoteChanCfg: dump.ToChannelConfig(
+				channel.RemoteChanCfg,
+			),
+			LocalCommitment:  channel.LocalCommitment,
+			RemoteCommitment: channel.RemoteCommitment,
+			RemoteCurrentRevocation: dump.PubKeyToString(
 				channel.RemoteCurrentRevocation,
 			),
-			RemoteNextRevocation: pubKeyToString(
+			RemoteNextRevocation: dump.PubKeyToString(
 				channel.RemoteNextRevocation,
 			),
 			FundingTxn:           hex.EncodeToString(buf.Bytes()),
