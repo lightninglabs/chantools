@@ -5,17 +5,19 @@ import (
 	"fmt"
 	"io/ioutil"
 	"time"
+
+	"github.com/guggero/chantools/chain"
 )
 
 func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 	summaryFile := &SummaryEntryFile{
 		Channels: channels,
 	}
-	chainApi := &chainApi{baseUrl: apiUrl}
+	chainApi := &chain.Api{BaseUrl: apiUrl}
 
 	for idx, channel := range channels {
 		tx, err := chainApi.Transaction(channel.FundingTXID)
-		if err == ErrTxNotFound {
+		if err == chain.ErrTxNotFound {
 			log.Errorf("Funding TX %s not found. Ignoring.",
 				channel.FundingTXID)
 			channel.ChanExists = false
@@ -27,7 +29,7 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 			return err
 		}
 		channel.ChanExists = true
-		outspend := tx.Vout[channel.FundingTXIndex].outspend
+		outspend := tx.Vout[channel.FundingTXIndex].Outspend
 		if outspend.Spent {
 			summaryFile.ClosedChannels++
 			channel.ClosingTX = &ClosingTX{
@@ -88,8 +90,8 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
-	entry *SummaryEntry, os *outspend) error {
+func reportOutspend(api *chain.Api, summaryFile *SummaryEntryFile,
+	entry *SummaryEntry, os *chain.Outspend) error {
 
 	spendTx, err := api.Transaction(os.Txid)
 	if err != nil {
@@ -97,9 +99,9 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 	}
 
 	summaryFile.FundsClosedChannels += entry.LocalBalance
-	var utxo []*vout
+	var utxo []*chain.Vout
 	for _, vout := range spendTx.Vout {
-		if !vout.outspend.Spent {
+		if !vout.Outspend.Spent {
 			utxo = append(utxo, vout)
 		}
 	}
@@ -133,7 +135,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 			// Could maybe be brute forced.
 			if len(utxo) == 1 &&
 				utxo[0].ScriptPubkeyType == "v0_p2wpkh" &&
-				utxo[0].outspend.Spent == false {
+				utxo[0].Outspend.Spent == false {
 
 				entry.ClosingTX.OurAddr = utxo[0].ScriptPubkeyAddr
 			}
@@ -148,7 +150,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 
 			// We don't know what this output is, logging for debug.
 			for idx, vout := range spendTx.Vout {
-				if !vout.outspend.Spent {
+				if !vout.Outspend.Spent {
 					log.Debugf("UTXO %d of type %s with "+
 						"value %d", idx,
 						vout.ScriptPubkeyType,
@@ -169,7 +171,7 @@ func reportOutspend(api *chainApi, summaryFile *SummaryEntryFile,
 	return nil
 }
 
-func couldBeOurs(entry *SummaryEntry, utxo []*vout) bool {
+func couldBeOurs(entry *SummaryEntry, utxo []*chain.Vout) bool {
 	if len(utxo) == 1 && utxo[0].Value == entry.RemoteBalance {
 		return false
 	}
@@ -177,6 +179,6 @@ func couldBeOurs(entry *SummaryEntry, utxo []*vout) bool {
 	return entry.LocalBalance != 0
 }
 
-func isCoopClose(tx *transaction) bool {
+func isCoopClose(tx *chain.TX) bool {
 	return tx.Vin[0].Sequence == 0xffffffff
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/chain"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 )
@@ -23,7 +24,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return err
 	}
-	chainApi := &chainApi{baseUrl: cfg.ApiUrl}
+	chainApi := &chain.Api{BaseUrl: cfg.ApiUrl}
 	signer := &signer{extendedKey: extendedKey}
 
 	// Go through all channels in the DB, find the still open ones and

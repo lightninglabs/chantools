@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	cacheSize        = 2000
-	cache            []*cacheEntry
+	cacheSize = 2000
+	cache     []*cacheEntry
 
 	errAddrNotFound = errors.New("addr not found")
 )

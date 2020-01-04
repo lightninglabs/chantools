@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/chain"
 	"github.com/lightningnetwork/lnd/input"
 )
 
@@ -23,7 +24,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiUrl string,
 
 	// Create signer and transaction template.
 	signer := &signer{extendedKey: extendedKey}
-	chainApi := &chainApi{baseUrl: apiUrl}
+	chainApi := &chain.Api{BaseUrl: apiUrl}
 
 	sweepTx := wire.NewMsgTx(2)
 	totalOutputValue := int64(0)

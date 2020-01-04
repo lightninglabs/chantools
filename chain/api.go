@@ -1,4 +1,4 @@
-package chantools
+package chain
 
 import (
 	"bytes"
@@ -13,66 +13,66 @@ var (
 	ErrTxNotFound = errors.New("transaction not found")
 )
 
-type chainApi struct {
-	baseUrl string
+type Api struct {
+	BaseUrl string
 }
 
-type transaction struct {
-	Vin  []*vin  `json:"vin"`
-	Vout []*vout `json:"vout"`
+type TX struct {
+	Vin  []*Vin  `json:"vin"`
+	Vout []*Vout `json:"vout"`
 }
 
-type vin struct {
+type Vin struct {
 	Tixid    string `json:"txid"`
 	Vout     int    `json:"vout"`
-	Prevout  *vout  `json:"prevout"`
+	Prevout  *Vout  `json:"prevout"`
 	Sequence uint32 `json:"sequence"`
 }
 
-type vout struct {
+type Vout struct {
 	ScriptPubkey     string `json:"scriptpubkey"`
 	ScriptPubkeyAsm  string `json:"scriptpubkey_asm"`
 	ScriptPubkeyType string `json:"scriptpubkey_type"`
 	ScriptPubkeyAddr string `json:"scriptpubkey_address"`
 	Value            uint64 `json:"value"`
-	outspend         *outspend
+	Outspend         *Outspend
 }
 
-type outspend struct {
+type Outspend struct {
 	Spent  bool    `json:"spent"`
 	Txid   string  `json:"txid"`
 	Vin    int     `json:"vin"`
-	Status *status `json:"status"`
+	Status *Status `json:"status"`
 }
 
-type status struct {
+type Status struct {
 	Confirmed   bool   `json:"confirmed"`
 	BlockHeight int    `json:"block_height"`
 	BlockHash   string `json:"block_hash"`
 }
 
-func (a *chainApi) Transaction(txid string) (*transaction, error) {
-	tx := &transaction{}
-	err := Fetch(fmt.Sprintf("%s/tx/%s", a.baseUrl, txid), tx)
+func (a *Api) Transaction(txid string) (*TX, error) {
+	tx := &TX{}
+	err := Fetch(fmt.Sprintf("%s/tx/%s", a.BaseUrl, txid), tx)
 	if err != nil {
 		return nil, err
 	}
 	for idx, vout := range tx.Vout {
 		url := fmt.Sprintf(
-			"%s/tx/%s/outspend/%d", a.baseUrl, txid, idx,
+			"%s/tx/%s/outspend/%d", a.BaseUrl, txid, idx,
 		)
-		outspend := outspend{}
+		outspend := Outspend{}
 		err := Fetch(url, &outspend)
 		if err != nil {
 			return nil, err
 		}
-		vout.outspend = &outspend
+		vout.Outspend = &outspend
 	}
 	return tx, nil
 }
 
-func (a *chainApi) PublishTx(rawTxHex string) (string, error) {
-	url := fmt.Sprintf("%s/tx", a.baseUrl)
+func (a *Api) PublishTx(rawTxHex string) (string, error) {
+	url := fmt.Sprintf("%s/tx", a.BaseUrl)
 	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
 	if err != nil {
 		return "", err
