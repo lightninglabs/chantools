@@ -20,20 +20,28 @@ const (
 )
 
 type sweepTimeLockCommand struct {
-	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use."`
+	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
 	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
 	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
 }
 
 func (c *sweepTimeLockCommand) Execute(_ []string) error {
-	// Check that root key is valid.
-	if c.RootKey == "" {
-		return fmt.Errorf("root key is required")
+	var (
+		extendedKey *hdkeychain.ExtendedKey
+		err error
+	)
+
+	// Check that root key is valid or fall back to console input.
+	switch {
+	case c.RootKey != "":
+		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+
+	default:
+		extendedKey, err = rootKeyFromConsole()
 	}
-	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
-		return fmt.Errorf("error parsing root key: %v", err)
+		return fmt.Errorf("error reading root key: %v", err)
 	}
 
 	// Make sure sweep addr is set.
@@ -42,7 +50,7 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInput(cfg)
+	entries, err := parseInputType(cfg)
 	if err != nil {
 		return err
 	}

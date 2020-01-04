@@ -70,7 +70,7 @@ Usage:
   chantools [OPTIONS] derivekey [derivekey-OPTIONS]
 
 [derivekey command options]
-          --rootkey=     BIP32 HD root key to derive the key from.
+          --rootkey=     BIP32 HD root key to derive the key from. Leave empty to prompt for lnd 24 word aezeed.
           --path=        The BIP32 derivation path to derive. Must start with "m/".
           --neuter       Do not output the private key, just the public key.
 ```
@@ -93,7 +93,7 @@ Usage:
   chantools [OPTIONS] dumpbackup [dumpbackup-OPTIONS]
 
 [dumpbackup command options]
-          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup.
+          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed.
           --multi_file=  The lnd channel.backup file to dump.
 ```
 
@@ -133,7 +133,7 @@ Usage:
   chantools [OPTIONS] forceclose [forceclose-OPTIONS]
 
 [forceclose command options]
-          --rootkey=     BIP32 HD root key to use.
+          --rootkey=     BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
           --channeldb=   The lnd channel.db file to use for force-closing channels.
           --publish      Should the force-closing TX be published to the chain API?
 ```
@@ -168,7 +168,7 @@ Usage:
   chantools [OPTIONS] rescueclosed [rescueclosed-OPTIONS]
 
 [rescueclosed command options]
-          --rootkey=     BIP32 HD root key to use.
+          --rootkey=     BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
           --channeldb=   The lnd channel.db file to use for rescuing force-closed channels.
 ```
 
@@ -230,7 +230,7 @@ Usage:
   chantools [OPTIONS] sweeptimelock [sweeptimelock-OPTIONS]
 
 [sweeptimelock command options]
-          --rootkey=     BIP32 HD root key to use.
+          --rootkey=     BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
           --publish      Should the sweep TX be published to the chain API?
           --sweepaddr=   The address the funds should be sweeped to
           --maxcsvlimit= Maximum CSV limit to use. (default 2000)

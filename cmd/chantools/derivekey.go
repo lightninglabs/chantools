@@ -17,13 +17,21 @@ type deriveKeyCommand struct {
 func (c *deriveKeyCommand) Execute(_ []string) error {
 	setupChainParams(cfg)
 
-	// Check that root key is valid.
-	if c.RootKey == "" {
-		return fmt.Errorf("root key is required")
+	var (
+		extendedKey *hdkeychain.ExtendedKey
+		err error
+	)
+	
+	// Check that root key is valid or fall back to console input.
+	switch {
+	case c.RootKey != "":
+		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+
+	default:
+		extendedKey, err = rootKeyFromConsole()
 	}
-	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
-		return fmt.Errorf("error parsing root key: %v", err)
+		return fmt.Errorf("error reading root key: %v", err)
 	}
 
 	return deriveKey(extendedKey, c.Path, c.Neuter)

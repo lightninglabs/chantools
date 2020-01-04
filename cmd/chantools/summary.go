@@ -14,7 +14,7 @@ type summaryCommand struct{}
 
 func (c *summaryCommand) Execute(_ []string) error {
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInput(cfg)
+	entries, err := parseInputType(cfg)
 	if err != nil {
 		return err
 	}

@@ -11,20 +11,28 @@ import (
 )
 
 type dumpBackupCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup."`
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
 	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to dump."`
 }
 
 func (c *dumpBackupCommand) Execute(_ []string) error {
 	setupChainParams(cfg)
 
-	// Check that root key is valid.
-	if c.RootKey == "" {
-		return fmt.Errorf("root key is required")
+	var (
+		extendedKey *hdkeychain.ExtendedKey
+		err error
+	)
+
+	// Check that root key is valid or fall back to console input.
+	switch {
+	case c.RootKey != "":
+		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+
+	default:
+		extendedKey, err = rootKeyFromConsole()
 	}
-	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
-		return fmt.Errorf("error parsing root key: %v", err)
+		return fmt.Errorf("error reading root key: %v", err)
 	}
 
 	// Check that we have a backup file.

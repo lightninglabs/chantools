@@ -32,18 +32,26 @@ type cacheEntry struct {
 }
 
 type rescueClosedCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use."`
+	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for rescuing force-closed channels."`
 }
 
 func (c *rescueClosedCommand) Execute(_ []string) error {
-	// Check that root key is valid.
-	if c.RootKey == "" {
-		return fmt.Errorf("root key is required")
+	var (
+		extendedKey *hdkeychain.ExtendedKey
+		err error
+	)
+
+	// Check that root key is valid or fall back to console input.
+	switch {
+	case c.RootKey != "":
+		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+
+	default:
+		extendedKey, err = rootKeyFromConsole()
 	}
-	extendedKey, err := hdkeychain.NewKeyFromString(c.RootKey)
 	if err != nil {
-		return fmt.Errorf("error parsing root key: %v", err)
+		return fmt.Errorf("error reading root key: %v", err)
 	}
 
 	// Check that we have a channel DB.
@@ -56,7 +64,7 @@ func (c *rescueClosedCommand) Execute(_ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInput(cfg)
+	entries, err := parseInputType(cfg)
 	if err != nil {
 		return err
 	}
