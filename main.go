@@ -2,7 +2,10 @@ package chantools
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -10,6 +13,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/dataformat"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/build"
@@ -316,6 +320,57 @@ func (c *deriveKeyCommand) Execute(_ []string) error {
 	}
 
 	return deriveKey(extendedKey, c.Path, c.Neuter)
+}
+
+func ParseInput(cfg *config) ([]*dataformat.SummaryEntry, error) {
+	var (
+		content []byte
+		err     error
+		target  dataformat.InputFile
+	)
+
+	switch {
+	case cfg.ListChannels != "":
+		content, err = readInput(cfg.ListChannels)
+		target = &dataformat.ListChannelsFile{}
+
+	case cfg.PendingChannels != "":
+		content, err = readInput(cfg.PendingChannels)
+		target = &dataformat.PendingChannelsFile{}
+
+	case cfg.FromSummary != "":
+		content, err = readInput(cfg.FromSummary)
+		target = &dataformat.SummaryEntryFile{}
+
+	case cfg.FromChannelDB != "":
+		db, err := channeldb.Open(cfg.FromChannelDB)
+		if err != nil {
+			return nil, fmt.Errorf("error opening channel DB: %v",
+				err)
+		}
+		target = &dataformat.ChannelDBFile{DB: db}
+		return target.AsSummaryEntries()
+
+	default:
+		return nil, fmt.Errorf("an input file must be specified")
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(bytes.NewReader(content))
+	err = decoder.Decode(&target)
+	if err != nil {
+		return nil, err
+	}
+	return target.AsSummaryEntries()
+}
+
+func readInput(input string) ([]byte, error) {
+	if strings.TrimSpace(input) == "-" {
+		return ioutil.ReadAll(os.Stdin)
+	}
+	return ioutil.ReadFile(input)
 }
 
 func setupChainParams(cfg *config) {

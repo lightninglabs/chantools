@@ -7,10 +7,13 @@ import (
 	"time"
 
 	"github.com/guggero/chantools/chain"
+	"github.com/guggero/chantools/dataformat"
 )
 
-func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
-	summaryFile := &SummaryEntryFile{
+func summarizeChannels(apiUrl string,
+	channels []*dataformat.SummaryEntry) error {
+
+	summaryFile := &dataformat.SummaryEntryFile{
 		Channels: channels,
 	}
 	chainApi := &chain.Api{BaseUrl: apiUrl}
@@ -32,7 +35,7 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 		outspend := tx.Vout[channel.FundingTXIndex].Outspend
 		if outspend.Spent {
 			summaryFile.ClosedChannels++
-			channel.ClosingTX = &ClosingTX{
+			channel.ClosingTX = &dataformat.ClosingTX{
 				TXID:       outspend.Txid,
 				ConfHeight: uint32(outspend.Status.BlockHeight),
 			}
@@ -90,8 +93,8 @@ func summarizeChannels(apiUrl string, channels []*SummaryEntry) error {
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func reportOutspend(api *chain.Api, summaryFile *SummaryEntryFile,
-	entry *SummaryEntry, os *chain.Outspend) error {
+func reportOutspend(api *chain.Api, summaryFile *dataformat.SummaryEntryFile,
+	entry *dataformat.SummaryEntry, os *chain.Outspend) error {
 
 	spendTx, err := api.Transaction(os.Txid)
 	if err != nil {
@@ -171,7 +174,7 @@ func reportOutspend(api *chain.Api, summaryFile *SummaryEntryFile,
 	return nil
 }
 
-func couldBeOurs(entry *SummaryEntry, utxo []*chain.Vout) bool {
+func couldBeOurs(entry *dataformat.SummaryEntry, utxo []*chain.Vout) bool {
 	if len(utxo) == 1 && utxo[0].Value == entry.RemoteBalance {
 		return false
 	}

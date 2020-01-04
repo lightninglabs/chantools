@@ -1,13 +1,10 @@
-package chantools
+package dataformat
 
 import (
-	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/lightningnetwork/lnd/channeldb"
-	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -38,62 +35,11 @@ type Input interface {
 	AsSummaryEntry() *SummaryEntry
 }
 
-func ParseInput(cfg *config) ([]*SummaryEntry, error) {
-	var (
-		content []byte
-		err     error
-		target  InputFile
-	)
-
-	switch {
-	case cfg.ListChannels != "":
-		content, err = readInput(cfg.ListChannels)
-		target = &listChannelsFile{}
-
-	case cfg.PendingChannels != "":
-		content, err = readInput(cfg.PendingChannels)
-		target = &pendingChannelsFile{}
-
-	case cfg.FromSummary != "":
-		content, err = readInput(cfg.FromSummary)
-		target = &SummaryEntryFile{}
-
-	case cfg.FromChannelDB != "":
-		db, err := channeldb.Open(cfg.FromChannelDB)
-		if err != nil {
-			return nil, fmt.Errorf("error opening channel DB: %v",
-				err)
-		}
-		target = &channelDBFile{db: db}
-		return target.AsSummaryEntries()
-
-	default:
-		return nil, fmt.Errorf("an input file must be specified")
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	decoder := json.NewDecoder(bytes.NewReader(content))
-	err = decoder.Decode(&target)
-	if err != nil {
-		return nil, err
-	}
-	return target.AsSummaryEntries()
+type ListChannelsFile struct {
+	Channels []*ListChannelsChannel `json:"channels"`
 }
 
-func readInput(input string) ([]byte, error) {
-	if strings.TrimSpace(input) == "-" {
-		return ioutil.ReadAll(os.Stdin)
-	}
-	return ioutil.ReadFile(input)
-}
-
-type listChannelsFile struct {
-	Channels []*listChannelsChannel `json:"channels"`
-}
-
-func (f *listChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
+func (f *ListChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	result := make([]*SummaryEntry, len(f.Channels))
 	for idx, entry := range f.Channels {
 		result[idx] = entry.AsSummaryEntry()
@@ -101,7 +47,7 @@ func (f *listChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	return result, nil
 }
 
-type listChannelsChannel struct {
+type ListChannelsChannel struct {
 	RemotePubkey  string       `json:"remote_pubkey"`
 	ChannelPoint  string       `json:"channel_point"`
 	Capacity      NumberString `json:"capacity"`
@@ -110,7 +56,7 @@ type listChannelsChannel struct {
 	RemoteBalance NumberString `json:"remote_balance"`
 }
 
-func (c *listChannelsChannel) AsSummaryEntry() *SummaryEntry {
+func (c *ListChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	return &SummaryEntry{
 		RemotePubkey:   c.RemotePubkey,
 		ChannelPoint:   c.ChannelPoint,
@@ -123,14 +69,14 @@ func (c *listChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	}
 }
 
-type pendingChannelsFile struct {
-	PendingOpen         []*pendingChannelsChannel `json:"pending_open_channels"`
-	PendingClosing      []*pendingChannelsChannel `json:"pending_closing_channels"`
-	PendingForceClosing []*pendingChannelsChannel `json:"pending_force_closing_channels"`
-	WaitingClose        []*pendingChannelsChannel `json:"waiting_close_channels"`
+type PendingChannelsFile struct {
+	PendingOpen         []*PendingChannelsChannel `json:"pending_open_channels"`
+	PendingClosing      []*PendingChannelsChannel `json:"pending_closing_channels"`
+	PendingForceClosing []*PendingChannelsChannel `json:"pending_force_closing_channels"`
+	WaitingClose        []*PendingChannelsChannel `json:"waiting_close_channels"`
 }
 
-func (f *pendingChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
+func (f *PendingChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	numChannels := len(f.PendingOpen) + len(f.PendingClosing) +
 		len(f.PendingForceClosing) + len(f.WaitingClose)
 	result := make([]*SummaryEntry, numChannels)
@@ -154,7 +100,7 @@ func (f *pendingChannelsFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	return result, nil
 }
 
-type pendingChannelsChannel struct {
+type PendingChannelsChannel struct {
 	Channel struct {
 		RemotePubkey  string       `json:"remote_node_pub"`
 		ChannelPoint  string       `json:"channel_point"`
@@ -164,7 +110,7 @@ type pendingChannelsChannel struct {
 	} `json:"channel"`
 }
 
-func (c *pendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
+func (c *PendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	return &SummaryEntry{
 		RemotePubkey:   c.Channel.RemotePubkey,
 		ChannelPoint:   c.Channel.ChannelPoint,
@@ -177,12 +123,12 @@ func (c *pendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
 	}
 }
 
-type channelDBFile struct {
-	db *channeldb.DB
+type ChannelDBFile struct {
+	DB *channeldb.DB
 }
 
-func (c *channelDBFile) AsSummaryEntries() ([]*SummaryEntry, error) {
-	channels, err := c.db.FetchAllChannels()
+func (c *ChannelDBFile) AsSummaryEntries() ([]*SummaryEntry, error) {
+	channels, err := c.DB.FetchAllChannels()
 	if err != nil {
 		return nil, fmt.Errorf("error fetching channels: %v", err)
 	}

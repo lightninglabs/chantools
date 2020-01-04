@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/dataformat"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -29,7 +30,7 @@ type cacheEntry struct {
 }
 
 func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
-	entries []*SummaryEntry, chanDb *channeldb.DB) error {
+	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB) error {
 
 	err := fillCache(extendedKey)
 	if err != nil {
@@ -44,7 +45,7 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 	// Try naive/lucky guess with information from channel DB.
 	for _, channel := range channels {
 		channelPoint := channel.FundingOutpoint.String()
-		var channelEntry *SummaryEntry
+		var channelEntry *dataformat.SummaryEntry
 		for _, entry := range entries {
 			if entry.ChannelPoint == channelPoint {
 				channelEntry = entry
@@ -93,7 +94,7 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 		}
 	}
 
-	summaryBytes, err := json.MarshalIndent(&SummaryEntryFile{
+	summaryBytes, err := json.MarshalIndent(&dataformat.SummaryEntryFile{
 		Channels: entries,
 	}, "", " ")
 	if err != nil {

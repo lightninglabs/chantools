@@ -13,12 +13,14 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/chain"
+	"github.com/guggero/chantools/dataformat"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 )
 
 func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
-	entries []*SummaryEntry, chanDb *channeldb.DB, publish bool) error {
+	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB,
+	publish bool) error {
 
 	channels, err := chanDb.FetchAllChannels()
 	if err != nil {
@@ -31,7 +33,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 	// publish their local commitment TX.
 	for _, channel := range channels {
 		channelPoint := channel.FundingOutpoint.String()
-		var channelEntry *SummaryEntry
+		var channelEntry *dataformat.SummaryEntry
 		for _, entry := range entries {
 			if entry.ChannelPoint == channelPoint {
 				channelEntry = entry
@@ -90,17 +92,17 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 		// Store all information that we collected into the channel
 		// entry file so we don't need to use the channel.db file for
 		// the next step.
-		channelEntry.ForceClose = &ForceClose{
+		channelEntry.ForceClose = &dataformat.ForceClose{
 			TXID:       hash.String(),
 			Serialized: serialized,
-			DelayBasePoint: &BasePoint{
+			DelayBasePoint: &dataformat.BasePoint{
 				Family: uint16(basepoint.Family),
 				Index:  basepoint.Index,
 				PubKey: hex.EncodeToString(
 					basepoint.PubKey.SerializeCompressed(),
 				),
 			},
-			RevocationBasePoint: &BasePoint{
+			RevocationBasePoint: &dataformat.BasePoint{
 				PubKey: hex.EncodeToString(
 					revpoint.PubKey.SerializeCompressed(),
 				),
@@ -108,7 +110,9 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 			CommitPoint: hex.EncodeToString(
 				point.SerializeCompressed(),
 			),
-			Outs:     make([]*Out, len(localCommitTx.TxOut)),
+			Outs: make(
+				[]*dataformat.Out, len(localCommitTx.TxOut),
+			),
 			CSVDelay: channel.LocalChanCfg.CsvDelay,
 		}
 		for idx, out := range localCommitTx.TxOut {
@@ -116,7 +120,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 			if err != nil {
 				return err
 			}
-			channelEntry.ForceClose.Outs[idx] = &Out{
+			channelEntry.ForceClose.Outs[idx] = &dataformat.Out{
 				Script:    hex.EncodeToString(out.PkScript),
 				ScriptAsm: script,
 				Value:     uint64(out.Value),
@@ -134,7 +138,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 		}
 	}
 
-	summaryBytes, err := json.MarshalIndent(&SummaryEntryFile{
+	summaryBytes, err := json.MarshalIndent(&dataformat.SummaryEntryFile{
 		Channels: entries,
 	}, "", " ")
 	if err != nil {

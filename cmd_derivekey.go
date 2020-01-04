@@ -2,6 +2,7 @@ package chantools
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 )

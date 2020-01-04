@@ -1,4 +1,4 @@
-package chantools
+package dataformat
 
 import "github.com/lightningnetwork/lnd/keychain"
 
@@ -17,7 +17,7 @@ type BasePoint struct {
 	PubKey string `json:"pubkey"`
 }
 
-func (b *BasePoint) toDesc() *keychain.KeyDescriptor {
+func (b *BasePoint) Desc() *keychain.KeyDescriptor {
 	return &keychain.KeyDescriptor{
 		KeyLocator: keychain.KeyLocator{
 			Family: keychain.KeyFamily(b.Family),
