@@ -1,5 +1,18 @@
 # Channel tools
 
+## Index
+
+* [Installation](#installation)
+* [Overview](#overview)
+* [Commands](#commands)
+  + [dumpbackup](#dumpbackup)
+  + [dumpchannels](#dumpchannels)
+  + [forceclose](#forceclose)
+  + [rescueclosed](#rescueclosed)
+  + [showrootkey](#showrootkey)
+  + [summary](#summary)
+  + [sweeptimelock](#sweeptimelock)
+
 This tool provides helper functions that can be used to rescue funds locked in
 lnd channels in case lnd itself cannot run properly any more.
 
@@ -47,57 +60,49 @@ Available commands:
   sweeptimelock  Sweep the force-closed state after the time lock has expired.
 ```
 
-## summary command
+## Commands
+
+### dumpbackup
 
 ```text
 Usage:
-  chantools [OPTIONS] summary
+  chantools [OPTIONS] dumpbackup [dumpbackup-OPTIONS]
+
+[dumpbackup command options]
+          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup.
+          --multi_file=  The lnd channel.backup file to dump.
 ```
 
-From a list of channels, find out what their state is by querying the funding
-transaction on a block explorer API.
-
-Example command 1:
-
-```bash
-lncli listchannels | chantools --listchannels - summary
-```
-
-Example command 2:
-
-```bash
-chantools --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db
-```
-
-## rescueclosed command
-
-```text
-Usage:
-  chantools [OPTIONS] rescueclosed [rescueclosed-OPTIONS]
-
-[rescueclosed command options]
-          --rootkey=     BIP32 HD root key to use.
-          --channeldb=   The lnd channel.db file to use for rescuing force-closed channels.
-```
-
-If channels have already been force-closed by the remote peer, this command
-tries to find the private keys to sweep the funds from the output that belongs
-to our side. This can only be used if we have a channel DB that contains the
-latest commit point. Normally you would use SCB to get the funds from those
-channels. But this method can help if the other node doesn't know about the
-channels any more but we still have the channel.db from the moment they
-force-closed.
+This command dumps all information that is inside a `channel.backup` file in a
+human readable format.
 
 Example command:
 
 ```bash
-chantools --fromsummary results/summary-xxxx-yyyy.json \
-  rescueclosed \
-  --channeldb ~/.lnd/data/graph/mainnet/channel.db \
-  --rootkey xprvxxxxxxxxxx
+chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+  --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
 
-## forceclose command
+### dumpchannels
+
+```text
+Usage:
+  chantools [OPTIONS] dumpchannels [dumpchannels-OPTIONS]
+
+[dumpchannels command options]
+          --channeldb=   The lnd channel.db file to dump the channels from.
+```
+
+This command dumps all open and pending channels from the given lnd `channel.db`
+file in a human readable format.
+
+Example command:
+
+```bash
+chantools dumpchannels --channeldb ~/.lnd/data/graph/mainnet/channel.db
+```
+
+### forceclose
 
 ```text
 Usage:
@@ -132,7 +137,69 @@ chantools --fromsummary results/summary-xxxx-yyyy.json \
   --publish
 ```
 
-## sweeptimelock command
+### rescueclosed
+
+```text
+Usage:
+  chantools [OPTIONS] rescueclosed [rescueclosed-OPTIONS]
+
+[rescueclosed command options]
+          --rootkey=     BIP32 HD root key to use.
+          --channeldb=   The lnd channel.db file to use for rescuing force-closed channels.
+```
+
+If channels have already been force-closed by the remote peer, this command
+tries to find the private keys to sweep the funds from the output that belongs
+to our side. This can only be used if we have a channel DB that contains the
+latest commit point. Normally you would use SCB to get the funds from those
+channels. But this method can help if the other node doesn't know about the
+channels any more but we still have the channel.db from the moment they
+force-closed.
+
+Example command:
+
+```bash
+chantools --fromsummary results/summary-xxxx-yyyy.json \
+  rescueclosed \
+  --channeldb ~/.lnd/data/graph/mainnet/channel.db \
+  --rootkey xprvxxxxxxxxxx
+```
+
+### showrootkey
+
+This command converts the 24 word lnd aezeed phrase and password to the BIP32
+HD root key that is used as the `rootkey` parameter in other commands of this
+tool.
+
+Example command:
+
+```bash
+chantools showrootkey
+```
+
+### summary
+
+```text
+Usage:
+  chantools [OPTIONS] summary
+```
+
+From a list of channels, find out what their state is by querying the funding
+transaction on a block explorer API.
+
+Example command 1:
+
+```bash
+lncli listchannels | chantools --listchannels - summary
+```
+
+Example command 2:
+
+```bash
+chantools --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db
+```
+
+### sweeptimelock
 
 ```text
 Usage:
@@ -160,56 +227,4 @@ chantools --fromsummary results/forceclose-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx \
   --publish \
   --sweepaddr bc1q.....
-```
-
-## dumpchannels command
-
-```text
-Usage:
-  chantools [OPTIONS] dumpchannels [dumpchannels-OPTIONS]
-
-[dumpchannels command options]
-          --channeldb=   The lnd channel.db file to dump the channels from.
-```
-
-This command dumps all open and pending channels from the given lnd `channel.db`
-file in a human readable format.
-
-Example command:
-
-```bash
-chantools dumpchannels --channeldb ~/.lnd/data/graph/mainnet/channel.db
-```
-
-## showrootkey command
-
-This command converts the 24 word lnd aezeed phrase and password to the BIP32
-HD root key that is used as the `rootkey` parameter in other commands of this
-tool.
-
-Example command:
-
-```bash
-chantools showrootkey
-```
-
-## dumpbackup command
-
-```text
-Usage:
-  chantools [OPTIONS] dumpbackup [dumpbackup-OPTIONS]
-
-[dumpbackup command options]
-          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup.
-          --multi_file=  The lnd channel.backup file to dump.
-```
-
-This command dumps all information that is inside a `channel.backup` file in a
-human readable format.
-
-Example command:
-
-```bash
-chantools dumpbackup --rootkey xprvxxxxxxxxxx \
-  --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
