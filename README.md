@@ -5,6 +5,7 @@
 * [Installation](#installation)
 * [Overview](#overview)
 * [Commands](#commands)
+  + [derivekey](#derivekey)
   + [dumpbackup](#dumpbackup)
   + [dumpchannels](#dumpchannels)
   + [filterbackup](#filterbackup)
