@@ -57,22 +57,22 @@ func ParsePath(path string) ([]uint32, error) {
 	return indices, nil
 }
 
-type ChannelBackupEncryptionRing struct {
+type HDKeyRing struct {
 	ExtendedKey *hdkeychain.ExtendedKey
 	ChainParams *chaincfg.Params
 }
 
-func (r *ChannelBackupEncryptionRing) DeriveNextKey(_ keychain.KeyFamily) (
+func (r *HDKeyRing) DeriveNextKey(_ keychain.KeyFamily) (
 	keychain.KeyDescriptor, error) {
 
 	return keychain.KeyDescriptor{}, nil
 }
 
-func (r *ChannelBackupEncryptionRing) DeriveKey(keyLoc keychain.KeyLocator) (
+func (r *HDKeyRing) DeriveKey(keyLoc keychain.KeyLocator) (
 	keychain.KeyDescriptor, error) {
 
 	var empty = keychain.KeyDescriptor{}
-	keyBackup, err := DeriveChildren(r.ExtendedKey, []uint32{
+	derivedKey, err := DeriveChildren(r.ExtendedKey, []uint32{
 		HardenedKeyStart + uint32(keychain.BIP0043Purpose),
 		HardenedKeyStart + r.ChainParams.HDCoinType,
 		HardenedKeyStart + uint32(keyLoc.Family),
@@ -83,7 +83,7 @@ func (r *ChannelBackupEncryptionRing) DeriveKey(keyLoc keychain.KeyLocator) (
 		return empty, err
 	}
 
-	backupPubKey, err := keyBackup.ECPubKey()
+	derivedPubKey, err := derivedKey.ECPubKey()
 	if err != nil {
 		return empty, err
 	}
@@ -92,6 +92,49 @@ func (r *ChannelBackupEncryptionRing) DeriveKey(keyLoc keychain.KeyLocator) (
 			Family: keyLoc.Family,
 			Index:  keyLoc.Index,
 		},
-		PubKey: backupPubKey,
+		PubKey: derivedPubKey,
 	}, nil
+}
+
+// Check if a key descriptor is correct by making sure that we can derive the
+// key that it describes.
+func (r *HDKeyRing) CheckDescriptor(
+	keyDesc keychain.KeyDescriptor) error {
+
+	// A check doesn't make sense if there is no public key set.
+	if keyDesc.PubKey == nil {
+		return fmt.Errorf("no public key provided to check")
+	}
+
+	// Performance fix, derive static path only once.
+	familyKey, err := DeriveChildren(r.ExtendedKey, []uint32{
+		HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+		HardenedKeyStart + r.ChainParams.HDCoinType,
+		HardenedKeyStart + uint32(keyDesc.Family),
+		0,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Scan the same key range as lnd would do on channel restore.
+	for i := 0; i < keychain.MaxKeyRangeScan; i++ {
+		child, err := DeriveChildren(familyKey, []uint32{uint32(i)})
+		if err != nil {
+			return err
+		}
+		pubKey, err := child.ECPubKey()
+		if err != nil {
+			return err
+		}
+		if !pubKey.IsEqual(keyDesc.PubKey) {
+			continue
+		}
+		// If we found the key, we can abort and signal success.
+		return nil
+	}
+
+	// We scanned the max range and didn't find a key. It's very likely not
+	// derivable with the given information.
+	return keychain.ErrCannotDerivePrivKey
 }

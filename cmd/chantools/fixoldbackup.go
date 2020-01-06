@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -12,13 +11,12 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
-type filterBackupCommand struct {
+type fixOldBackupCommand struct {
 	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
-	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to filter."`
-	Discard   string `long:"discard" description:"A comma separated list of channel funding outpoints (format <fundingTXID>:<index>) to remove from the backup file."`
+	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to fix."`
 }
 
-func (c *filterBackupCommand) Execute(_ []string) error {
+func (c *fixOldBackupCommand) Execute(_ []string) error {
 	setupChainParams(cfg)
 
 	var (
@@ -37,10 +35,6 @@ func (c *filterBackupCommand) Execute(_ []string) error {
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
-
-	// Parse discard filter.
-	discard := strings.Split(c.Discard, ",")
-
 	// Check that we have a backup file.
 	if c.MultiFile == "" {
 		return fmt.Errorf("backup file is required")
@@ -50,33 +44,55 @@ func (c *filterBackupCommand) Execute(_ []string) error {
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	return filterChannelBackup(multiFile, keyRing, discard)
+	return fixOldChannelBackup(multiFile, keyRing)
 }
 
-func filterChannelBackup(multiFile *chanbackup.MultiFile, ring keychain.KeyRing,
-	discard []string) error {
+func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
+	ring *btc.HDKeyRing) error {
 
 	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {
 		return fmt.Errorf("could not extract multi file: %v", err)
 	}
 
-	keep := make([]chanbackup.Single, 0, len(multi.StaticBackups))
+	log.Infof("Checking shachain root of %d channels, this might take a "+
+		"while.", len(multi.StaticBackups))
+	fixedChannels := 0
 	for _, single := range multi.StaticBackups {
-		found := false
-		for _, discardChanPoint := range discard {
-			if single.FundingOutpoint.String() == discardChanPoint {
-				found = true
-			}
-		}
-		if found {
+		err := ring.CheckDescriptor(single.ShaChainRootDesc)
+		switch err {
+		case nil:
 			continue
-		}
-		keep = append(keep, single)
-	}
-	multi.StaticBackups = keep
 
-	fileName := fmt.Sprintf("results/backup-filtered-%s.backup",
+		case keychain.ErrCannotDerivePrivKey:
+			// Fix the incorrect descriptor by deriving a default
+			// one and overwriting it in the backup.
+			log.Infof("The shachain root for channel %s could "+
+				"not be derived, must be in old format. "+
+				"Fixing...", single.FundingOutpoint.String())
+			baseKeyDesc, err := ring.DeriveKey(keychain.KeyLocator{
+				Family: keychain.KeyFamilyRevocationRoot,
+				Index:  0,
+			})
+			if err != nil {
+				return err
+			}
+			single.ShaChainRootDesc = baseKeyDesc
+			fixedChannels++
+
+		default:
+			return fmt.Errorf("could not check shachain root "+
+				"descriptor: %v", err)
+		}
+	}
+	if fixedChannels == 0 {
+		log.Info("No channels were affected by issue #3881, nothing " +
+			"to fix.")
+		return nil
+	}
+
+	log.Infof("Fixed shachain root of %d channels.", fixedChannels)
+	fileName := fmt.Sprintf("results/backup-fixed-%s.backup",
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)

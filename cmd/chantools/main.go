@@ -98,6 +98,10 @@ func runCommandParser() error {
 		"filterbackup", "Filter an lnd channel.backup file and " +
 			"remove certain channels.", "", &filterBackupCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"fixoldbackup", "Fixes an old channel.backup file that is " +
+			"affected by the lnd issue #3881 (unable to derive " +
+			"shachain root key).", "", &fixOldBackupCommand{})
 
 	_, err := parser.Parse()
 	return err

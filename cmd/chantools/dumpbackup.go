@@ -41,7 +41,7 @@ func (c *dumpBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("backup file is required")
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
-	keyRing := &btc.ChannelBackupEncryptionRing{
+	keyRing := &btc.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}

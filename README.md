@@ -9,6 +9,7 @@
   + [dumpbackup](#dumpbackup)
   + [dumpchannels](#dumpchannels)
   + [filterbackup](#filterbackup)
+  + [fixoldbackup](#fixoldbackup)
   + [forceclose](#forceclose)
   + [rescueclosed](#rescueclosed)
   + [showrootkey](#showrootkey)
@@ -57,6 +58,7 @@ Available commands:
   dumpbackup     Dump the content of a channel.backup file.
   dumpchannels   Dump all channel information from lnd's channel database.
   filterbackup   Filter an lnd channel.backup file and remove certain channels.
+  fixoldbackup   Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
   forceclose     Force-close the last state that is in the channel.db provided.
   rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels.
   showrootkey    Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
@@ -150,6 +152,30 @@ Example command:
 chantools filterbackup --rootkey xprvxxxxxxxxxx \
   --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup \
   --discard 2abcdef2b2bffaaa...db0abadd:1,4abcdef2b2bffaaa...db8abadd:0
+```
+
+### fixoldbackup
+
+```text
+Usage:
+  chantools [OPTIONS] fixoldbackup [fixoldbackup-OPTIONS]
+
+[fixoldbackup command options]
+          --rootkey=     BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed.
+          --multi_file=  The lnd channel.backup file to fix.
+```
+
+Fixes an old channel.backup file that is affected by the lnd issue
+[#3881](https://github.com/lightningnetwork/lnd/issues/3881) (<code>[lncli]
+unable to restore chan backups: rpc error: code = Unknown desc = unable
+to unpack chan backup: unable to derive shachain root key: unable to derive
+private key</code>).
+
+Example command:
+
+```bash
+chantools fixoldbackup --rootkey xprvxxxxxxxxxx \
+  --multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
 
 ### forceclose
