@@ -70,10 +70,10 @@ func dumpChannelInfo(chanDb *channeldb.DB) error {
 			TotalMSatReceived: channel.TotalMSatReceived,
 			PerCommitPoint:    dump.PubKeyToString(perCommitPoint),
 			LocalChanCfg: dump.ToChannelConfig(
-				channel.LocalChanCfg,
+				chainParams, channel.LocalChanCfg,
 			),
 			RemoteChanCfg: dump.ToChannelConfig(
-				channel.RemoteChanCfg,
+				chainParams, channel.RemoteChanCfg,
 			),
 			LocalCommitment:  channel.LocalCommitment,
 			RemoteCommitment: channel.RemoteCommitment,

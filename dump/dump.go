@@ -3,6 +3,7 @@ package dump
 import (
 	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg"
 	"net"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -15,7 +16,7 @@ import (
 )
 
 const (
-	lndInternalDerivationPath = "m/1017'/0'/%d'/0/%d"
+	lndInternalDerivationPath = "m/1017'/%d'/%d'/0/%d"
 )
 
 // BackupSingle is the information we want to dump from an lnd channel backup
@@ -89,21 +90,32 @@ type KeyDescriptor struct {
 	PubKey string
 }
 
-func ToChannelConfig(cfg channeldb.ChannelConfig) ChannelConfig {
+func ToChannelConfig(params *chaincfg.Params,
+	cfg channeldb.ChannelConfig) ChannelConfig {
+
 	return ChannelConfig{
-		ChannelConstraints:  cfg.ChannelConstraints,
-		MultiSigKey:         ToKeyDescriptor(cfg.MultiSigKey),
-		RevocationBasePoint: ToKeyDescriptor(cfg.RevocationBasePoint),
-		PaymentBasePoint:    ToKeyDescriptor(cfg.PaymentBasePoint),
-		DelayBasePoint:      ToKeyDescriptor(cfg.DelayBasePoint),
-		HtlcBasePoint:       ToKeyDescriptor(cfg.HtlcBasePoint),
+		ChannelConstraints: cfg.ChannelConstraints,
+		MultiSigKey:        ToKeyDescriptor(params, cfg.MultiSigKey),
+		RevocationBasePoint: ToKeyDescriptor(
+			params, cfg.RevocationBasePoint,
+		),
+		PaymentBasePoint: ToKeyDescriptor(
+			params, cfg.PaymentBasePoint,
+		),
+		DelayBasePoint: ToKeyDescriptor(
+			params, cfg.DelayBasePoint,
+		),
+		HtlcBasePoint: ToKeyDescriptor(params, cfg.HtlcBasePoint),
 	}
 }
 
-func ToKeyDescriptor(desc keychain.KeyDescriptor) KeyDescriptor {
+func ToKeyDescriptor(params *chaincfg.Params,
+	desc keychain.KeyDescriptor) KeyDescriptor {
+
 	return KeyDescriptor{
 		Path: fmt.Sprintf(
-			lndInternalDerivationPath, desc.Family, desc.Index,
+			lndInternalDerivationPath, params.HDCoinType,
+			desc.Family, desc.Index,
 		),
 		PubKey: PubKeyToString(desc.PubKey),
 	}

@@ -69,13 +69,13 @@ func dumpChannelBackup(multiFile *chanbackup.MultiFile,
 			Addresses: single.Addresses,
 			Capacity:  single.Capacity,
 			LocalChanCfg: dump.ToChannelConfig(
-				single.LocalChanCfg,
+				chainParams, single.LocalChanCfg,
 			),
 			RemoteChanCfg: dump.ToChannelConfig(
-				single.RemoteChanCfg,
+				chainParams, single.RemoteChanCfg,
 			),
 			ShaChainRootDesc: dump.ToKeyDescriptor(
-				single.ShaChainRootDesc,
+				chainParams, single.ShaChainRootDesc,
 			),
 		}
 	}
