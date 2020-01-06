@@ -26,6 +26,7 @@ const (
 
 type config struct {
 	Testnet         bool   `long:"testnet" description:"Set to true if testnet parameters should be used."`
+	Regtest         bool   `long:"regtest" description:"Set to true if regtest parameters should be used."`
 	APIURL          string `long:"apiurl" description:"API URL to use (must be esplora compatible)."`
 	ListChannels    string `long:"listchannels" description:"The channel input is in the format of lncli's listchannels format. Specify '-' to read from stdin."`
 	PendingChannels string `long:"pendingchannels" description:"The channel input is in the format of lncli's pendingchannels format. Specify '-' to read from stdin."`
@@ -205,8 +206,15 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
 }
 
 func setupChainParams(cfg *config) {
-	if cfg.Testnet {
+	switch {
+	case cfg.Testnet:
 		chainParams = &chaincfg.TestNet3Params
+
+	case cfg.Regtest:
+		chainParams = &chaincfg.RegressionNetParams
+
+	default:
+		chainParams = &chaincfg.MainNetParams
 	}
 }
 
