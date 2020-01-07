@@ -58,7 +58,7 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 	log.Infof("Checking shachain root of %d channels, this might take a "+
 		"while.", len(multi.StaticBackups))
 	fixedChannels := 0
-	for _, single := range multi.StaticBackups {
+	for idx, single := range multi.StaticBackups {
 		err := ring.CheckDescriptor(single.ShaChainRootDesc)
 		switch err {
 		case nil:
@@ -77,7 +77,7 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 			if err != nil {
 				return err
 			}
-			single.ShaChainRootDesc = baseKeyDesc
+			multi.StaticBackups[idx].ShaChainRootDesc = baseKeyDesc
 			fixedChannels++
 
 		default:
