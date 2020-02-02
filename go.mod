@@ -5,6 +5,8 @@ require (
 	github.com/Yawning/aez v0.0.0-20180408160647-ec7426b44926 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422
+	github.com/btcsuite/btcwallet v0.11.0
+	github.com/btcsuite/btcwallet/walletdb v1.1.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/jessevdk/go-flags v1.4.0

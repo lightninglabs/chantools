@@ -102,12 +102,19 @@ func runCommandParser() error {
 	_, _ = parser.AddCommand(
 		"fixoldbackup", "Fixes an old channel.backup file that is "+
 			"affected by the lnd issue #3881 (unable to derive "+
-			"shachain root key).", "", &fixOldBackupCommand{})
+			"shachain root key).", "", &fixOldBackupCommand{},
+	)
 	_, _ = parser.AddCommand(
 		"genimportscript", "Generate a script containing the on-chain "+
 			"keys of an lnd wallet that can be imported into "+
 			"other software like bitcoind.", "",
-		&genImportScriptCommand{})
+		&genImportScriptCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"walletinfo", "Shows relevant information about an lnd "+
+			"wallet.db file and optionally extracts the BIP32 HD "+
+			"root key.", "", &walletInfoCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
@@ -216,6 +223,27 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, time.Time, error) {
 	return rootKey, cipherSeed.BirthdayTime(), nil
 }
 
+func passwordFromConsole(userQuery string) ([]byte, error) {
+	// Read from terminal (if there is one).
+	if terminal.IsTerminal(syscall.Stdin) {
+		fmt.Print(userQuery)
+		pw, err := terminal.ReadPassword(syscall.Stdin)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println()
+		return pw, nil
+	}
+
+	// Read from stdin as a fallback.
+	reader := bufio.NewReader(os.Stdin)
+	pw, err := reader.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	return pw, nil
+}
+
 func setupChainParams(cfg *config) {
 	switch {
 	case cfg.Testnet:
@@ -239,4 +267,8 @@ func setupLogging() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func noConsole() ([]byte, error) {
+	return nil, fmt.Errorf("wallet db requires console access")
 }

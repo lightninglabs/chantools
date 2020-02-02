@@ -16,17 +16,19 @@
   + [showrootkey](#showrootkey)
   + [summary](#summary)
   + [sweeptimelock](#sweeptimelock)
+  + [walletinfo](#walletinfo)
 
 This tool provides helper functions that can be used to rescue funds locked in
-lnd channels in case lnd itself cannot run properly any more.
+`lnd` channels in case `lnd` itself cannot run properly any more.
 
 **WARNING**: This tool was specifically built for a certain rescue operation and
 might not be well-suited for your use case. Or not all edge cases for your needs
 are coded properly. Please look at the code to understand what it does before
 you use it for anything serious.
 
-**WARNING 2**: This tool will query public block explorer APIs, your privacy
-might not be preserved. Use at your own risk.
+**WARNING 2**: This tool will query public block explorer APIs for some of the
+commands, your privacy might not be preserved. Use at your own risk or supply
+a private API URL with `--apiurl`.
 
 ## Installation
 
@@ -66,6 +68,7 @@ Available commands:
   showrootkey      Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
   summary          Compile a summary about the current state of channels.
   sweeptimelock    Sweep the force-closed state after the time lock has expired.
+  walletinfo       Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
 ```
 
 ## Commands
@@ -145,7 +148,7 @@ Usage:
           --discard=     A comma separated list of channel funding outpoints (format <fundingTXID>:<index>) to remove from the backup file.
 ```
 
-Filter an lnd `channel.backup` file by removing certain channels (identified by
+Filter an `lnd` `channel.backup` file by removing certain channels (identified by
 their funding transaction outpoints). 
 
 Example command:
@@ -167,7 +170,7 @@ Usage:
           --multi_file=  The lnd channel.backup file to fix.
 ```
 
-Fixes an old channel.backup file that is affected by the lnd issue
+Fixes an old channel.backup file that is affected by the `lnd` issue
 [#3881](https://github.com/lightningnetwork/lnd/issues/3881) (<code>[lncli]
 unable to restore chan backups: rpc error: code = Unknown desc = unable
 to unpack chan backup: unable to derive shachain root key: unable to derive
@@ -229,7 +232,7 @@ Usage:
 ```
 
 Generates a script that contains all on-chain private (or public) keys derived
-from an lnd 24 word aezeed wallet. That script can then be imported into other
+from an `lnd` 24 word aezeed wallet. That script can then be imported into other
 software like bitcoind.
 
 The following script formats are currently supported:
@@ -240,6 +243,8 @@ The following script formats are currently supported:
   `bitcoin-cli importpubkey` command. That means, only the public keys are 
   imported into `bitcoind` to watch the UTXOs of those keys. The funds cannot be
   spent that way as they are watch-only.
+* `bitcoin-importwallet`: Creates a text output that is compatible with
+  `bitcoind`'s `importwallet command.
 
 Example command:
 
@@ -277,7 +282,7 @@ chantools --fromsummary results/summary-xxxx-yyyy.json \
 
 ### showrootkey
 
-This command converts the 24 word lnd aezeed phrase and password to the BIP32
+This command converts the 24 word `lnd` aezeed phrase and password to the BIP32
 HD root key that is used as the `rootkey` parameter in other commands of this
 tool.
 
@@ -337,4 +342,31 @@ chantools --fromsummary results/forceclose-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx \
   --publish \
   --sweepaddr bc1q.....
+```
+
+### walletinfo
+
+```text
+Usage:
+  chantools [OPTIONS] walletinfo [walletinfo-OPTIONS]
+
+[walletinfo command options]
+          --walletdb=    The lnd wallet.db file to dump the contents from.
+          --withrootkey  Should the BIP32 HD root key of the wallet be printed to standard out?
+```
+
+Shows some basic information about an `lnd` `wallet.db` file, like the node
+identity the wallet belongs to, how many on-chain addresses are used and, if
+enabled with `--withrootkey` the BIP32 HD root key of the wallet. The latter can
+be useful to recover funds from a wallet if the wallet password is still known
+but the seed was lost. **The 24 word seed phrase itself cannot be extracted** 
+because it is hashed into the extended HD root key before storing it in the
+`wallet.db`.
+
+Example command:
+
+```bash
+chantools walletinfo \
+  --walletdb ~/.lnd/data/chain/bitcoin/mainnet/wallet.db \
+  --withrootkey
 ```

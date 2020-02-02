@@ -17,7 +17,7 @@ const (
 
 type genImportScriptCommand struct {
 	RootKey        string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	Format         string `long:"format" description:"The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly."`
+	Format         string `long:"format" description:"The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly, bitcoin-importwallet."`
 	RecoveryWindow uint32 `long:"recoverywindow" description:"The number of keys to scan per internal/external branch. The output will consist of double this amount of keys. (default 2500)"`
 	RescanFrom     uint32 `long:"rescanfrom" description:"The block number to rescan from. Will be set automatically from the wallet birthday if the lnd 24 word aezeed is entered. (default 500000)"`
 }
@@ -55,13 +55,30 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 		c.RescanFrom = defaultRescanFrom
 	}
 
-	// Determine the format.
-	printFn := printBitcoinCli
-	if c.Format == "bitcoin-cli-watchonly" {
-		printFn = printBitcoinCliWatchOnly
-	}
+	fmt.Printf("# Wallet dump created by chantools on %s\n",
+		time.Now().UTC())
 
-	fmt.Println("# Paste the following lines into a command line window.")
+	// Determine the format.
+	var printFn func(*hdkeychain.ExtendedKey, uint32, uint32) error
+	switch c.Format {
+	default:
+		fallthrough
+
+	case "bitcoin-cli":
+		printFn = printBitcoinCli
+		fmt.Println("# Paste the following lines into a command line " +
+			"window.")
+
+	case "bitcoin-cli-watchonly":
+		printFn = printBitcoinCliWatchOnly
+		fmt.Println("# Paste the following lines into a command line " +
+			"window.")
+
+	case "bitcoin-importwallet":
+		printFn = printBitcoinImportWallet
+		fmt.Println("# Save this output to a file and use the " +
+			"importwallet command of bitcoin core.")
+	}
 
 	// External branch first (m/84'/<coinType>'/0'/0/x).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
@@ -103,10 +120,10 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 	return nil
 }
 
-func printBitcoinCli(derivedKey *hdkeychain.ExtendedKey, branch,
+func printBitcoinCli(hdKey *hdkeychain.ExtendedKey, branch,
 	index uint32) error {
 
-	privKey, err := derivedKey.ECPrivKey()
+	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
 		return fmt.Errorf("could not derive private key: %v",
 			err)
@@ -115,25 +132,55 @@ func printBitcoinCli(derivedKey *hdkeychain.ExtendedKey, branch,
 	if err != nil {
 		return fmt.Errorf("could not encode WIF: %v", err)
 	}
-
 	fmt.Printf("bitcoin-cli importprivkey %s \"m/84'/%d'/0'/%d/%d/"+
 		"\" false\n", wif.String(), chainParams.HDCoinType, branch,
 		index)
 	return nil
 }
 
-func printBitcoinCliWatchOnly(derivedKey *hdkeychain.ExtendedKey, branch,
+func printBitcoinCliWatchOnly(hdKey *hdkeychain.ExtendedKey, branch,
 	index uint32) error {
 
-	pubKey, err := derivedKey.ECPubKey()
+	pubKey, err := hdKey.ECPubKey()
 	if err != nil {
 		return fmt.Errorf("could not derive private key: %v",
 			err)
 	}
-
 	fmt.Printf("bitcoin-cli importpubkey %x \"m/84'/%d'/0'/%d/%d/"+
 		"\" false\n", pubKey.SerializeCompressed(),
 		chainParams.HDCoinType, branch, index)
+	return nil
+}
+
+func printBitcoinImportWallet(hdKey *hdkeychain.ExtendedKey, branch,
+	index uint32) error {
+
+	privKey, err := hdKey.ECPrivKey()
+	if err != nil {
+		return fmt.Errorf("could not derive private key: %v",
+			err)
+	}
+	wif, err := btcutil.NewWIF(privKey, chainParams, true)
+	if err != nil {
+		return fmt.Errorf("could not encode WIF: %v", err)
+	}
+	pubKey, err := hdKey.ECPubKey()
+	if err != nil {
+		return fmt.Errorf("could not derive private key: %v",
+			err)
+	}
+	addrPubkey, err := btcutil.NewAddressPubKey(
+		pubKey.SerializeCompressed(), chainParams,
+	)
+	if err != nil {
+		return fmt.Errorf("could not create address: %v", err)
+	}
+	addr := addrPubkey.AddressPubKeyHash()
+
+	fmt.Printf("%s 1970-01-01T00:00:01Z label=m/84'/%d'/0'/%d/%d/ "+
+		"# addr=%s", wif.String(), chainParams.HDCoinType, branch,
+		index, addr.EncodeAddress(),
+	)
 	return nil
 }
 
