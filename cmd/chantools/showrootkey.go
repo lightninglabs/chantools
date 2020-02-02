@@ -7,7 +7,7 @@ import (
 type showRootKeyCommand struct{}
 
 func (c *showRootKeyCommand) Execute(_ []string) error {
-	rootKey, err := rootKeyFromConsole()
+	rootKey, _, err := rootKeyFromConsole()
 	if err != nil {
 		return fmt.Errorf("failed to read root key from console: %v",
 			err)

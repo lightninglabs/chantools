@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -95,13 +96,18 @@ func runCommandParser() error {
 			"from the BIP32 HD root key.", "", &deriveKeyCommand{},
 	)
 	_, _ = parser.AddCommand(
-		"filterbackup", "Filter an lnd channel.backup file and " +
+		"filterbackup", "Filter an lnd channel.backup file and "+
 			"remove certain channels.", "", &filterBackupCommand{},
 	)
 	_, _ = parser.AddCommand(
-		"fixoldbackup", "Fixes an old channel.backup file that is " +
-			"affected by the lnd issue #3881 (unable to derive " +
+		"fixoldbackup", "Fixes an old channel.backup file that is "+
+			"affected by the lnd issue #3881 (unable to derive "+
 			"shachain root key).", "", &fixOldBackupCommand{})
+	_, _ = parser.AddCommand(
+		"genimportscript", "Generate a script containing the on-chain "+
+			"keys of an lnd wallet that can be imported into "+
+			"other software like bitcoind.", "",
+		&genImportScriptCommand{})
 
 	_, err := parser.Parse()
 	return err
@@ -158,13 +164,13 @@ func readInput(input string) ([]byte, error) {
 	return ioutil.ReadFile(input)
 }
 
-func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
+func rootKeyFromConsole() (*hdkeychain.ExtendedKey, time.Time, error) {
 	// We'll now prompt the user to enter in their 24-word mnemonic.
 	fmt.Printf("Input your 24-word mnemonic separated by spaces: ")
 	reader := bufio.NewReader(os.Stdin)
 	mnemonicStr, err := reader.ReadString('\n')
 	if err != nil {
-		return nil, err
+		return nil, time.Unix(0, 0), err
 	}
 
 	// We'll trim off extra spaces, and ensure the mnemonic is all
@@ -177,8 +183,8 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
 	fmt.Println()
 
 	if len(cipherSeedMnemonic) != 24 {
-		return nil, fmt.Errorf("wrong cipher seed mnemonic "+
-			"length: got %v words, expecting %v words",
+		return nil, time.Unix(0, 0), fmt.Errorf("wrong cipher seed "+
+			"mnemonic length: got %v words, expecting %v words",
 			len(cipherSeedMnemonic), 24)
 	}
 
@@ -189,7 +195,7 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
 		"your seed doesn't have a passphrase): ")
 	passphrase, err := terminal.ReadPassword(syscall.Stdin)
 	if err != nil {
-		return nil, err
+		return nil, time.Unix(0, 0), err
 	}
 
 	var mnemonic aezeed.Mnemonic
@@ -199,14 +205,15 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, error) {
 	// mnemonic is wrong, or the passphrase is wrong.
 	cipherSeed, err := mnemonic.ToCipherSeed(passphrase)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt seed with passphrase"+
-			": %v", err)
+		return nil, time.Unix(0, 0), fmt.Errorf("failed to decrypt "+
+			"seed with passphrase: %v", err)
 	}
 	rootKey, err := hdkeychain.NewMaster(cipherSeed.Entropy[:], chainParams)
 	if err != nil {
-		return nil, fmt.Errorf("failed to derive master extended key")
+		return nil, time.Unix(0, 0), fmt.Errorf("failed to derive " +
+			"master extended key")
 	}
-	return rootKey, nil
+	return rootKey, cipherSeed.BirthdayTime(), nil
 }
 
 func setupChainParams(cfg *config) {

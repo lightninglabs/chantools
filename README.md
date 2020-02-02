@@ -10,6 +10,7 @@
   + [dumpchannels](#dumpchannels)
   + [filterbackup](#filterbackup)
   + [fixoldbackup](#fixoldbackup)
+  + [genimportscript](#genimportscript)
   + [forceclose](#forceclose)
   + [rescueclosed](#rescueclosed)
   + [showrootkey](#showrootkey)
@@ -54,16 +55,17 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
-  derivekey      Derive a key with a specific derivation path from the BIP32 HD root key.
-  dumpbackup     Dump the content of a channel.backup file.
-  dumpchannels   Dump all channel information from lnd's channel database.
-  filterbackup   Filter an lnd channel.backup file and remove certain channels.
-  fixoldbackup   Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
-  forceclose     Force-close the last state that is in the channel.db provided.
-  rescueclosed   Try finding the private keys for funds that are in outputs of remotely force-closed channels.
-  showrootkey    Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
-  summary        Compile a summary about the current state of channels.
-  sweeptimelock  Sweep the force-closed state after the time lock has expired.
+  derivekey        Derive a key with a specific derivation path from the BIP32 HD root key.
+  dumpbackup       Dump the content of a channel.backup file.
+  dumpchannels     Dump all channel information from lnd's channel database.
+  filterbackup     Filter an lnd channel.backup file and remove certain channels.
+  fixoldbackup     Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
+  forceclose       Force-close the last state that is in the channel.db provided.
+  genimportscript  Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
+  rescueclosed     Try finding the private keys for funds that are in outputs of remotely force-closed channels.
+  showrootkey      Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
+  summary          Compile a summary about the current state of channels.
+  sweeptimelock    Sweep the force-closed state after the time lock has expired.
 ```
 
 ## Commands
@@ -211,6 +213,38 @@ chantools --fromsummary results/summary-xxxx-yyyy.json \
   --channeldb ~/.lnd/data/graph/mainnet/channel.db \
   --rootkey xprvxxxxxxxxxx \
   --publish
+```
+
+### genimportscript
+
+```text
+Usage:
+  chantools [OPTIONS] genimportscript [genimportscript-OPTIONS]
+
+[genimportscript command options]
+          --rootkey=        BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
+          --format=         The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly.
+          --recoverywindow= The number of keys to scan per internal/external branch. The output will consist of double this amount of keys. (default 2500)
+          --rescanfrom=     The block number to rescan from. Will be set automatically from the wallet birthday if the lnd 24 word aezeed is entered. (default 500000)
+```
+
+Generates a script that contains all on-chain private (or public) keys derived
+from an lnd 24 word aezeed wallet. That script can then be imported into other
+software like bitcoind.
+
+The following script formats are currently supported:
+* `bitcoin-cli`: Creates a list of `bitcoin-cli importprivkey` commands that can
+  be used in combination with a `bitcoind` full node to recover the funds locked
+  in those private keys.
+* `bitcoin-cli-watchonly`: Does the same as `bitcoin-cli` but with the
+  `bitcoin-cli importpubkey` command. That means, only the public keys are 
+  imported into `bitcoind` to watch the UTXOs of those keys. The funds cannot be
+  spent that way as they are watch-only.
+
+Example command:
+
+```bash
+chantools genimportscript --format bitcoin-cli --recoverywindow 5000
 ```
 
 ### rescueclosed

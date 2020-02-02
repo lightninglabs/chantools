@@ -38,7 +38,7 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
 
 	default:
-		extendedKey, err = rootKeyFromConsole()
+		extendedKey, _, err = rootKeyFromConsole()
 	}
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)

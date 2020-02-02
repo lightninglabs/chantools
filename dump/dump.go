@@ -3,10 +3,10 @@ package dump
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/chaincfg"
 	"net"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcutil"
 	"github.com/lightningnetwork/lnd/chanbackup"
