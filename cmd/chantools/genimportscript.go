@@ -23,6 +23,8 @@ type genImportScriptCommand struct {
 }
 
 func (c *genImportScriptCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	var (
 		extendedKey *hdkeychain.ExtendedKey
 		err         error

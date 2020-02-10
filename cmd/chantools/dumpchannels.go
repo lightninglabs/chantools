@@ -17,6 +17,8 @@ type dumpChannelsCommand struct {
 }
 
 func (c *dumpChannelsCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
 		return fmt.Errorf("channel DB is required")

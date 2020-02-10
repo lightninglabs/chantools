@@ -27,6 +27,8 @@ type sweepTimeLockCommand struct {
 }
 
 func (c *sweepTimeLockCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	var (
 		extendedKey *hdkeychain.ExtendedKey
 		err         error

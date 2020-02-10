@@ -13,6 +13,8 @@ import (
 type summaryCommand struct{}
 
 func (c *summaryCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	// Parse channel entries from any of the possible input files.
 	entries, err := parseInputType(cfg)
 	if err != nil {

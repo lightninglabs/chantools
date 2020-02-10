@@ -25,6 +25,8 @@ type forceCloseCommand struct {
 }
 
 func (c *forceCloseCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	var (
 		extendedKey *hdkeychain.ExtendedKey
 		err         error

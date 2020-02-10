@@ -7,6 +7,8 @@ import (
 type showRootKeyCommand struct{}
 
 func (c *showRootKeyCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	rootKey, _, err := rootKeyFromConsole()
 	if err != nil {
 		return fmt.Errorf("failed to read root key from console: %v",

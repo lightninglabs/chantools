@@ -45,6 +45,8 @@ type walletInfoCommand struct {
 }
 
 func (c *walletInfoCommand) Execute(_ []string) error {
+	setupChainParams(cfg)
+
 	var (
 		publicWalletPw  = lnwallet.DefaultPublicPassphrase
 		privateWalletPw = lnwallet.DefaultPrivatePassphrase
@@ -109,7 +111,8 @@ func walletInfo(w *wallet.Wallet) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to open key ring for coin type %d: " +
+			"%v", chainParams.HDCoinType, err)
 	}
 	idPrivKey.Curve = btcec.S256()
 	fmt.Printf(
