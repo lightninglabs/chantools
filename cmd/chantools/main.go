@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/lightningnetwork/lnd/chanbackup"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/jessevdk/go-flags"
@@ -114,6 +116,10 @@ func runCommandParser() error {
 		"walletinfo", "Shows relevant information about an lnd "+
 			"wallet.db file and optionally extracts the BIP32 HD "+
 			"root key.", "", &walletInfoCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"chanbackup", "Create a channel.backup file from a channel "+
+			"database.", "", &chanBackupCommand{},
 	)
 
 	_, err := parser.Parse()
@@ -258,7 +264,9 @@ func setupChainParams(cfg *config) {
 }
 
 func setupLogging() {
-	logWriter.RegisterSubLogger("CHAN", log)
+	setSubLogger("CHAN", log)
+	addSubLogger("CHDB", channeldb.UseLogger)
+	addSubLogger("BCKP", chanbackup.UseLogger)
 	err := logWriter.InitLogRotator("./results/chantools.log", 10, 3)
 	if err != nil {
 		panic(err)
@@ -266,6 +274,26 @@ func setupLogging() {
 	err = build.ParseAndSetDebugLevels("trace", logWriter)
 	if err != nil {
 		panic(err)
+	}
+}
+
+// addSubLogger is a helper method to conveniently create and register the
+// logger of one or more sub systems.
+func addSubLogger(subsystem string, useLoggers ...func(btclog.Logger)) {
+	// Create and register just a single logger to prevent them from
+	// overwriting each other internally.
+	logger := build.NewSubLogger(subsystem, logWriter.GenSubLogger)
+	setSubLogger(subsystem, logger, useLoggers...)
+}
+
+// setSubLogger is a helper method to conveniently register the logger of a sub
+// system.
+func setSubLogger(subsystem string, logger btclog.Logger,
+	useLoggers ...func(btclog.Logger)) {
+
+	logWriter.RegisterSubLogger(subsystem, logger)
+	for _, useLogger := range useLoggers {
+		useLogger(logger)
 	}
 }
 

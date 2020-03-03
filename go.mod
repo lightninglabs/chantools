@@ -4,6 +4,7 @@ require (
 	git.schwanenlied.me/yawning/bsaes.git v0.0.0-20190320102049-26d1add596b6 // indirect
 	github.com/Yawning/aez v0.0.0-20180408160647-ec7426b44926 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta
+	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
 	github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422
 	github.com/btcsuite/btcwallet v0.11.0
 	github.com/btcsuite/btcwallet/walletdb v1.1.0

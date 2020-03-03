@@ -5,6 +5,7 @@
 * [Installation](#installation)
 * [Overview](#overview)
 * [Commands](#commands)
+  + [chanbackup](#chanbackup)
   + [derivekey](#derivekey)
   + [dumpbackup](#dumpbackup)
   + [dumpchannels](#dumpchannels)
@@ -57,6 +58,7 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
+  chanbackup       Create a channel.backup file from a channel database.
   derivekey        Derive a key with a specific derivation path from the BIP32 HD root key.
   dumpbackup       Dump the content of a channel.backup file.
   dumpchannels     Dump all channel information from lnd's channel database.
@@ -72,6 +74,28 @@ Available commands:
 ```
 
 ## Commands
+
+### chanbackup
+
+```text
+Usage:
+  chantools [OPTIONS] chanbackup [chanbackup-OPTIONS]
+
+[chanbackup command options]
+          --rootkey=     BIP32 HD root key of the wallet that should be used to create the backup. Leave empty to prompt for lnd 24 word aezeed.
+          --channeldb=   The lnd channel.db file to create the backup from.
+          --multi_file=  The lnd channel.backup file to create.
+```
+
+This command creates a new channel.backup from a channel.db file.
+
+Example command:
+
+```bash
+chantools chanbackup --rootkey xprvxxxxxxxxxx \
+  --channeldb ~/.lnd/data/graph/mainnet/channel.db \
+  --multi_file new_channel_backup.backup 
+```
 
 ### derivekey
 
