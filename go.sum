@@ -36,6 +36,8 @@ github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422 h1:EqnrgSSg0SFWRl
 github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
 github.com/btcsuite/btcwallet v0.11.0 h1:XhwqdhEchy5a0q6R+y3F82roD2hYycPCHovgNyJS08w=
 github.com/btcsuite/btcwallet v0.11.0/go.mod h1:qtPAohN1ioo0pvJt/j7bZM8ANBWlYWVCVFL0kkijs7s=
+github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623 h1:ZuJRjucNsTmlrbZncsqzD0z3EaXrOobCx2I4lc12R4g=
+github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623/go.mod h1:1O1uRHMPXHdwA4/od8nqYqrgclVKp+wtfXUAqHmeRvE=
 github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0 h1:KGHMW5sd7yDdDMkCZ/JpP0KltolFsQcB973brBnfj4c=
 github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0/go.mod h1:VufDts7bd/zs3GV13f/lXc/0lXrPnvxD/NvmpG/FEKU=
 github.com/btcsuite/btcwallet/wallet/txrules v1.0.0 h1:2VsfS0sBedcM5KmDzRMT3+b6xobqWveZGvjb+jFez5w=
@@ -45,6 +47,8 @@ github.com/btcsuite/btcwallet/wallet/txsizes v1.0.0/go.mod h1:pauEU8UuMFiThe5PB3
 github.com/btcsuite/btcwallet/walletdb v1.0.0/go.mod h1:bZTy9RyYZh9fLnSua+/CD48TJtYJSHjjYcSaszuxCCk=
 github.com/btcsuite/btcwallet/walletdb v1.1.0 h1:JHAL7wZ8pX4SULabeAv/wPO9sseRWMGzE80lfVmRw6Y=
 github.com/btcsuite/btcwallet/walletdb v1.1.0/go.mod h1:bZTy9RyYZh9fLnSua+/CD48TJtYJSHjjYcSaszuxCCk=
+github.com/btcsuite/btcwallet/walletdb v1.2.0 h1:E0+M4jHOToAvGWZ27ew5AaDAHDi6fUiXkjUJUnoEOD0=
+github.com/btcsuite/btcwallet/walletdb v1.2.0/go.mod h1:9cwc1Yyg4uvd4ZdfdoMnALji+V9gfWSMfxEdLdR5Vwc=
 github.com/btcsuite/btcwallet/wtxmgr v1.0.0 h1:aIHgViEmZmZfe0tQQqF1xyd2qBqFWxX5vZXkkbjtbeA=
 github.com/btcsuite/btcwallet/wtxmgr v1.0.0/go.mod h1:vc4gBprll6BP0UJ+AIGDaySoc7MdAmZf8kelfNb8CFY=
 github.com/btcsuite/fastsha256 v0.0.0-20160815193821-637e65642941 h1:kij1x2aL7VE6gtx8KMIt8PGPgI5GV9LgtHFG5KaEMPY=
@@ -97,6 +101,12 @@ github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0 h1:Ovs26xHkKqVztRpIrF/92Bcuy
 github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0/go.mod h1:8NvIoxWQoOIhqOTXgfV/d3M/q6VIi02HzZEHgUlZvzk=
 github.com/grpc-ecosystem/grpc-gateway v1.8.6 h1:XvND7+MPP7Jp+JpqSZ7naSl5nVZf6k0LbL1V3EKh0zc=
 github.com/grpc-ecosystem/grpc-gateway v1.8.6/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307100932-44bc5edfb7ff h1:IkvTEtay7QShH/g4XHMKMHMXFVdOAs39UjoGxDV/q10=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307100932-44bc5edfb7ff/go.mod h1:bMBXSbO0hwk9HmZSbI04SDTHxTK/iEOvzfzQkNSIJmU=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307101515-9e007e24ff31 h1:ohlZ5DgcJIMwQ/7grewh9lVb8zDIjUz4ctBHz61LARg=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307101515-9e007e24ff31/go.mod h1:bMBXSbO0hwk9HmZSbI04SDTHxTK/iEOvzfzQkNSIJmU=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307101759-2650bff06031 h1:G7UpjWLXdmFi1gYVidq6c/EJaH/eX0HixAOVxxAT/K0=
+github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307101759-2650bff06031/go.mod h1:bMBXSbO0hwk9HmZSbI04SDTHxTK/iEOvzfzQkNSIJmU=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
 github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpOxQnU=
 github.com/jackpal/gateway v1.0.5 h1:qzXWUJfuMdlLMtt0a3Dgt+xkWQiA5itDEITVJtuSwMc=
@@ -137,6 +147,8 @@ github.com/lightninglabs/neutrino v0.11.0/go.mod h1:CuhF0iuzg9Sp2HO6ZgXgayviFTn1
 github.com/lightninglabs/protobuf-hex-display v1.3.3-0.20191212020323-b444784ce75d/go.mod h1:KDb67YMzoh4eudnzClmvs2FbiLG9vxISmLApUkCa4uI=
 github.com/lightningnetwork/lightning-onion v0.0.0-20191214001659-f34e9dc1651d h1:U50MHOOeL6gR3Ee/l0eMvZMpmRo+ydzmlQuIruCyCsA=
 github.com/lightningnetwork/lightning-onion v0.0.0-20191214001659-f34e9dc1651d/go.mod h1:rigfi6Af/KqsF7Za0hOgcyq2PNH4AN70AaMRxcJkff4=
+github.com/lightningnetwork/lightning-onion v1.0.1 h1:qChGgS5+aPxFeR6JiUsGvanei1bn6WJpYbvosw/1604=
+github.com/lightningnetwork/lightning-onion v1.0.1/go.mod h1:rigfi6Af/KqsF7Za0hOgcyq2PNH4AN70AaMRxcJkff4=
 github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191224233846-f289a39c1a00 h1:kncvRXZdtDGQfSJcPfFngiFiwPXfbVLor82KzlMel/s=
 github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191224233846-f289a39c1a00/go.mod h1:WHK90FD3m2n6OyWzondS7ho0Uhtgfp30Nxvj24lQYX4=
 github.com/lightningnetwork/lnd/cert v1.0.0 h1:J0gtf2UNQX2U+/j5cXnX2wIMSTuJuwrXv7m9qJr2wtw=

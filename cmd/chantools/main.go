@@ -147,7 +147,11 @@ func parseInputType(cfg *config) ([]*dataformat.SummaryEntry, error) {
 		target = &dataformat.SummaryEntryFile{}
 
 	case cfg.FromChannelDB != "":
-		db, err := channeldb.Open(cfg.FromChannelDB)
+		db, err := channeldb.Open(
+			cfg.FromChannelDB,
+			channeldb.OptionSetSyncFreelist(true),
+			channeldb.OptionReadOnly(true),
+		)
 		if err != nil {
 			return nil, fmt.Errorf("error opening channel DB: %v",
 				err)
