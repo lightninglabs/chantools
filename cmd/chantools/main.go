@@ -8,6 +8,7 @@ import (
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"io/ioutil"
 	"os"
+	"path"
 	"strings"
 	"syscall"
 	"time"
@@ -148,7 +149,7 @@ func parseInputType(cfg *config) ([]*dataformat.SummaryEntry, error) {
 
 	case cfg.FromChannelDB != "":
 		db, err := channeldb.Open(
-			cfg.FromChannelDB,
+			path.Dir(cfg.FromChannelDB),
 			channeldb.OptionSetSyncFreelist(true),
 			channeldb.OptionReadOnly(true),
 		)
