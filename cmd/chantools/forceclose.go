@@ -73,7 +73,10 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 		return err
 	}
 	api := &btc.ExplorerAPI{BaseURL: cfg.APIURL}
-	signer := &btc.Signer{ExtendedKey: extendedKey}
+	signer := &btc.Signer{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
+	}
 
 	// Go through all channels in the DB, find the still open ones and
 	// publish their local commitment TX.
