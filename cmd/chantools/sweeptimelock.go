@@ -84,9 +84,8 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	for _, entry := range entries {
 		// Skip entries that can't be swept.
-		if entry.ClosingTX == nil ||
-			entry.ForceClose == nil ||
-			entry.ClosingTX.AllOutsSpent ||
+		if entry.ForceClose == nil ||
+			(entry.ClosingTX != nil && entry.ClosingTX.AllOutsSpent) ||
 			entry.LocalBalance == 0 {
 
 			log.Infof("Not sweeping %s, info missing or all spent",
