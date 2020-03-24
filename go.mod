@@ -8,6 +8,7 @@ require (
 	github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422
 	github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623
 	github.com/btcsuite/btcwallet/walletdb v1.2.0
+	github.com/coreos/bbolt v1.3.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/jessevdk/go-flags v1.4.0

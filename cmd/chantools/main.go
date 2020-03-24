@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/lightningnetwork/lnd/chanbackup"
 	"io/ioutil"
 	"os"
 	"path"
@@ -20,6 +19,7 @@ import (
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/build"
+	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -121,6 +121,12 @@ func runCommandParser() error {
 	_, _ = parser.AddCommand(
 		"chanbackup", "Create a channel.backup file from a channel "+
 			"database.", "", &chanBackupCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"compactdb", "Open a source channel.db database file in safe/"+
+			"read-only mode and copy it to a fresh database, "+
+			"compacting it in the process.", "",
+		&compactDBCommand{},
 	)
 
 	_, err := parser.Parse()

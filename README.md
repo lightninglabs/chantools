@@ -6,6 +6,7 @@
 * [Overview](#overview)
 * [Commands](#commands)
   + [chanbackup](#chanbackup)
+  + [compactdb](#compactdb)
   + [derivekey](#derivekey)
   + [dumpbackup](#dumpbackup)
   + [dumpchannels](#dumpchannels)
@@ -59,6 +60,7 @@ Help Options:
 
 Available commands:
   chanbackup       Create a channel.backup file from a channel database.
+  compactdb        Open a source channel.db database file in safe/read-only mode and copy it to a fresh database, compacting it in the process.
   derivekey        Derive a key with a specific derivation path from the BIP32 HD root key.
   dumpbackup       Dump the content of a channel.backup file.
   dumpchannels     Dump all channel information from lnd's channel database.
@@ -95,6 +97,28 @@ Example command:
 chantools chanbackup --rootkey xprvxxxxxxxxxx \
   --channeldb ~/.lnd/data/graph/mainnet/channel.db \
   --multi_file new_channel_backup.backup 
+```
+
+### compactdb
+
+```text
+Usage:
+  chantools [OPTIONS] compactdb [compactdb-OPTIONS]
+
+[compactdb command options]
+          --txmaxsize=   Maximum transaction size. (default 65536)
+          --sourcedb=    The lnd channel.db file to create the database backup from.
+          --destdb=      The lnd new channel.db file to copy the compacted database to.
+```
+
+This command opens a database in read-only mode and tries to create a copy of it
+to a destination file, compacting it in the process.
+
+Example command:
+
+```bash
+chantools compactdb --sourcedb ~/.lnd/data/graph/mainnet/channel.db \
+  --destdb ./results/compacted.db
 ```
 
 ### derivekey
