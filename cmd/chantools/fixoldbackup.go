@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
 )
@@ -40,7 +40,7 @@ func (c *fixOldBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("backup file is required")
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
-	keyRing := &btc.HDKeyRing{
+	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
@@ -48,7 +48,7 @@ func (c *fixOldBackupCommand) Execute(_ []string) error {
 }
 
 func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
-	ring *btc.HDKeyRing) error {
+	ring *lnd.HDKeyRing) error {
 
 	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {

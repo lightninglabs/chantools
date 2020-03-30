@@ -14,6 +14,7 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 )
@@ -49,7 +50,7 @@ func (c *forceCloseCommand) Execute(_ []string) error {
 		return fmt.Errorf("rescue DB is required")
 	}
 	db, err := channeldb.Open(
-		path.Dir(c.ChannelDB),channeldb.OptionSetSyncFreelist(true),
+		path.Dir(c.ChannelDB), channeldb.OptionSetSyncFreelist(true),
 		channeldb.OptionReadOnly(true),
 	)
 	if err != nil {
@@ -73,7 +74,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 		return err
 	}
 	api := &btc.ExplorerAPI{BaseURL: cfg.APIURL}
-	signer := &btc.Signer{
+	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
@@ -103,7 +104,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 		}
 
 		// Create signed transaction.
-		lc := &btc.LightningChannel{
+		lc := &lnd.LightningChannel{
 			LocalChanCfg:  channel.LocalChanCfg,
 			RemoteChanCfg: channel.RemoteChanCfg,
 			ChannelState:  channel,

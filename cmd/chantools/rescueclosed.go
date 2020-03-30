@@ -12,8 +12,8 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -197,10 +197,10 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 	cache = make([]*cacheEntry, cacheSize)
 
 	for i := 0; i < cacheSize; i++ {
-		key, err := btc.DeriveChildren(extendedKey, []uint32{
-			btc.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
-			btc.HardenedKeyStart + chainParams.HDCoinType,
-			btc.HardenedKeyStart +
+		key, err := lnd.DeriveChildren(extendedKey, []uint32{
+			lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+			lnd.HardenedKeyStart + chainParams.HDCoinType,
+			lnd.HardenedKeyStart +
 				uint32(keychain.KeyFamilyPaymentBase),
 			0,
 			uint32(i),

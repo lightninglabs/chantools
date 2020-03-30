@@ -111,7 +111,7 @@ func walletInfo(w *wallet.Wallet) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("unable to open key ring for coin type %d: " +
+		return fmt.Errorf("unable to open key ring for coin type %d: "+
 			"%v", chainParams.HDCoinType, err)
 	}
 	idPrivKey.Curve = btcec.S256()

@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 )
 
@@ -72,7 +73,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	publish bool) error {
 
 	// Create signer and transaction template.
-	signer := &btc.Signer{
+	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}

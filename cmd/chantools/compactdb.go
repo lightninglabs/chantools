@@ -65,7 +65,9 @@ func (c *compactDBCommand) compact(dst, src *bbolt.DB) error {
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	if err := c.walk(src, func(keys [][]byte, k, v []byte, seq uint64) error {
 		// On each key/value, check if we have exceeded tx size.
@@ -166,9 +168,9 @@ func (c *compactDBCommand) walkBucket(b *bbolt.Bucket, keypath [][]byte,
 		if v == nil {
 			bkt := b.Bucket(k)
 			if bkt == nil {
-				log.Warnf("Could not read bucket '%s' (full " +
-					"path '%s') database is likely " +
-					"corrupted. Continuing anyway but " +
+				log.Warnf("Could not read bucket '%s' (full "+
+					"path '%s') database is likely "+
+					"corrupted. Continuing anyway but "+
 					"skipping corrupt bucket.", k, keypath)
 				return nil
 			}

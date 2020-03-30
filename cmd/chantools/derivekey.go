@@ -5,7 +5,7 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
+	"github.com/guggero/chantools/lnd"
 )
 
 type deriveKeyCommand struct {
@@ -41,11 +41,11 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	neuter bool) error {
 
 	fmt.Printf("Deriving path %s for network %s.\n", path, chainParams.Name)
-	parsedPath, err := btc.ParsePath(path)
+	parsedPath, err := lnd.ParsePath(path)
 	if err != nil {
 		return fmt.Errorf("could not parse derivation path: %v", err)
 	}
-	derivedKey, err := btc.DeriveChildren(extendedKey, parsedPath)
+	derivedKey, err := lnd.DeriveChildren(extendedKey, parsedPath)
 	if err != nil {
 		return fmt.Errorf("could not derive children: %v", err)
 	}

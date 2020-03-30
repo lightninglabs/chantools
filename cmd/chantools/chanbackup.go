@@ -3,13 +3,13 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/guggero/chantools/btc"
-	"github.com/lightningnetwork/lnd/chanbackup"
-	"github.com/lightningnetwork/lnd/keychain"
 	"path"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/lnd"
+	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/keychain"
 )
 
 type chanBackupCommand struct {
@@ -55,7 +55,7 @@ func (c *chanBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
-	keyRing := &btc.HDKeyRing{
+	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
@@ -70,7 +70,7 @@ func createChannelBackup(db *channeldb.DB, multiFile *chanbackup.MultiFile,
 		return fmt.Errorf("error extracting channel backup: %v", err)
 	}
 	multi := &chanbackup.Multi{
-		Version: chanbackup.DefaultMultiVersion,
+		Version:       chanbackup.DefaultMultiVersion,
 		StaticBackups: singles,
 	}
 	var b bytes.Buffer

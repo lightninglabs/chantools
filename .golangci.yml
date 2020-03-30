@@ -21,6 +21,7 @@ linters:
     - gosec
     - funlen
     - maligned
+    - interfacer
 
 issues:
   exclude-rules:

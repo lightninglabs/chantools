@@ -7,7 +7,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
+	"github.com/guggero/chantools/lnd"
 )
 
 const (
@@ -84,10 +84,10 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 
 	// External branch first (m/84'/<coinType>'/0'/0/x).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		derivedKey, err := btc.DeriveChildren(extendedKey, []uint32{
-			btc.HardenedKeyStart + uint32(84),
-			btc.HardenedKeyStart + chainParams.HDCoinType,
-			btc.HardenedKeyStart + uint32(0),
+		derivedKey, err := lnd.DeriveChildren(extendedKey, []uint32{
+			lnd.HardenedKeyStart + uint32(84),
+			lnd.HardenedKeyStart + chainParams.HDCoinType,
+			lnd.HardenedKeyStart + uint32(0),
 			0,
 			i,
 		})
@@ -102,10 +102,10 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 
 	// Now the internal branch (m/84'/<coinType>'/0'/1/x).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		derivedKey, err := btc.DeriveChildren(extendedKey, []uint32{
-			btc.HardenedKeyStart + uint32(84),
-			btc.HardenedKeyStart + chainParams.HDCoinType,
-			btc.HardenedKeyStart + uint32(0),
+		derivedKey, err := lnd.DeriveChildren(extendedKey, []uint32{
+			lnd.HardenedKeyStart + uint32(84),
+			lnd.HardenedKeyStart + chainParams.HDCoinType,
+			lnd.HardenedKeyStart + uint32(0),
 			1,
 			i,
 		})
