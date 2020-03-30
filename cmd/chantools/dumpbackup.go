@@ -55,34 +55,9 @@ func dumpChannelBackup(multiFile *chanbackup.MultiFile,
 	if err != nil {
 		return fmt.Errorf("could not extract multi file: %v", err)
 	}
-	dumpSingles := make([]dump.BackupSingle, len(multi.StaticBackups))
-	for idx, single := range multi.StaticBackups {
-		dumpSingles[idx] = dump.BackupSingle{
-			Version:         single.Version,
-			IsInitiator:     single.IsInitiator,
-			ChainHash:       single.ChainHash.String(),
-			FundingOutpoint: single.FundingOutpoint.String(),
-			ShortChannelID:  single.ShortChannelID,
-			RemoteNodePub: dump.PubKeyToString(
-				single.RemoteNodePub,
-			),
-			Addresses: single.Addresses,
-			Capacity:  single.Capacity,
-			LocalChanCfg: dump.ToChannelConfig(
-				chainParams, single.LocalChanCfg,
-			),
-			RemoteChanCfg: dump.ToChannelConfig(
-				chainParams, single.RemoteChanCfg,
-			),
-			ShaChainRootDesc: dump.ToKeyDescriptor(
-				chainParams, single.ShaChainRootDesc,
-			),
-		}
-	}
-
 	spew.Dump(dump.BackupMulti{
 		Version:       multi.Version,
-		StaticBackups: dumpSingles,
+		StaticBackups: dump.BackupDump(multi, chainParams),
 	})
 	return nil
 }

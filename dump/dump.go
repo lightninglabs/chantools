@@ -1,8 +1,10 @@
 package dump
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/lightningnetwork/lnd/input"
 	"net"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -88,6 +90,98 @@ type ChannelConfig struct {
 type KeyDescriptor struct {
 	Path   string
 	PubKey string
+}
+
+// ChannelDump converts the channels in the given channel DB into a dumpable
+// format.
+func ChannelDump(channels []*channeldb.OpenChannel, params *chaincfg.Params) (
+	[]OpenChannel, error) {
+
+	dumpChannels := make([]OpenChannel, len(channels))
+	for idx, channel := range channels {
+		var buf bytes.Buffer
+		if channel.FundingTxn != nil {
+			err := channel.FundingTxn.Serialize(&buf)
+			if err != nil {
+				return nil, err
+			}
+		}
+		revPreimage, err := channel.RevocationProducer.AtIndex(
+			channel.LocalCommitment.CommitHeight,
+		)
+		if err != nil {
+			return nil, err
+		}
+		perCommitPoint := input.ComputeCommitmentPoint(revPreimage[:])
+
+		dumpChannels[idx] = OpenChannel{
+			ChanType:               channel.ChanType,
+			ChainHash:              channel.ChainHash,
+			FundingOutpoint:        channel.FundingOutpoint.String(),
+			ShortChannelID:         channel.ShortChannelID,
+			IsPending:              channel.IsPending,
+			IsInitiator:            channel.IsInitiator,
+			ChanStatus:             channel.ChanStatus(),
+			FundingBroadcastHeight: channel.FundingBroadcastHeight,
+			NumConfsRequired:       channel.NumConfsRequired,
+			ChannelFlags:           channel.ChannelFlags,
+			IdentityPub: PubKeyToString(
+				channel.IdentityPub,
+			),
+			Capacity:          channel.Capacity,
+			TotalMSatSent:     channel.TotalMSatSent,
+			TotalMSatReceived: channel.TotalMSatReceived,
+			PerCommitPoint:    PubKeyToString(perCommitPoint),
+			LocalChanCfg: ToChannelConfig(
+				params, channel.LocalChanCfg,
+			),
+			RemoteChanCfg: ToChannelConfig(
+				params, channel.RemoteChanCfg,
+			),
+			LocalCommitment:  channel.LocalCommitment,
+			RemoteCommitment: channel.RemoteCommitment,
+			RemoteCurrentRevocation: PubKeyToString(
+				channel.RemoteCurrentRevocation,
+			),
+			RemoteNextRevocation: PubKeyToString(
+				channel.RemoteNextRevocation,
+			),
+			FundingTxn:           hex.EncodeToString(buf.Bytes()),
+			LocalShutdownScript:  channel.LocalShutdownScript,
+			RemoteShutdownScript: channel.RemoteShutdownScript,
+		}
+	}
+	return dumpChannels, nil
+}
+
+// BackupDump converts the given multi backup into a dumpable format.
+func BackupDump(multi *chanbackup.Multi, params *chaincfg.Params) []BackupSingle {
+
+	dumpSingles := make([]BackupSingle, len(multi.StaticBackups))
+	for idx, single := range multi.StaticBackups {
+		dumpSingles[idx] = BackupSingle{
+			Version:         single.Version,
+			IsInitiator:     single.IsInitiator,
+			ChainHash:       single.ChainHash.String(),
+			FundingOutpoint: single.FundingOutpoint.String(),
+			ShortChannelID:  single.ShortChannelID,
+			RemoteNodePub: PubKeyToString(
+				single.RemoteNodePub,
+			),
+			Addresses: single.Addresses,
+			Capacity:  single.Capacity,
+			LocalChanCfg: ToChannelConfig(
+				params, single.LocalChanCfg,
+			),
+			RemoteChanCfg: ToChannelConfig(
+				params, single.RemoteChanCfg,
+			),
+			ShaChainRootDesc: ToKeyDescriptor(
+				params, single.ShaChainRootDesc,
+			),
+		}
+	}
+	return dumpSingles
 }
 
 func ToChannelConfig(params *chaincfg.Params,

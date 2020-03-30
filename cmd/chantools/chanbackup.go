@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"path"
 
@@ -9,7 +8,6 @@ import (
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
-	"github.com/lightningnetwork/lnd/keychain"
 )
 
 type chanBackupCommand struct {
@@ -59,28 +57,5 @@ func (c *chanBackupCommand) Execute(_ []string) error {
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	return createChannelBackup(db, multiFile, keyRing)
-}
-
-func createChannelBackup(db *channeldb.DB, multiFile *chanbackup.MultiFile,
-	ring keychain.KeyRing) error {
-
-	singles, err := chanbackup.FetchStaticChanBackups(db)
-	if err != nil {
-		return fmt.Errorf("error extracting channel backup: %v", err)
-	}
-	multi := &chanbackup.Multi{
-		Version:       chanbackup.DefaultMultiVersion,
-		StaticBackups: singles,
-	}
-	var b bytes.Buffer
-	err = multi.PackToWriter(&b, ring)
-	if err != nil {
-		return fmt.Errorf("unable to pack backup: %v", err)
-	}
-	err = multiFile.UpdateAndSwap(b.Bytes())
-	if err != nil {
-		return fmt.Errorf("unable to write backup file: %v", err)
-	}
-	return nil
+	return lnd.CreateChannelBackup(db, multiFile, keyRing)
 }

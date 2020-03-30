@@ -2,6 +2,8 @@ package lnd
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcutil"
 	"strconv"
 	"strings"
 
@@ -55,6 +57,40 @@ func ParsePath(path string) ([]uint32, error) {
 		indices[i-1] = index + uint32(parsed)
 	}
 	return indices, nil
+}
+
+// DeriveKey derives the public key and private key in the WIF format for a
+// given key path of the extended key.
+func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
+	params *chaincfg.Params) (*btcec.PublicKey, *btcutil.WIF, error) {
+
+	parsedPath, err := ParsePath(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not parse derivation path: "+
+			"%v", err)
+	}
+	derivedKey, err := DeriveChildren(extendedKey, parsedPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not derive children: %v",
+			err)
+	}
+	pubKey, err := derivedKey.ECPubKey()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not derive public key: %v",
+			err)
+	}
+
+	privKey, err := derivedKey.ECPrivKey()
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not derive private key: %v",
+			err)
+	}
+	wif, err := btcutil.NewWIF(privKey, params, true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not encode WIF: %v", err)
+	}
+
+	return pubKey, wif, nil
 }
 
 type HDKeyRing struct {
