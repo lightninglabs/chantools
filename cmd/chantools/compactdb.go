@@ -165,6 +165,13 @@ func (c *compactDBCommand) walkBucket(b *bbolt.Bucket, keypath [][]byte,
 	return b.ForEach(func(k, v []byte) error {
 		if v == nil {
 			bkt := b.Bucket(k)
+			if bkt == nil {
+				log.Warnf("Could not read bucket '%s' (full " +
+					"path '%s') database is likely " +
+					"corrupted. Continuing anyway but " +
+					"skipping corrupt bucket.", k, keypath)
+				return nil
+			}
 			return c.walkBucket(
 				bkt, keypath, k, nil, bkt.Sequence(), fn,
 			)
