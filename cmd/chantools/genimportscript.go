@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -13,11 +15,13 @@ import (
 const (
 	defaultRecoveryWindow = 2500
 	defaultRescanFrom     = 500000
+	defaultDerivationPath = "m/84'/0'/0'"
 )
 
 type genImportScriptCommand struct {
 	RootKey        string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	Format         string `long:"format" description:"The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly, bitcoin-importwallet."`
+	DerivationPath string `long:"derivationpath" description:"The first levels of the derivation path before any internal/external branch. (default m/84'/0'/0')"`
 	RecoveryWindow uint32 `long:"recoverywindow" description:"The number of keys to scan per internal/external branch. The output will consist of double this amount of keys. (default 2500)"`
 	RescanFrom     uint32 `long:"rescanfrom" description:"The block number to rescan from. Will be set automatically from the wallet birthday if the lnd 24 word aezeed is entered. (default 500000)"`
 }
@@ -56,12 +60,39 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 	if c.RescanFrom == 0 {
 		c.RescanFrom = defaultRescanFrom
 	}
+	if c.DerivationPath == "" {
+		c.DerivationPath = defaultDerivationPath
+	}
+
+	// Process derivation path
+	levels := strings.Split(c.DerivationPath, "/")
+	if len(levels) == 0 || levels[0] != "m" {
+		return fmt.Errorf("error reading derivationpath: path \"%s\" not in "+
+			"correct format, e.g. \"m/purpose'/coin_type'/account'\"", c.DerivationPath)
+	}
+	levels = levels[1:] // removes masterseed purposed "m"
+
+	derivationPath := make([]uint32, len(levels))
+	for i := range levels {
+		unHardened := strings.TrimSuffix(levels[i], "'")
+		d, err := strconv.Atoi(unHardened)
+		if err != nil {
+			return fmt.Errorf("error reading derivationpath: <%s> is not a valid "+
+				"derivation", unHardened)
+		}
+
+		if levels[i] == unHardened {
+			derivationPath[i] = uint32(d)
+		} else {
+			derivationPath[i] = lnd.HardenedKeyStart + uint32(d)
+		}
+	}
 
 	fmt.Printf("# Wallet dump created by chantools on %s\n",
 		time.Now().UTC())
 
 	// Determine the format.
-	var printFn func(*hdkeychain.ExtendedKey, uint32, uint32) error
+	var printFn func(*hdkeychain.ExtendedKey, string, uint32, uint32) error
 	switch c.Format {
 	default:
 		fallthrough
@@ -82,37 +113,27 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 			"importwallet command of bitcoin core.")
 	}
 
-	// External branch first (m/84'/<coinType>'/0'/0/x).
+	// External branch first (<DerivationPath>/0/i).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		derivedKey, err := lnd.DeriveChildren(extendedKey, []uint32{
-			lnd.HardenedKeyStart + uint32(84),
-			lnd.HardenedKeyStart + chainParams.HDCoinType,
-			lnd.HardenedKeyStart + uint32(0),
-			0,
-			i,
-		})
+		path := append(derivationPath, []uint32{0, i}...)
+		derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 		if err != nil {
 			return err
 		}
-		err = printFn(derivedKey, 0, i)
+		err = printFn(derivedKey, c.DerivationPath, 0, i)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Now the internal branch (m/84'/<coinType>'/0'/1/x).
+	// Now the internal branch (<DerivationPath>/1/i).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		derivedKey, err := lnd.DeriveChildren(extendedKey, []uint32{
-			lnd.HardenedKeyStart + uint32(84),
-			lnd.HardenedKeyStart + chainParams.HDCoinType,
-			lnd.HardenedKeyStart + uint32(0),
-			1,
-			i,
-		})
+		path := append(derivationPath, []uint32{1, i}...)
+		derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 		if err != nil {
 			return err
 		}
-		err = printFn(derivedKey, 1, i)
+		err = printFn(derivedKey, c.DerivationPath, 1, i)
 		if err != nil {
 			return err
 		}
@@ -122,8 +143,8 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 	return nil
 }
 
-func printBitcoinCli(hdKey *hdkeychain.ExtendedKey, branch,
-	index uint32) error {
+func printBitcoinCli(hdKey *hdkeychain.ExtendedKey, path string,
+	branch, index uint32) error {
 
 	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
@@ -134,28 +155,28 @@ func printBitcoinCli(hdKey *hdkeychain.ExtendedKey, branch,
 	if err != nil {
 		return fmt.Errorf("could not encode WIF: %v", err)
 	}
-	fmt.Printf("bitcoin-cli importprivkey %s \"m/84'/%d'/0'/%d/%d/"+
-		"\" false\n", wif.String(), chainParams.HDCoinType, branch,
+	fmt.Printf("bitcoin-cli importprivkey %s \"%s/%d/%d/"+
+		"\" false\n", wif.String(), path, branch,
 		index)
 	return nil
 }
 
-func printBitcoinCliWatchOnly(hdKey *hdkeychain.ExtendedKey, branch,
-	index uint32) error {
+func printBitcoinCliWatchOnly(hdKey *hdkeychain.ExtendedKey, path string,
+	branch, index uint32) error {
 
 	pubKey, err := hdKey.ECPubKey()
 	if err != nil {
 		return fmt.Errorf("could not derive private key: %v",
 			err)
 	}
-	fmt.Printf("bitcoin-cli importpubkey %x \"m/84'/%d'/0'/%d/%d/"+
+	fmt.Printf("bitcoin-cli importpubkey %x \"%s/%d/%d/"+
 		"\" false\n", pubKey.SerializeCompressed(),
-		chainParams.HDCoinType, branch, index)
+		path, branch, index)
 	return nil
 }
 
-func printBitcoinImportWallet(hdKey *hdkeychain.ExtendedKey, branch,
-	index uint32) error {
+func printBitcoinImportWallet(hdKey *hdkeychain.ExtendedKey, path string,
+	branch, index uint32) error {
 
 	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
@@ -179,9 +200,9 @@ func printBitcoinImportWallet(hdKey *hdkeychain.ExtendedKey, branch,
 	}
 	addr := addrPubkey.AddressPubKeyHash()
 
-	fmt.Printf("%s 1970-01-01T00:00:01Z label=m/84'/%d'/0'/%d/%d/ "+
-		"# addr=%s", wif.String(), chainParams.HDCoinType, branch,
-		index, addr.EncodeAddress(),
+	fmt.Printf("%s 1970-01-01T00:00:01Z label=%s/%d/%d/ "+
+		"# addr=%s\n", wif.String(), path, branch, index,
+		addr.EncodeAddress(),
 	)
 	return nil
 }
