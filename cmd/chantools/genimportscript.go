@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
@@ -64,28 +63,9 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 		c.DerivationPath = defaultDerivationPath
 	}
 
-	// Process derivation path
-	levels := strings.Split(c.DerivationPath, "/")
-	if len(levels) == 0 || levels[0] != "m" {
-		return fmt.Errorf("error reading derivationpath: path \"%s\" not in "+
-			"correct format, e.g. \"m/purpose'/coin_type'/account'\"", c.DerivationPath)
-	}
-	levels = levels[1:] // removes masterseed purposed "m"
-
-	derivationPath := make([]uint32, len(levels))
-	for i := range levels {
-		unHardened := strings.TrimSuffix(levels[i], "'")
-		d, err := strconv.Atoi(unHardened)
-		if err != nil {
-			return fmt.Errorf("error reading derivationpath: <%s> is not a valid "+
-				"derivation", unHardened)
-		}
-
-		if levels[i] == unHardened {
-			derivationPath[i] = uint32(d)
-		} else {
-			derivationPath[i] = lnd.HardenedKeyStart + uint32(d)
-		}
+	derivationPath, err := lnd.ParsePath(c.DerivationPath)
+	if err != nil {
+		return fmt.Errorf("error parsing path: %v", err)
 	}
 
 	fmt.Printf("# Wallet dump created by chantools on %s\n",
@@ -115,7 +95,7 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 
 	// External branch first (<DerivationPath>/0/i).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		path := append(derivationPath, []uint32{0, i}...)
+		path := append(derivationPath, 0, i)
 		derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 		if err != nil {
 			return err
@@ -128,7 +108,7 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 
 	// Now the internal branch (<DerivationPath>/1/i).
 	for i := uint32(0); i < c.RecoveryWindow; i++ {
-		path := append(derivationPath, []uint32{1, i}...)
+		path := append(derivationPath, 1, i)
 		derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 		if err != nil {
 			return err
@@ -192,17 +172,30 @@ func printBitcoinImportWallet(hdKey *hdkeychain.ExtendedKey, path string,
 		return fmt.Errorf("could not derive private key: %v",
 			err)
 	}
-	addrPubkey, err := btcutil.NewAddressPubKey(
-		pubKey.SerializeCompressed(), chainParams,
+	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
+	addrP2PKH, err := btcutil.NewAddressPubKeyHash(hash160, chainParams)
+	if err != nil {
+		return fmt.Errorf("could not create address: %v", err)
+	}
+	addrP2WKH, err := btcutil.NewAddressWitnessPubKeyHash(
+		hash160, chainParams,
 	)
 	if err != nil {
 		return fmt.Errorf("could not create address: %v", err)
 	}
-	addr := addrPubkey.AddressPubKeyHash()
+	script, err := txscript.PayToAddrScript(addrP2WKH)
+	if err != nil {
+		return fmt.Errorf("could not create script: %v", err)
+	}
+	addrNP2WKH, err := btcutil.NewAddressScriptHash(script, chainParams)
+	if err != nil {
+		return fmt.Errorf("could not create address: %v", err)
+	}
 
 	fmt.Printf("%s 1970-01-01T00:00:01Z label=%s/%d/%d/ "+
-		"# addr=%s\n", wif.String(), path, branch, index,
-		addr.EncodeAddress(),
+		"# addr=%s,%s,%s\n", wif.String(), path, branch, index,
+		addrP2PKH.EncodeAddress(), addrNP2WKH.EncodeAddress(),
+		addrP2WKH.EncodeAddress(),
 	)
 	return nil
 }
@@ -214,9 +207,12 @@ func seedBirthdayToBlock(birthdayTimestamp time.Time) uint32 {
 		genesisTimestamp =
 			chaincfg.MainNetParams.GenesisBlock.Header.Timestamp
 
-	case "testnet":
+	case "testnet3":
 		genesisTimestamp =
 			chaincfg.TestNet3Params.GenesisBlock.Header.Timestamp
+
+	case "regtest", "simnet":
+		return 0
 
 	default:
 		panic(fmt.Errorf("unimplemented network %v", chainParams.Name))
