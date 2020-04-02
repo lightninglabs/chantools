@@ -274,7 +274,9 @@ Usage:
 
 [genimportscript command options]
           --rootkey=        BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
-          --format=         The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly.
+          --format=         The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly, bitcoin-importwallet.
+          --lndpaths        Use all derivation paths that lnd uses. Results in a large number of results. Cannot be used in conjunction with --derivationpath.
+          --derivationpath= Use one specific derivation path. Specify the first levels of the derivation path before any internal/external branch. Cannot be used in conjunction with --lndpaths. (default m/84'/0'/0')
           --recoverywindow= The number of keys to scan per internal/external branch. The output will consist of double this amount of keys. (default 2500)
           --rescanfrom=     The block number to rescan from. Will be set automatically from the wallet birthday if the lnd 24 word aezeed is entered. (default 500000)
 ```

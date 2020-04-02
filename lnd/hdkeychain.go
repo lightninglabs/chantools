@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	HardenedKeyStart = uint32(hdkeychain.HardenedKeyStart)
+	HardenedKeyStart            = uint32(hdkeychain.HardenedKeyStart)
+	WalletDefaultDerivationPath = "m/84'/0'/0'"
+	LndDerivationPath           = "m/1017'/%d'/%d'"
 )
 
 func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
@@ -91,6 +93,38 @@ func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	}
 
 	return pubKey, wif, nil
+}
+
+func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
+	mkPath := func(f keychain.KeyFamily) string {
+		return fmt.Sprintf(
+			LndDerivationPath, params.HDCoinType, uint32(f),
+		)
+	}
+	pathStrings := []string{
+		"m/44'/0'/0'",
+		"m/49'/0'/0'",
+		WalletDefaultDerivationPath,
+		mkPath(keychain.KeyFamilyMultiSig),
+		mkPath(keychain.KeyFamilyRevocationBase),
+		mkPath(keychain.KeyFamilyHtlcBase),
+		mkPath(keychain.KeyFamilyPaymentBase),
+		mkPath(keychain.KeyFamilyDelayBase),
+		mkPath(keychain.KeyFamilyRevocationRoot),
+		mkPath(keychain.KeyFamilyNodeKey),
+		mkPath(keychain.KeyFamilyStaticBackup),
+		mkPath(keychain.KeyFamilyTowerSession),
+		mkPath(keychain.KeyFamilyTowerID),
+	}
+	paths := make([][]uint32, len(pathStrings))
+	for idx, path := range pathStrings {
+		p, err := ParsePath(path)
+		if err != nil {
+			return nil, nil, err
+		}
+		paths[idx] = p
+	}
+	return pathStrings, paths, nil
 }
 
 type HDKeyRing struct {
