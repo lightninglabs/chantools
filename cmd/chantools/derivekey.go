@@ -40,14 +40,20 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	neuter bool) error {
 
 	fmt.Printf("Deriving path %s for network %s.\n", path, chainParams.Name)
-	pubKey, wif, err := lnd.DeriveKey(extendedKey, path, chainParams)
+	child, pubKey, wif, err := lnd.DeriveKey(extendedKey, path, chainParams)
 	if err != nil {
 		return fmt.Errorf("could not derive keys: %v", err)
 	}
+	neutered, err := child.Neuter()
+	if err != nil {
+		return fmt.Errorf("could not neuter child key: %v", err)
+	}
 	fmt.Printf("Public key: %x\n", pubKey.SerializeCompressed())
+	fmt.Printf("Extended public key (xpub): %s\n", neutered.String())
 
 	if !neuter {
 		fmt.Printf("Private key (WIF): %s\n", wif.String())
+		fmt.Printf("Extended private key (xprv): %s\n", child.String())
 	}
 
 	return nil

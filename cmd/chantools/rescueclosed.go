@@ -154,9 +154,14 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 }
 
 func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
-	targetPubKeyHash, err := parseAddr(addr)
+	targetPubKeyHash, scriptHash, err := lnd.DecodeAddressHash(
+		addr, chainParams,
+	)
 	if err != nil {
 		return "", fmt.Errorf("error parsing addr: %v", err)
+	}
+	if scriptHash {
+		return "", fmt.Errorf("address must be a P2WPKH address")
 	}
 
 	// Loop through all cached payment base point keys, tweak each of it
@@ -228,31 +233,4 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 
 	}
 	return nil
-}
-
-func parseAddr(addr string) ([]byte, error) {
-	// First parse address to get targetPubKeyHash from it later.
-	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
-	if err != nil {
-		return nil, err
-	}
-
-	var targetPubKeyHash []byte
-	// Make the check on the decoded address according to the active
-	// network (testnet or mainnet only).
-	if !targetAddr.IsForNet(chainParams) {
-		return nil, fmt.Errorf(
-			"address: %v is not valid for this network: %v",
-			targetAddr.String(), chainParams.Name,
-		)
-	}
-
-	// Must be a bech32 native SegWit address.
-	switch targetAddr.(type) {
-	case *btcutil.AddressWitnessPubKeyHash:
-		targetPubKeyHash = targetAddr.ScriptAddress()
-	default:
-		return nil, fmt.Errorf("address: must be a bech32 P2WPKH address")
-	}
-	return targetPubKeyHash, nil
 }

@@ -2,12 +2,12 @@ package lnd
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil"
 	"strconv"
 	"strings"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/keychain"
 )
@@ -64,35 +64,37 @@ func ParsePath(path string) ([]uint32, error) {
 // DeriveKey derives the public key and private key in the WIF format for a
 // given key path of the extended key.
 func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
-	params *chaincfg.Params) (*btcec.PublicKey, *btcutil.WIF, error) {
+	params *chaincfg.Params) (*hdkeychain.ExtendedKey, *btcec.PublicKey,
+	*btcutil.WIF, error) {
 
 	parsedPath, err := ParsePath(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not parse derivation path: "+
-			"%v", err)
+		return nil, nil, nil, fmt.Errorf("could not parse derivation "+
+			"path: %v", err)
 	}
 	derivedKey, err := DeriveChildren(extendedKey, parsedPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not derive children: %v",
-			err)
+		return nil, nil, nil, fmt.Errorf("could not derive children: "+
+			"%v", err)
 	}
 	pubKey, err := derivedKey.ECPubKey()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not derive public key: %v",
-			err)
+		return nil, nil, nil, fmt.Errorf("could not derive public "+
+			"key: %v", err)
 	}
 
 	privKey, err := derivedKey.ECPrivKey()
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not derive private key: %v",
-			err)
+		return nil, nil, nil, fmt.Errorf("could not derive private "+
+			"key: %v", err)
 	}
 	wif, err := btcutil.NewWIF(privKey, params, true)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not encode WIF: %v", err)
+		return nil, nil, nil, fmt.Errorf("could not encode WIF: %v",
+			err)
 	}
 
-	return pubKey, wif, nil
+	return derivedKey, pubKey, wif, nil
 }
 
 func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
@@ -125,6 +127,46 @@ func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 		paths[idx] = p
 	}
 	return pathStrings, paths, nil
+}
+
+// DecodeAddressHash returns the public key or script hash encoded in a native
+// bech32 encoded SegWit address and whether it's a script hash or not.
+func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
+	error) {
+
+	// First parse address to get targetHash from it later.
+	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Make the check on the decoded address according to the active
+	// network (testnet or mainnet only).
+	if !targetAddr.IsForNet(chainParams) {
+		return nil, false, fmt.Errorf(
+			"address: %v is not valid for this network: %v",
+			targetAddr.String(), chainParams.Name,
+		)
+	}
+
+	// Must be a bech32 native SegWit address.
+	var (
+		isScriptHash = false
+		targetHash   []byte
+	)
+	switch targetAddr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		targetHash = targetAddr.ScriptAddress()
+
+	case *btcutil.AddressWitnessScriptHash:
+		isScriptHash = true
+		targetHash = targetAddr.ScriptAddress()
+
+	default:
+		return nil, false, fmt.Errorf("address: must be a bech32 " +
+			"P2WPKH or P2WSH address")
+	}
+	return targetHash, isScriptHash, nil
 }
 
 type HDKeyRing struct {

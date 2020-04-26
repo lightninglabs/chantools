@@ -128,6 +128,11 @@ func runCommandParser() error {
 			"compacting it in the process.", "",
 		&compactDBCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"rescuefunding", "Rescue funds locked in a funding multisig "+
+			"output that never resulted in a proper channel.", "",
+		&rescueFundingCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
@@ -221,6 +226,7 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, time.Time, error) {
 	if err != nil {
 		return nil, time.Unix(0, 0), err
 	}
+	fmt.Println()
 
 	var mnemonic aezeed.Mnemonic
 	copy(mnemonic[:], cipherSeedMnemonic)

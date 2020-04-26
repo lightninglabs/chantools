@@ -65,16 +65,6 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 
 	// Decide what derivation path(s) to use.
 	switch {
-	case c.LndPaths && c.DerivationPath != "":
-		return fmt.Errorf("cannot use --lndpaths and --derivationpath " +
-			"at the same time")
-
-	case c.LndPaths:
-		strPaths, paths, err = lnd.AllDerivationPaths(chainParams)
-		if err != nil {
-			return fmt.Errorf("error getting lnd paths: %v", err)
-		}
-
 	default:
 		c.DerivationPath = lnd.WalletDefaultDerivationPath
 		fallthrough
@@ -86,6 +76,16 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 		}
 		strPaths = []string{c.DerivationPath}
 		paths = [][]uint32{derivationPath}
+
+	case c.LndPaths && c.DerivationPath != "":
+		return fmt.Errorf("cannot use --lndpaths and --derivationpath " +
+			"at the same time")
+
+	case c.LndPaths:
+		strPaths, paths, err = lnd.AllDerivationPaths(chainParams)
+		if err != nil {
+			return fmt.Errorf("error getting lnd paths: %v", err)
+		}
 	}
 
 	exporter := btc.ParseFormat(c.Format)
