@@ -15,7 +15,6 @@
   + [genimportscript](#genimportscript)
   + [forceclose](#forceclose)
   + [rescueclosed](#rescueclosed)
-  + [rescuefunding](#rescuefunding)
   + [showrootkey](#showrootkey)
   + [summary](#summary)
   + [sweeptimelock](#sweeptimelock)
@@ -70,7 +69,6 @@ Available commands:
   forceclose       Force-close the last state that is in the channel.db provided.
   genimportscript  Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
   rescueclosed     Try finding the private keys for funds that are in outputs of remotely force-closed channels.
-  rescuefunding    Rescue funds locked in a funding multisig output that never resulted in a proper channel.
   showrootkey      Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
   summary          Compile a summary about the current state of channels.
   sweeptimelock    Sweep the force-closed state after the time lock has expired.
@@ -331,24 +329,6 @@ chantools --fromsummary results/summary-xxxx-yyyy.json \
   --channeldb ~/.lnd/data/graph/mainnet/channel.db \
   --rootkey xprvxxxxxxxxxx
 ```
-
-### rescuefunding
-
-```text
-Usage:
-  chantools [OPTIONS] rescuefunding [rescuefunding-OPTIONS]
-
-[rescuefunding command options]
-          --rootkey=         BIP32 HD root (m/) key to derive the key for our node from.
-          --othernodepub=    The extended public key (xpub) of the other node's multisig branch (m/1017'/<coin_type>'/0'/0).
-          --fundingaddr=     The bech32 script address of the funding output where the coins to be spent are locked in.
-          --fundingoutpoint= The funding transaction outpoint (<txid>:<txindex>).
-          --fundingamount=   The exact amount in satoshis that is locked in the funding output.
-          --sweepaddr=       The address to sweep the rescued funds to.
-          --satperbyte=      The fee rate to use in satoshis/vByte.
-```
-
-**This command is not fully implemented yet and only listed here as a placeholder.**
 
 ### showrootkey
 

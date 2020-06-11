@@ -128,11 +128,12 @@ func runCommandParser() error {
 			"compacting it in the process.", "",
 		&compactDBCommand{},
 	)
-	_, _ = parser.AddCommand(
-		"rescuefunding", "Rescue funds locked in a funding multisig "+
-			"output that never resulted in a proper channel.", "",
-		&rescueFundingCommand{},
-	)
+	// TODO: uncomment when command is fully implemented.
+	//_, _ = parser.AddCommand(
+	//	"rescuefunding", "Rescue funds locked in a funding multisig "+
+	//		"output that never resulted in a proper channel.", "",
+	//	&rescueFundingCommand{},
+	//)
 
 	_, err := parser.Parse()
 	return err
