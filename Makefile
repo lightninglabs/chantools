@@ -18,9 +18,38 @@ GOINSTALL := GO111MODULE=on go install -v
 GOTEST := GO111MODULE=on go test -v
 XARGS := xargs -L 1
 
+VERSION_TAG = $(shell git describe --tags)
+VERSION_CHECK = @$(call print, "Building master with date version tag")
+
+BUILD_SYSTEM = darwin-386 \
+darwin-amd64 \
+linux-386 \
+linux-amd64 \
+linux-armv6 \
+linux-armv7 \
+linux-arm64 \
+windows-386 \
+windows-amd64 \
+windows-arm
+
+# By default we will build all systems. But with the 'sys' tag, a specific
+# system can be specified. This is useful to release for a subset of
+# systems/architectures.
+ifneq ($(sys),)
+BUILD_SYSTEM = $(sys)
+endif
+
 TEST_FLAGS = -test.timeout=20m
 
 UNIT := $(GOLIST) | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
+LDFLAGS := -X main.Commit=$(shell git describe --tags)
+RELEASE_LDFLAGS := -s -w -buildid= $(LDFLAGS)
+
+GREEN := "\\033[0;32m"
+NC := "\\033[0m"
+define print
+	echo $(GREEN)$1$(NC)
+endef
 
 default: build
 
@@ -34,11 +63,16 @@ unit:
 
 build:
 	@$(call print, "Building chantools.")
-	$(GOBUILD) ./...
+	$(GOBUILD) -ldflags "$(LDFLAGS)" ./...
 
 install:
 	@$(call print, "Installing chantools.")
-	$(GOINSTALL) ./...
+	$(GOINSTALL) -ldflags "$(LDFLAGS)" ./...
+
+release:
+	@$(call print, "Creating release of chantools.")
+	rm -rf chantools-v*
+	./release.sh build-release "$(VERSION_TAG)" "$(BUILD_SYSTEM)" "$(RELEASE_LDFLAGS)"
 
 fmt:
 	@$(call print, "Formatting source.")

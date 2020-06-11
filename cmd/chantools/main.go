@@ -26,6 +26,11 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
+	version       = "0.2.0"
+)
+
+var (
+	Commit = ""
 )
 
 type config struct {
@@ -65,6 +70,8 @@ func runCommandParser() error {
 
 	// Parse command line.
 	parser := flags.NewParser(cfg, flags.Default)
+	
+	log.Infof("chantools version v%s commit %s", version, Commit)
 	_, _ = parser.AddCommand(
 		"summary", "Compile a summary about the current state of "+
 			"channels.", "", &summaryCommand{},
@@ -223,7 +230,7 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, time.Time, error) {
 	// cipher seed.
 	fmt.Printf("Input your cipher seed passphrase (press enter if " +
 		"your seed doesn't have a passphrase): ")
-	passphrase, err := terminal.ReadPassword(syscall.Stdin)
+	passphrase, err := terminal.ReadPassword(int(syscall.Stdin)) // nolint
 	if err != nil {
 		return nil, time.Unix(0, 0), err
 	}
@@ -249,9 +256,9 @@ func rootKeyFromConsole() (*hdkeychain.ExtendedKey, time.Time, error) {
 
 func passwordFromConsole(userQuery string) ([]byte, error) {
 	// Read from terminal (if there is one).
-	if terminal.IsTerminal(syscall.Stdin) {
+	if terminal.IsTerminal(int(syscall.Stdin)) { // nolint
 		fmt.Print(userQuery)
-		pw, err := terminal.ReadPassword(syscall.Stdin)
+		pw, err := terminal.ReadPassword(int(syscall.Stdin)) // nolint
 		if err != nil {
 			return nil, err
 		}
