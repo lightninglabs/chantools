@@ -44,7 +44,9 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 		}
 
 	default:
-		extendedKey, birthday, err = rootKeyFromConsole()
+		extendedKey, birthday, err = lnd.ReadAezeedFromTerminal(
+			chainParams,
+		)
 		if err != nil {
 			return fmt.Errorf("error reading root key: %v", err)
 		}

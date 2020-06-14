@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/guggero/chantools/lnd"
 )
 
 type showRootKeyCommand struct{}
@@ -9,7 +11,7 @@ type showRootKeyCommand struct{}
 func (c *showRootKeyCommand) Execute(_ []string) error {
 	setupChainParams(cfg)
 
-	rootKey, _, err := rootKeyFromConsole()
+	rootKey, _, err := lnd.ReadAezeedFromTerminal(chainParams)
 	if err != nil {
 		return fmt.Errorf("failed to read root key from console: %v",
 			err)
