@@ -147,7 +147,7 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return err
 	}
-	fileName := fmt.Sprintf("results/bruteforce-%s.json",
+	fileName := fmt.Sprintf("results/rescueclosed-%s.json",
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)

@@ -1,0 +1,38 @@
+@startuml
+
+(*) --> "<b>1:</b> Node crashed"
+--> "<b>2:</b> Rescue on-chain balance"
+--> "<b>3:</b> Recover channels using SCB"
+if "Pending/Open\nchannels left?" then
+  -->[yes] "<b>4:</b> Install chantools"
+  if "<b>5:</b> Is channel DB \navailable?" then
+    -->[yes] "<b>5:</b> Create copy of channel DB"
+    --> "<b>6:</b> chantools summary"
+    --> "<b>7:</b> chantools rescueclosed"
+    if "Pending/Open\nchannels left?" then
+      -->[yes] "<b>8:</b> chantools forceclose"
+      --> "<b>9:</b> Wait for timelocks"
+      --> "<b>10:</b> chantools sweeptimelock"
+      if "Pending/Open\nchannels left?" then
+        -->[yes] ===MANUAL===
+      else
+        -->[no] ===DONE===
+      endif
+    else
+      -->[no] ===DONE===
+    endif
+  else
+    -->[no] ===MANUAL===
+    --> "<b>11:</b> Manual intervention necessary"
+    --> (*)
+  endif
+else
+  -->[no] ===DONE===
+  note right
+    Recovery complete
+  end note
+endif
+
+--> (*)
+
+@enduml

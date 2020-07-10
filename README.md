@@ -3,7 +3,7 @@
 ## Index
 
 * [Installation](#installation)
-* [Overview](#overview)
+* [Command overview](#command-overview)
 * [Commands](#commands)
   + [chanbackup](#chanbackup)
   + [compactdb](#compactdb)
@@ -21,27 +21,175 @@
   + [walletinfo](#walletinfo)
 
 This tool provides helper functions that can be used to rescue funds locked in
-`lnd` channels in case `lnd` itself cannot run properly any more.
+`lnd` channels in case `lnd` itself cannot run properly anymore.
 
 **WARNING**: This tool was specifically built for a certain rescue operation and
 might not be well-suited for your use case. Or not all edge cases for your needs
 are coded properly. Please look at the code to understand what it does before
 you use it for anything serious.
 
-**WARNING 2**: This tool will query public block explorer APIs for some of the
+**WARNING 2**: This tool will query public block explorer APIs for some
 commands, your privacy might not be preserved. Use at your own risk or supply
 a private API URL with `--apiurl`.
 
 ## Installation
 
 To install this tool, make sure you have `go 1.13.x` (or later) and `make`
-installed and run the following command:
+installed and run the following commands:
 
 ```bash
+git clone https://github.com/guggero/chantools.git
+cd chantools
 make install
 ```
 
-## Overview
+## Channel recovery scenario
+
+The following flow chart shows the main recovery scenario this tool was built
+for. This scenario assumes that you do have access to the crashed node's seed,
+`channel.backup` file and some state of a `channel.db` file (perhaps from a
+file based backup or the recovered file from the crashed node).
+
+![rescue flow](doc/rescue-flow.png)
+
+**Explanation:**
+
+1. **Node crashed**: For some reason your `lnd` node crashed and isn't starting
+  anymore. If you get errors similar to
+  [this](https://github.com/lightningnetwork/lnd/issues/4449),
+  [this](https://github.com/lightningnetwork/lnd/issues/3473) or
+  [this](https://github.com/lightningnetwork/lnd/issues/4102), it is possible
+  that a simple compaction (a full copy in safe mode) can solve your problem.
+  See [`chantools compactdb`](#compactdb).
+  <br/><br/>
+  If that doesn't work and you need to continue the recovery, make sure you can
+  at least extract the `channel.backup` file and if somehow possible any version
+  of the `channel.db` from the node.
+  <br/><br/>
+  Whatever you do, do **never, ever** replace your `channel.db` file with an old
+  version (from a file based backup) and start your node that way. [Read this
+  explanation why that can lead to loss of funds.](https://github.com/lightningnetwork/lnd/blob/master/docs/safety.md#file-based-backups)
+
+2. **Rescue on-chain balance**: To start the recovery process, we are going to
+  re-create the node from scratch. To make sure we don't overwrite any old data
+  in the process, make sure the old data directory of your node (usually `.lnd`
+  in the user's home directory) is safely moved away (or the whole folder
+  renamed) before continuing.
+  <br/>
+  To start the on-chain recovery, [follow the sub step "Starting On-Chain
+  Recovery" of this guide](https://github.com/lightningnetwork/lnd/blob/master/docs/recovery.md#starting-on-chain-recovery).
+  Don't follow the whole guide, only this single chapter!
+  <br/><br/>
+  This step is completed once the `lncli getinfo` command shows both
+  `"synced_to_chain": true` and `"synced_to_graph": true` which can take several
+  hours depending on the speed of your hardware. **Do not be alarmed** that the
+  `lncli getinfo` command shows 0 channels. This is normal as we haven't started
+  the off-chain recovery yet.
+
+3. **Recover channels using SCB**: Now that the node is fully synced, we can try
+  to recover the channels using the [Static Channel Backups (SCB)](https://github.com/lightningnetwork/lnd/blob/master/docs/safety.md#static-channel-backups-scbs).
+  For this, you need a file called `channel.backup`. Simply run the command
+  `lncli restorechanbackup --multi_file <path-to-your-channel.backup>`. **This
+  will take a while!**. The command itself can take several minutes to complete,
+  depending on the number of channels. The recovery can easily take a day or
+  two as a lot of chain rescanning needs to happen. It is recommended to wait at
+  least one full day. You can watch the progress with the `lncli pendingchannels`
+  command. If the list is empty, congratulations, you've recovered all channels!
+  If the list stays un-changed for several hours, it means not all channels
+  could be restored using this method.
+  [One explanation can be found here.](https://github.com/lightningnetwork/lnd/blob/master/docs/safety.md#zombie-channels)
+
+4. **Install chantools**: To try to recover the remaining channels, we are going
+  to use `chantools`. Simply [follow the installation instructions.](#installation)
+  The recovery can only be continued if you have access to some version of the
+  crashed node's `channel.db`. This could be the latest state as recovered from
+  the crashed file system, or a version from a regular file based backup. If you
+  do not have any version of a channel DB, `chantools` won't be able to help
+  with the recovery. See step 11 for some possible manual steps.
+
+5. **Create copy of channel DB**: To make sure we can read the channel DB, we
+  are going to create a copy in safe mode (called compaction). Simply run
+  <br/><br/>
+  `chantools compactdb --sourcedb <recovered-channel.db> --destdb ./results/compacted.db`
+  <br/><br/>
+  We are going to assume that the compacted copy of the channel DB is located in
+  `./results/compacted.db` in the following commands.
+
+6. **chantools summary**: First, `chantools` needs to find out the state of each
+  channel on chain. For this, a blockchain API (by default [blockstream.info](https://blockstream.info))
+  is queried. The result will be written to a file called
+  `./results/summary-yyyy-mm-dd.json`. This result file will be needed for the
+  next command.
+  <br/><br/>
+  `chantools --fromchanneldb ./results/compacted.db summary`
+
+7. **chantools rescueclosed**: It is possible that by now the remote peers have
+  force-closed some of the remaining channels. What we now do is try to find the
+  private keys to sweep our balance of those channels. For this we need a shared
+  secret which is called the `commit_point` and is changed whenever a channel is
+  updated. We do have the latest known version of this point in the channel DB.
+  The following command tries to find all private keys for channels that have
+  been closed by the other party. The command needs to know what channels it is
+  operating on, so we have to supply the `summary-yyy-mm-dd.json` created by the
+  previous command:
+  <br/><br/>
+  `chantools --fromsummary ./results/<summary-file-created-in-last-step>.json rescueclosed --channeldb ./results/compacted.db`
+  <br/><br/>
+  This will create a new file called `./results/rescueclosed-yyyy-mm-dd.json`
+  which will contain any found private keys and will also be needed for the next
+  command. Use `bitcoind` or Electrum Wallet to sweep all of the private keys.
+
+8. **chantools forceclose**: This command will now close all channels that
+  `chantools` thinks are still open. This is achieved by publishing the latest
+  known channel state of the `channel.db` file.
+  <br/>**Please read the full warning text of the
+  [`forceclose` command below](#forceclose) as this command can put
+  your funds at risk** if the state in the channel DB is not the most recent
+  one. This command should only be executed for channels where the remote peer
+  is not online anymore.
+  <br/><br/>
+  `chantools --fromsummary ./results/<rescueclosed-file-created-in-last-step>.json forceclose --channeldb ./results/compacted.db --publish`
+  <br/><br/>
+  This will create a new file called `./results/forceclose-yyyy-mm-dd.json`
+  which will be needed for the next command.
+
+9. **Wait for timelocks**: The previous command closed the remaining open
+  channels by publishing your node's state of the channel. By design of the
+  Lightning Network, you now have to wait until the channel funds belonging to
+  you are not time locked any longer. Depending on the size of the channel, you
+  have to wait for somewhere between 144 and 2000 confirmations of the
+  force-close transactions. Only continue with the next step after the channel
+  with the highest `csv_timeout` has reached that many confirmations of its
+  closing transaction.
+
+10. **chantools sweeptimelock**: Once all force-close transactions have reached
+  the number of transactions as the `csv_timeout` in the JSON demands, these
+  time locked funds can now be swept. Use the following command to sweep all the
+  channel funds to an address of your wallet:
+  <br/><br/>
+  `chantools --fromsummary ./results/<forceclose-file-created-in-last-step>.json sweeptimelock --publish --sweepaddr <bech32-address-from-your-wallet>`
+
+11. **Manual intervention necessary**: You got to this step because you either
+  don't have a `channel.db` file or because `chantools` couldn't rescue all your
+  node's channels. There are a few things you can try manually that have some
+  chance of working:
+  - Make sure you can connect to all nodes when restoring from SCB: It happens
+    all the time that nodes change their IP addresses. When restoring from a
+    static channel backup, your node tries to connect to the node using the IP
+    address encoded in the backup file. If the address changed, the SCB restore
+    process doesn't work. You can use block explorers like [1ml.com](https://1ml.com)
+    to try to find an IP address that is up-to-date. Just run
+    `lncli connect <node-pubkey>@<updated-ip-address>:<port>` in the recovered
+    `lnd` node from step 3 and wait a few hours to see if the channel is now
+    being force closed by the remote node.
+  - Find out who the node belongs to: Maybe you opened the channel with someone
+    you know. Or maybe their node alias contains some information about who the
+    node belongs to. If you can find out who operates the remote node, you can
+    ask them to force-close the channel from your end. If the channel was opened
+    with the `option_static_remote_key`, (`lnd v0.8.0` and later), the funds can
+    be swept by your node.
+
+## Command overview
 
 ```text
 Usage:
