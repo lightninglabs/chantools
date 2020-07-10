@@ -67,17 +67,15 @@ file based backup or the recovered file from the crashed node).
   of the `channel.db` from the node.
   <br/><br/>
   Whatever you do, do **never, ever** replace your `channel.db` file with an old
-  version (from a file based backup) and start your node that way. [Read this
-  explanation why that can lead to loss of funds.](https://github.com/lightningnetwork/lnd/blob/master/docs/safety.md#file-based-backups)
+  version (from a file based backup) and start your node that way.
+  [Read this explanation why that can lead to loss of funds.](https://github.com/lightningnetwork/lnd/blob/master/docs/safety.md#file-based-backups)
 
 2. **Rescue on-chain balance**: To start the recovery process, we are going to
   re-create the node from scratch. To make sure we don't overwrite any old data
   in the process, make sure the old data directory of your node (usually `.lnd`
   in the user's home directory) is safely moved away (or the whole folder
-  renamed) before continuing.
-  <br/>
-  To start the on-chain recovery, [follow the sub step "Starting On-Chain
-  Recovery" of this guide](https://github.com/lightningnetwork/lnd/blob/master/docs/recovery.md#starting-on-chain-recovery).
+  renamed) before continuing.<br/>
+  To start the on-chain recovery, [follow the sub step "Starting On-Chain Recovery" of this guide](https://github.com/lightningnetwork/lnd/blob/master/docs/recovery.md#starting-on-chain-recovery).
   Don't follow the whole guide, only this single chapter!
   <br/><br/>
   This step is completed once the `lncli getinfo` command shows both
