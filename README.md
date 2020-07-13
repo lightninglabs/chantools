@@ -3,6 +3,7 @@
 ## Index
 
 * [Installation](#installation)
+* [Channel recovery scenario](#channel-recovery-scenario)
 * [Command overview](#command-overview)
 * [Commands](#commands)
   + [chanbackup](#chanbackup)
