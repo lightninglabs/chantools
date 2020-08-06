@@ -2,6 +2,7 @@ package btc
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/wire"
 	"io"
 	"time"
 
@@ -135,8 +136,12 @@ func (c *Cli) Format(hdKey *hdkeychain.ExtendedKey, params *chaincfg.Params,
 	if err != nil {
 		return "", fmt.Errorf("could not encode WIF: %v", err)
 	}
-	return fmt.Sprintf("bitcoin-cli importprivkey %s \"%s/%d/%d/\" false",
-		wif.String(), path, branch, index), nil
+	flags := ""
+	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
+		flags = " -testnet"
+	}
+	return fmt.Sprintf("bitcoin-cli%s importprivkey %s \"%s/%d/%d/\" false",
+		flags, wif.String(), path, branch, index), nil
 }
 
 func (c *Cli) Trailer(birthdayBlock uint32) string {
@@ -149,15 +154,20 @@ func (c *CliWatchOnly) Header() string {
 	return "# Paste the following lines into a command line window."
 }
 
-func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey, _ *chaincfg.Params,
-	path string, branch, index uint32) (string, error) {
+func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey,
+	params *chaincfg.Params, path string, branch, index uint32) (string,
+	error) {
 
 	pubKey, err := hdKey.ECPubKey()
 	if err != nil {
 		return "", fmt.Errorf("could not derive private key: %v", err)
 	}
-	return fmt.Sprintf("bitcoin-cli importpubkey %x \"%s/%d/%d/\" false",
-		pubKey.SerializeCompressed(), path, branch, index), nil
+	flags := ""
+	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
+		flags = " -testnet"
+	}
+	return fmt.Sprintf("bitcoin-cli%s importpubkey %x \"%s/%d/%d/\" false",
+		flags, pubKey.SerializeCompressed(), path, branch, index), nil
 }
 
 func (c *CliWatchOnly) Trailer(birthdayBlock uint32) string {
