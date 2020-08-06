@@ -30,7 +30,7 @@ func ReadMnemonicFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 	fmt.Println()
 
 	// We'll trim off extra spaces, and ensure the mnemonic is all
-	// lower case, then populate our request.
+	// lower case.
 	mnemonicStr = strings.TrimSpace(mnemonicStr)
 	mnemonicStr = strings.ToLower(mnemonicStr)
 

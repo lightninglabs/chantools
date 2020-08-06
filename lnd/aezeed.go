@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -12,6 +13,11 @@ import (
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"golang.org/x/crypto/ssh/terminal"
+)
+
+var (
+	numberDotsRegex = regexp.MustCompile("[\\d.\\-\\n\\r\\t]*")
+	multipleSpaces  = regexp.MustCompile(" [ ]+")
 )
 
 func ReadAezeedFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
@@ -26,10 +32,17 @@ func ReadAezeedFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 	}
 
 	// We'll trim off extra spaces, and ensure the mnemonic is all
-	// lower case, then populate our request.
+	// lower case.
 	mnemonicStr = strings.TrimSpace(mnemonicStr)
 	mnemonicStr = strings.ToLower(mnemonicStr)
 
+	// To allow the tool to also accept the copy/pasted version of the
+	// backup text (which contains numbers and dots and multiple spaces),
+	// we do some more cleanup with regex.
+	mnemonicStr = numberDotsRegex.ReplaceAllString(mnemonicStr, "")
+	mnemonicStr = multipleSpaces.ReplaceAllString(mnemonicStr, " ")
+	mnemonicStr = strings.TrimSpace(mnemonicStr)
+	
 	cipherSeedMnemonic := strings.Split(mnemonicStr, " ")
 
 	fmt.Println()
