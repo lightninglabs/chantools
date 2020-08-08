@@ -28,7 +28,7 @@ func (c *deriveKeyCommand) Execute(_ []string) error {
 	switch {
 	case c.BIP39:
 		extendedKey, err = btc.ReadMnemonicFromTerminal(chainParams)
-		
+
 	case c.RootKey != "":
 		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
 

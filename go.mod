@@ -15,7 +15,6 @@ require (
 	github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191224233846-f289a39c1a00
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/miekg/dns v1.1.26 // indirect
-	github.com/prometheus/common v0.4.0
 	golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76 // indirect

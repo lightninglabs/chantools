@@ -61,13 +61,13 @@ func EntropyFromMnemonic(mnemonic string) ([]byte, error) {
 	for i, v := range English {
 		wordMap[v] = i
 	}
-	
+
 	// Decode the words into a big.Int.
 	b := big.NewInt(0)
 	for _, v := range mnemonicSlice {
 		index, found := wordMap[v]
 		if found == false {
-			return nil, fmt.Errorf("word `%v` not found in " +
+			return nil, fmt.Errorf("word `%v` not found in "+
 				"reverse map", v)
 		}
 		var wordBytes [2]byte

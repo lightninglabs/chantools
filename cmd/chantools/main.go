@@ -67,7 +67,7 @@ func runCommandParser() error {
 
 	// Parse command line.
 	parser := flags.NewParser(cfg, flags.Default)
-	
+
 	log.Infof("chantools version v%s commit %s", version, Commit)
 	_, _ = parser.AddCommand(
 		"summary", "Compile a summary about the current state of "+
@@ -131,6 +131,11 @@ func runCommandParser() error {
 			"read-only mode and copy it to a fresh database, "+
 			"compacting it in the process.", "",
 		&compactDBCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"vanitygen", "Generate a seed with a custom lnd node identity "+
+			"public key that starts with the given prefix.", "",
+		&vanityGenCommand{},
 	)
 	// TODO: uncomment when command is fully implemented.
 	//_, _ = parser.AddCommand(

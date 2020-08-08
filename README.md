@@ -19,6 +19,7 @@
   + [showrootkey](#showrootkey)
   + [summary](#summary)
   + [sweeptimelock](#sweeptimelock)
+  + [vanitygen](#vanitygen)
   + [walletinfo](#walletinfo)
 
 This tool provides helper functions that can be used to rescue funds locked in
@@ -219,6 +220,7 @@ Available commands:
   showrootkey      Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
   summary          Compile a summary about the current state of channels.
   sweeptimelock    Sweep the force-closed state after the time lock has expired.
+  vanitygen        Generate a seed with a custom lnd node identity public key that starts with the given p
   walletinfo       Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
 ```
 
@@ -539,6 +541,36 @@ chantools --fromsummary results/forceclose-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx \
   --publish \
   --sweepaddr bc1q.....
+```
+
+### vanitygen
+
+```
+Usage:
+  chantools [OPTIONS] vanitygen [vanitygen-OPTIONS]
+
+[vanitygen command options]
+          --prefix=      Hex encoded prefix to find in node public key.
+          --threads=     Number of parallel threads. (default: 4)
+```
+
+Try random lnd compatible seeds until one is found that produces a node identity
+public key that starts with the given prefix.
+
+Example command:
+
+```bash
+chantools vanitygen --prefix 022222 --threads 8
+```
+
+Example output:
+
+```text
+Running vanitygen on 8 threads. Prefix bit length is 17, expecting to approach
+probability p=1.0 after 131,072 seeds.
+Tested 185k seeds, p=1.41296, speed=14k/s, elapsed=13s                          
+Looking for 022222, found pubkey: 022222f015540ddde9bdf7c95b24f1d44f7ea6ab69bec83d6fbe622296d64b51d6
+with seed: [ability roast pear stomach wink cable tube trumpet shy caught hunt someone border organ spoon only prepare calm silent million tobacco chaos normal phone]
 ```
 
 ### walletinfo

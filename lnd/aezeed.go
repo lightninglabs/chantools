@@ -42,7 +42,7 @@ func ReadAezeedFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 	mnemonicStr = numberDotsRegex.ReplaceAllString(mnemonicStr, "")
 	mnemonicStr = multipleSpaces.ReplaceAllString(mnemonicStr, " ")
 	mnemonicStr = strings.TrimSpace(mnemonicStr)
-	
+
 	cipherSeedMnemonic := strings.Split(mnemonicStr, " ")
 
 	fmt.Println()
