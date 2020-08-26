@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/txscript"
 	"strconv"
 	"strings"
 
@@ -167,6 +168,30 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 			"P2WPKH or P2WSH address")
 	}
 	return targetHash, isScriptHash, nil
+}
+
+// GetP2WPKHScript creates a P2WKH output script from an address. If the address
+// is not a P2WKH address, an error is returned.
+func GetP2WPKHScript(addr string, chainParams *chaincfg.Params) ([]byte,
+	error) {
+
+	targetPubKeyHash, isScriptHash, err := DecodeAddressHash(
+		addr, chainParams,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if isScriptHash {
+		return nil, fmt.Errorf("address %s is not a P2WKH address",
+			addr)
+	}
+
+	builder := txscript.NewScriptBuilder()
+	builder.AddOp(txscript.OP_0)
+	builder.AddData(targetPubKeyHash)
+
+	return builder.Script()
 }
 
 type HDKeyRing struct {

@@ -3,25 +3,43 @@ package main
 import (
 	"bytes"
 	"fmt"
-
+	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcutil/psbt"
 	"github.com/guggero/chantools/lnd"
+	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
-	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+	"path"
 )
 
 const (
 	MaxChannelLookup = 5000
+
+	// MultiSigWitnessSize 222 bytes
+	//	- NumberOfWitnessElements: 1 byte
+	//	- NilLength: 1 byte
+	//	- sigAliceLength: 1 byte
+	//	- sigAlice: 73 bytes
+	//	- sigBobLength: 1 byte
+	//	- sigBob: 73 bytes
+	//	- WitnessScriptLength: 1 byte
+	//	- WitnessScript (MultiSig)
+	MultiSigWitnessSize = 1 + 1 + 1 + 73 + 1 + 73 + 1 + input.MultiSigSize
+)
+
+var (
+	PsbtKeyTypeOutputMissingSigPubkey = []byte{0xcc}
 )
 
 type rescueFundingCommand struct {
-	RootKey         string `long:"rootkey" description:"BIP32 HD root (m/) key to derive the key for our node from."`
-	OtherNodePub    string `long:"othernodepub" description:"The extended public key (xpub) of the other node's multisig branch (m/1017'/<coin_type>'/0'/0)."`
-	FundingAddr     string `long:"fundingaddr" description:"The bech32 script address of the funding output where the coins to be spent are locked in."`
-	FundingOutpoint string `long:"fundingoutpoint" description:"The funding transaction outpoint (<txid>:<txindex>)."`
-	FundingAmount   int64  `long:"fundingamount" description:"The exact amount in satoshis that is locked in the funding output."`
-	SweepAddr       string `long:"sweepaddr" description:"The address to sweep the rescued funds to."`
-	SatPerByte      int64  `long:"satperbyte" description:"The fee rate to use in satoshis/vByte."`
+	RootKey           string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
+	ChannelDB         string `long:"channeldb" description:"The lnd channel.db file to rescue a channel from. Must contain the pending channel specified with --channelpoint."`
+	ChannelPoint      string `long:"channelpoint" description:"The funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB."`
+	ConfirmedOutPoint string `long:"confirmedchannelpoint" description:"The channel outpoint that got confirmed on chain (<txid>:<txindex>). Normally this is the same as the --channelpoint so it will be set to that value if this is left empty."`
+	SweepAddr         string `long:"sweepaddr" description:"The address to sweep the rescued funds to."`
+	SatPerByte        int64  `long:"satperbyte" description:"The fee rate to use in satoshis/vByte."`
 }
 
 func (c *rescueFundingCommand) Execute(_ []string) error {
@@ -29,7 +47,7 @@ func (c *rescueFundingCommand) Execute(_ []string) error {
 
 	var (
 		extendedKey *hdkeychain.ExtendedKey
-		otherPub    *hdkeychain.ExtendedKey
+		chainOp     *wire.OutPoint
 		err         error
 	)
 
@@ -39,107 +57,158 @@ func (c *rescueFundingCommand) Execute(_ []string) error {
 		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
 
 	default:
-		extendedKey, _, err = lnd.ReadAezeedFromTerminal(chainParams)
+		extendedKey, _, err = lnd.ReadAezeedFromTerminal(
+			chainParams,
+		)
 	}
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
 
-	// Read other node's xpub.
-	otherPub, err = hdkeychain.NewKeyFromString(c.OtherNodePub)
-	if err != nil {
-		return fmt.Errorf("error parsing other node's xpub: %v", err)
+	signer := &lnd.Signer{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
 	}
 
-	// Decode target funding address.
-	hash, isScript, err := lnd.DecodeAddressHash(c.FundingAddr, chainParams)
-	if err != nil {
-		return fmt.Errorf("error decoding funding address: %v", err)
+	// Check that we have a channel DB.
+	if c.ChannelDB == "" {
+		return fmt.Errorf("channel DB is required")
 	}
-	if !isScript {
-		return fmt.Errorf("funding address must be a P2WSH address")
-	}
-
-	return rescueFunding(extendedKey, otherPub, hash)
-}
-
-func rescueFunding(localNodeKey *hdkeychain.ExtendedKey,
-	otherNodekey *hdkeychain.ExtendedKey, scriptHash []byte) error {
-
-	// First, we need to derive the correct branch from the local root key.
-	localMultisig, err := lnd.DeriveChildren(localNodeKey, []uint32{
-		lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		lnd.HardenedKeyStart + chainParams.HDCoinType,
-		lnd.HardenedKeyStart + uint32(keychain.KeyFamilyMultiSig),
-		0,
-	})
-	if err != nil {
-		return fmt.Errorf("could not derive local multisig key: %v",
-			err)
-	}
-
-	log.Infof("Looking for matching multisig keys, this will take a while")
-	localIndex, otherIndex, script, err := findMatchingIndices(
-		localMultisig, otherNodekey, scriptHash,
+	db, err := channeldb.Open(
+		path.Dir(c.ChannelDB), path.Base(c.ChannelDB),
+		channeldb.OptionSetSyncFreelist(true),
+		channeldb.OptionReadOnly(true),
 	)
 	if err != nil {
-		return fmt.Errorf("could not derive keys: %v", err)
+		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
 
-	log.Infof("Found local key with index %d and other key with index %d "+
-		"for witness script %x", localIndex, otherIndex, script)
+	// Parse channel point of channel to rescue as known to the DB.
+	dbOp, err := lnd.ParseOutpoint(c.ChannelPoint)
+	if err != nil {
+		return fmt.Errorf("error parsing channel point: %v", err)
+	}
 
-	// TODO(guggero):
-	//  * craft PSBT with input, sweep output and partial signature
-	//  * do fee estimation based on full amount
-	//  * create `signpsbt` command for the other node operator
-	return nil
+	// Parse channel point of channel to rescue as confirmed on chain (if
+	// different).
+	if len(c.ConfirmedOutPoint) == 0 {
+		chainOp = dbOp
+	} else {
+		chainOp, err = lnd.ParseOutpoint(c.ChannelPoint)
+		if err != nil {
+			return fmt.Errorf("error parsing confirmed channel "+
+				"point: %v", err)
+		}
+	}
+
+	// Make sure the sweep addr is a P2WKH address so we can do accurate
+	// fee estimation.
+	sweepScript, err := lnd.GetP2WPKHScript(c.SweepAddr, chainParams)
+	if err != nil {
+		return fmt.Errorf("error parsing sweep addr: %v", err)
+	}
+
+	if c.SatPerByte < 0 {
+		return fmt.Errorf("satperbyte must be greater than 0")
+	}
+
+	return rescueFunding(
+		db, signer, dbOp, chainOp, sweepScript,
+		btcutil.Amount(c.SatPerByte),
+	)
 }
 
-func findMatchingIndices(localNodeKey *hdkeychain.ExtendedKey,
-	otherNodekey *hdkeychain.ExtendedKey, scriptHash []byte) (uint32,
-	uint32, []byte, error) {
+func rescueFunding(db *channeldb.DB, signer *lnd.Signer, dbFundingPoint,
+	chainPoint *wire.OutPoint, sweepPKScript []byte,
+	feeRate btcutil.Amount) error {
 
-	// Loop through both the local and the remote indices of the branches up
-	// to MaxChannelLookup.
-	for local := uint32(0); local < MaxChannelLookup; local++ {
-		for other := uint32(0); other < MaxChannelLookup; other++ {
-			localKey, err := localNodeKey.Child(local)
-			if err != nil {
-				return 0, 0, nil, fmt.Errorf("error "+
-					"deriving local key: %v", err)
-			}
-			localPub, err := localKey.ECPubKey()
-			if err != nil {
-				return 0, 0, nil, fmt.Errorf("error "+
-					"deriving local pubkey: %v", err)
-			}
-			otherKey, err := otherNodekey.Child(other)
-			if err != nil {
-				return 0, 0, nil, fmt.Errorf("error "+
-					"deriving other key: %v", err)
-			}
-			otherPub, err := otherKey.ECPubKey()
-			if err != nil {
-				return 0, 0, nil, fmt.Errorf("error "+
-					"deriving other pubkey: %v", err)
-			}
-			script, out, err := input.GenFundingPkScript(
-				localPub.SerializeCompressed(),
-				otherPub.SerializeCompressed(), 123,
-			)
-			if err != nil {
-				return 0, 0, nil, fmt.Errorf("error "+
-					"generating funding script: %v", err)
-			}
-			if bytes.Contains(out.PkScript, scriptHash) {
-				return local, other, script, nil
-			}
-		}
-		if local > 0 && local%100 == 0 {
-			log.Infof("Checked %d of %d local keys", local,
-				MaxChannelLookup)
-		}
+	// First of all make sure the channel can be found in the DB.
+	pendingChan, err := db.FetchChannel(*dbFundingPoint)
+	if err != nil {
+		return fmt.Errorf("error loading pending channel %s from DB: "+
+			"%v", dbFundingPoint, err)
 	}
-	return 0, 0, nil, fmt.Errorf("no matching pubkeys found")
+
+	// Prepare the wire part of the PSBT.
+	txIn := &wire.TxIn{
+		PreviousOutPoint: *chainPoint,
+		Sequence:         0,
+	}
+	txOut := &wire.TxOut{
+		PkScript: sweepPKScript,
+	}
+
+	// Locate the output in the funding TX.
+	utxo := pendingChan.FundingTxn.TxOut[dbFundingPoint.Index]
+
+	// We should also be able to create the funding script from the two
+	// multisig keys.
+	localKey := pendingChan.LocalChanCfg.MultiSigKey.PubKey
+	remoteKey := pendingChan.RemoteChanCfg.MultiSigKey.PubKey
+	witnessScript, fundingTxOut, err := input.GenFundingPkScript(
+		localKey.SerializeCompressed(), remoteKey.SerializeCompressed(),
+		utxo.Value,
+	)
+	if err != nil {
+		return fmt.Errorf("could not derive funding script: %v", err)
+	}
+
+	// Some last sanity check that we're working with the correct data.
+	if !bytes.Equal(fundingTxOut.PkScript, utxo.PkScript) {
+		return fmt.Errorf("funding output script does not match UTXO")
+	}
+
+	// Now the rest of the known data for the PSBT.
+	pIn := psbt.PInput{
+		WitnessUtxo:   utxo,
+		WitnessScript: witnessScript,
+		Unknowns: []*psbt.Unknown{{
+			// We add the public key the other party needs to sign
+			// with as a proprietary field so we can easily read it
+			// out with the signrescuefunding command.
+			Key:   PsbtKeyTypeOutputMissingSigPubkey,
+			Value: remoteKey.SerializeCompressed(),
+		}},
+	}
+
+	// Estimate the transaction weight so we can do the fee estimation.
+	var estimator input.TxWeightEstimator
+	estimator.AddWitnessInput(MultiSigWitnessSize)
+	estimator.AddP2WKHOutput()
+	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
+	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	txOut.Value = utxo.Value - int64(totalFee)
+
+	// Let's now create the PSBT as we have everything we need so far.
+	wireTx := &wire.MsgTx{
+		Version: 2,
+		TxIn:    []*wire.TxIn{txIn},
+		TxOut:   []*wire.TxOut{txOut},
+	}
+	packet, err := psbt.NewFromUnsignedTx(wireTx)
+	if err != nil {
+		return fmt.Errorf("error creating PSBT: %v", err)
+	}
+	packet.Inputs[0] = pIn
+
+	// Now we add our partial signature.
+	err = signer.AddPartialSignature(
+		packet, pendingChan.LocalChanCfg.MultiSigKey, utxo,
+		witnessScript, 0,
+	)
+	if err != nil {
+		return fmt.Errorf("error adding partial signature: %v", err)
+	}
+
+	// We're done, we can now output the finished PSBT.
+	base64, err := packet.B64Encode()
+	if err != nil {
+		return fmt.Errorf("error encoding PSBT: %v", err)
+	}
+
+	fmt.Printf("Partially signed transaction created. Send this to the "+
+		"other peer \nand ask them to run the 'chantools "+
+		"signrescuefunding' command: \n\n%s\n\n", base64)
+
+	return nil
 }

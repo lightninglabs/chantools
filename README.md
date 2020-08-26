@@ -16,7 +16,9 @@
   + [genimportscript](#genimportscript)
   + [forceclose](#forceclose)
   + [rescueclosed](#rescueclosed)
+  + [rescuefunding](#rescuefunding)
   + [showrootkey](#showrootkey)
+  + [signrescuefunding](#signrescuefunding)
   + [summary](#summary)
   + [sweeptimelock](#sweeptimelock)
   + [vanitygen](#vanitygen)
@@ -207,21 +209,23 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
-  chanbackup       Create a channel.backup file from a channel database.
-  compactdb        Open a source channel.db database file in safe/read-only mode and copy it to a fresh database, compacting it in the process.
-  derivekey        Derive a key with a specific derivation path from the BIP32 HD root key.
-  dumpbackup       Dump the content of a channel.backup file.
-  dumpchannels     Dump all channel information from lnd's channel database.
-  filterbackup     Filter an lnd channel.backup file and remove certain channels.
-  fixoldbackup     Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
-  forceclose       Force-close the last state that is in the channel.db provided.
-  genimportscript  Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
-  rescueclosed     Try finding the private keys for funds that are in outputs of remotely force-closed channels.
-  showrootkey      Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
-  summary          Compile a summary about the current state of channels.
-  sweeptimelock    Sweep the force-closed state after the time lock has expired.
-  vanitygen        Generate a seed with a custom lnd node identity public key that starts with the given p
-  walletinfo       Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
+  chanbackup         Create a channel.backup file from a channel database.
+  compactdb          Open a source channel.db database file in safe/read-only mode and copy it to a fresh database, compacting it in the process.
+  derivekey          Derive a key with a specific derivation path from the BIP32 HD root key.
+  dumpbackup         Dump the content of a channel.backup file.
+  dumpchannels       Dump all channel information from lnd's channel database.
+  filterbackup       Filter an lnd channel.backup file and remove certain channels.
+  fixoldbackup       Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
+  forceclose         Force-close the last state that is in the channel.db provided.
+  genimportscript    Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
+  rescueclosed       Try finding the private keys for funds that are in outputs of remotely force-closed channels.
+  rescuefunding      Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the initiator of the channel needs to run.
+  showrootkey        Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
+  signrescuefunding  Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the remote node (the non-initiator) of the channel needs to run.
+  summary            Compile a summary about the current state of channels.
+  sweeptimelock      Sweep the force-closed state after the time lock has expired.
+  vanitygen          Generate a seed with a custom lnd node identity public key that starts with the given prefix.
+  walletinfo         Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
 ```
 
 ## Commands
@@ -479,6 +483,43 @@ chantools --fromsummary results/summary-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx
 ```
 
+### rescuefunding
+
+```text
+Usage:
+  chantools [OPTIONS] rescuefunding [rescuefunding-OPTIONS]
+
+[rescuefunding command options]
+          --rootkey=               BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
+          --channeldb=             The lnd channel.db file to rescue a channel from. Must contain the pending channel specified with --channelpoint.
+          --channelpoint=          The funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB.
+          --confirmedchannelpoint= The channel outpoint that got confirmed on chain (<txid>:<txindex>). Normally this is the same as the --channelpoint so it will be set to that value if this is left empty.
+          --sweepaddr=             The address to sweep the rescued funds to.
+          --satperbyte=            The fee rate to use in satoshis/vByte.
+```
+
+This is part 1 of a two phase process to rescue a channel funding output that
+was created on chain by accident but never resulted in a proper channel and no
+commitment transactions exist to spend the funds locked in the 2-of-2 multisig.
+
+**You need the cooperation of the channel partner (remote node) for this to
+work**! They need to run the second command of this process:
+[`signrescuefunding`](#signrescuefunding)
+
+Example command (run against the channel DB of the initiator node):
+
+```bash
+chantools rescuefunding \
+  --channeldb ~/.lnd/data/graph/mainnet/channel.db \
+  --channelpoint xxxxxxx:xx \
+  --sweepaddr bc1qxxxxxxxxx \
+  --satperbyte 10 \
+  --rootkey xprvxxxxxxxxxx
+```
+
+If successful, this will create a PSBT that then has to be sent to the channel
+partner (remote node operator).
+
 ### showrootkey
 
 This command converts the 24 word `lnd` aezeed phrase and password to the BIP32
@@ -490,6 +531,32 @@ Example command:
 ```bash
 chantools showrootkey
 ```
+
+### signrescuefunding
+
+```text
+Usage:
+  chantools [OPTIONS] signrescuefunding [signrescuefunding-OPTIONS]
+
+[signrescuefunding command options]
+          --rootkey=     BIP32 HD root (m/) key to derive the key for our part of the signature from.
+          --psbt=        The Partially Signed Bitcoin Transaction that was provided by the initiator of the channel to rescue.
+```
+
+This is part 2 of a two phase process to rescue a channel funding output that
+was created on chain by accident but never resulted in a proper channel and no
+commitment transactions exist to spend the funds locked in the 2-of-2 multisig.
+
+Example command (run by the non-initiator of the channel):
+
+```bash
+chantools signrescuefunding \
+  --psbt <the_base64_encoded_psbt_from_step_1> \
+  --rootkey xprvxxxxxxxxxx
+```
+
+If successful, this will create a final on-chain transaction that can be
+broadcast by any Bitcoin node.
 
 ### summary
 

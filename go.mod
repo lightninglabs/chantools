@@ -6,6 +6,7 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
 	github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422
+	github.com/btcsuite/btcutil/psbt v0.0.0-00010101000000-000000000000
 	github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623
 	github.com/btcsuite/btcwallet/walletdb v1.2.0
 	github.com/coreos/bbolt v1.3.3
@@ -15,12 +16,16 @@ require (
 	github.com/lightningnetwork/lnd v0.8.0-beta-rc3.0.20191224233846-f289a39c1a00
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/miekg/dns v1.1.26 // indirect
-	golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876
+	golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
 	golang.org/x/sys v0.0.0-20191224085550-c709ea063b76 // indirect
 	gopkg.in/yaml.v2 v2.2.3 // indirect
 )
 
 replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.9.0-beta-rc4.0.20200826102054-8c9171307182
+
+replace github.com/btcsuite/btcutil => github.com/btcsuite/btcutil v1.0.2
+
+replace github.com/btcsuite/btcutil/psbt => github.com/btcsuite/btcutil/psbt v1.0.2
 
 go 1.13

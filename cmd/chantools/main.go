@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.3.0"
+	version       = "0.4.0"
 )
 
 var (
@@ -137,12 +137,20 @@ func runCommandParser() error {
 			"public key that starts with the given prefix.", "",
 		&vanityGenCommand{},
 	)
-	// TODO: uncomment when command is fully implemented.
-	//_, _ = parser.AddCommand(
-	//	"rescuefunding", "Rescue funds locked in a funding multisig "+
-	//		"output that never resulted in a proper channel.", "",
-	//	&rescueFundingCommand{},
-	//)
+	_, _ = parser.AddCommand(
+		"rescuefunding", "Rescue funds locked in a funding multisig "+
+			"output that never resulted in a proper channel. This "+
+			"is the command the initiator of the channel needs to "+
+			"run.", "",
+		&rescueFundingCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"signrescuefunding", "Rescue funds locked in a funding "+
+			"multisig output that never resulted in a proper "+
+			"channel. This is the command the remote node (the non"+
+			"-initiator) of the channel needs to run.", "",
+		&signRescueFundingCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err

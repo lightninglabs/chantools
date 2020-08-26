@@ -182,7 +182,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}
 
 	// Add our sweep destination output.
-	sweepScript, err := getP2WPKHScript(sweepAddr)
+	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
 	if err != nil {
 		return err
 	}
@@ -254,20 +254,6 @@ func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 	return btcec.ParsePubKey(
 		pointBytes, btcec.S256(),
 	)
-}
-
-func getP2WPKHScript(addr string) ([]byte, error) {
-	targetPubKeyHash, _, err := lnd.DecodeAddressHash(
-		addr, chainParams,
-	)
-	if err != nil {
-		return nil, err
-	}
-	builder := txscript.NewScriptBuilder()
-	builder.AddOp(txscript.OP_0)
-	builder.AddData(targetPubKeyHash)
-
-	return builder.Script()
 }
 
 func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,

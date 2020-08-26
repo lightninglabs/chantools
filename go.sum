@@ -34,6 +34,10 @@ github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d h1:yJzD/yFppdVCf6
 github.com/btcsuite/btcutil v0.0.0-20190425235716-9e5f4b9a998d/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
 github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422 h1:EqnrgSSg0SFWRlEZLExgjtuUR/IPnuQ6qw6nwRda4Uk=
 github.com/btcsuite/btcutil v0.0.0-20191219182022-e17c9730c422/go.mod h1:+5NJ2+qvTyV9exUAL/rxXi3DcLg2Ts+ymUAY5y4NvMg=
+github.com/btcsuite/btcutil v1.0.2 h1:9iZ1Terx9fMIOtq1VrwdqfsATL9MC2l8ZrUY6YZ2uts=
+github.com/btcsuite/btcutil v1.0.2/go.mod h1:j9HUFwoQRsZL3V4n+qG+CUnEGHOarIxfC3Le2Yhbcts=
+github.com/btcsuite/btcutil/psbt v1.0.2 h1:gCVY3KxdoEVU7Q6TjusPO+GANIwVgr9yTLqM+a6CZr8=
+github.com/btcsuite/btcutil/psbt v1.0.2/go.mod h1:LVveMu4VaNSkIRTZu2+ut0HDBRuYjqGocxDMNS1KuGQ=
 github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623 h1:ZuJRjucNsTmlrbZncsqzD0z3EaXrOobCx2I4lc12R4g=
 github.com/btcsuite/btcwallet v0.11.1-0.20200219004649-ae9416ad7623/go.mod h1:1O1uRHMPXHdwA4/od8nqYqrgclVKp+wtfXUAqHmeRvE=
 github.com/btcsuite/btcwallet/wallet/txauthor v1.0.0 h1:KGHMW5sd7yDdDMkCZ/JpP0KltolFsQcB973brBnfj4c=
@@ -204,6 +208,8 @@ golang.org/x/crypto v0.0.0-20190618222545-ea8f1a30c443/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392/go.mod h1:/lpIB1dKB+9EgE3H3cr1v9wB50oz8l4C4h62xy7jSTY=
 golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876 h1:sKJQZMuxjOAR/Uo2LBfU90onWEf1dF4C+0hPJCc9Mpc=
 golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d h1:2+ZP7EfsZV7Vvmx3TIqSlSzATMkTAKqM14YGFPoSKjI=
+golang.org/x/crypto v0.0.0-20200115085410-6d4e4cb37c7d/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/exp v0.0.0-20190121172915-509febef88a4/go.mod h1:CJ0aWSM057203Lf6IL+f9T1iT9GByDxfZKAQTCR3kQA=
 golang.org/x/lint v0.0.0-20180702182130-06c8688daad7/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
 golang.org/x/lint v0.0.0-20181026193005-c67002cb31c3/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=

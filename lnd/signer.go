@@ -2,12 +2,12 @@ package lnd
 
 import (
 	"fmt"
-
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcutil/psbt"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 )
@@ -62,6 +62,45 @@ func (s *Signer) FetchPrivKey(descriptor *keychain.KeyDescriptor) (
 		return nil, err
 	}
 	return key.ECPrivKey()
+}
+
+func (s *Signer) AddPartialSignature(packet *psbt.Packet,
+	keyDesc keychain.KeyDescriptor, utxo *wire.TxOut, witnessScript []byte,
+	inputIndex int) error {
+
+	// Now we add our partial signature.
+	signDesc := &input.SignDescriptor{
+		KeyDesc:       keyDesc,
+		WitnessScript: witnessScript,
+		Output:        utxo,
+		InputIndex:    inputIndex,
+		HashType:      txscript.SigHashAll,
+		SigHashes:     txscript.NewTxSigHashes(packet.UnsignedTx),
+	}
+	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
+	if err != nil {
+		return fmt.Errorf("error signing with our key: %v", err)
+	}
+	ourSig := append(ourSigRaw, byte(txscript.SigHashAll))
+
+	// Great, we were able to create our sig, let's add it to the PSBT.
+	updater, err := psbt.NewUpdater(packet)
+	if err != nil {
+		return fmt.Errorf("error creating PSBT updater: %v", err)
+	}
+	status, err := updater.Sign(
+		0, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
+		witnessScript,
+	)
+	if err != nil {
+		return fmt.Errorf("error adding signature to PSBT: %v", err)
+	}
+	if status != 0 {
+		return fmt.Errorf("unexpected status for signature update, "+
+			"got %d wanted 0", status)
+	}
+
+	return nil
 }
 
 // maybeTweakPrivKey examines the single tweak parameters on the passed sign

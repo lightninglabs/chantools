@@ -1,10 +1,14 @@
 package lnd
 
 import (
+	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
+	"strconv"
+	"strings"
 )
 
 type LightningChannel struct {
@@ -74,4 +78,30 @@ func (lc *LightningChannel) SignedCommitTx() (*wire.MsgTx, error) {
 	)
 
 	return commitTx, nil
+}
+
+// ParseOutpoint parses a transaction outpoint in the format <txid>:<idx> into
+// the wire format.
+func ParseOutpoint(s string) (*wire.OutPoint, error) {
+	split := strings.Split(s, ":")
+	if len(split) != 2 {
+		return nil, fmt.Errorf("expecting channel point to be in " +
+			"format of: txid:index")
+	}
+
+	index, err := strconv.ParseInt(split[1], 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode output index: %v",
+			err)
+	}
+
+	txid, err := chainhash.NewHashFromStr(split[0])
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse hex string: %v", err)
+	}
+
+	return &wire.OutPoint{
+		Hash:  *txid,
+		Index: uint32(index),
+	}, nil
 }
