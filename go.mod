@@ -21,6 +21,6 @@ require (
 	gopkg.in/yaml.v2 v2.2.3 // indirect
 )
 
-replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.9.0-beta-rc1.0.20200307101759-2650bff06031
+replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.9.0-beta-rc4.0.20200826102054-8c9171307182
 
 go 1.13

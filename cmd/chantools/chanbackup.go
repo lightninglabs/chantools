@@ -46,7 +46,8 @@ func (c *chanBackupCommand) Execute(_ []string) error {
 		return fmt.Errorf("channel DB is required")
 	}
 	db, err := channeldb.Open(
-		path.Dir(c.ChannelDB), channeldb.OptionSetSyncFreelist(true),
+		path.Dir(c.ChannelDB), path.Base(c.ChannelDB),
+		channeldb.OptionSetSyncFreelist(true),
 		channeldb.OptionReadOnly(true),
 	)
 	if err != nil {

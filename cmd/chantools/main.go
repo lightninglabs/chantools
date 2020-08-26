@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.2.0"
+	version       = "0.3.0"
 )
 
 var (
@@ -170,7 +170,7 @@ func parseInputType(cfg *config) ([]*dataformat.SummaryEntry, error) {
 
 	case cfg.FromChannelDB != "":
 		db, err := channeldb.Open(
-			path.Dir(cfg.FromChannelDB),
+			path.Dir(cfg.FromChannelDB), path.Base(cfg.FromChannelDB),
 			channeldb.OptionSetSyncFreelist(true),
 			channeldb.OptionReadOnly(true),
 		)

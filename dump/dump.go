@@ -73,6 +73,26 @@ type OpenChannel struct {
 	RemoteShutdownScript    lnwire.DeliveryAddress
 }
 
+// ClosedChannel is the information we want to dump from a closed channel in
+// lnd's channel DB. See `channeldb.ChannelCloseSummary` for information about
+// the fields.
+type ClosedChannel struct {
+	ChanPoint               string
+	ShortChanID             lnwire.ShortChannelID
+	ChainHash               chainhash.Hash
+	ClosingTXID             string
+	RemotePub               string
+	Capacity                btcutil.Amount
+	CloseHeight             uint32
+	SettledBalance          btcutil.Amount
+	TimeLockedBalance       btcutil.Amount
+	CloseType               string
+	IsPending               bool
+	RemoteCurrentRevocation string
+	RemoteNextRevocation    string
+	LocalChanConfig         ChannelConfig
+}
+
 // ChannelConfig is the information we want to dump from a channel
 // configuration. See `channeldb.ChannelConfig` for more information about the
 // fields.
@@ -92,10 +112,10 @@ type KeyDescriptor struct {
 	PubKey string
 }
 
-// ChannelDump converts the channels in the given channel DB into a dumpable
-// format.
-func ChannelDump(channels []*channeldb.OpenChannel, params *chaincfg.Params) (
-	[]OpenChannel, error) {
+// OpenChannelDump converts the open channels in the given channel DB into a
+// dumpable format.
+func OpenChannelDump(channels []*channeldb.OpenChannel,
+	params *chaincfg.Params) ([]OpenChannel, error) {
 
 	dumpChannels := make([]OpenChannel, len(channels))
 	for idx, channel := range channels {
@@ -149,6 +169,41 @@ func ChannelDump(channels []*channeldb.OpenChannel, params *chaincfg.Params) (
 			FundingTxn:           hex.EncodeToString(buf.Bytes()),
 			LocalShutdownScript:  channel.LocalShutdownScript,
 			RemoteShutdownScript: channel.RemoteShutdownScript,
+		}
+	}
+	return dumpChannels, nil
+}
+
+// ClosedChannelDump converts the closed channels in the given channel DB into a
+// dumpable format.
+func ClosedChannelDump(channels []*channeldb.ChannelCloseSummary,
+	params *chaincfg.Params) ([]ClosedChannel, error) {
+
+	dumpChannels := make([]ClosedChannel, len(channels))
+	for idx, channel := range channels {
+		dumpChannels[idx] = ClosedChannel{
+			ChanPoint:         channel.ChanPoint.String(),
+			ShortChanID:       channel.ShortChanID,
+			ChainHash:         channel.ChainHash,
+			ClosingTXID:       channel.ClosingTXID.String(),
+			RemotePub:         PubKeyToString(channel.RemotePub),
+			Capacity:          channel.Capacity,
+			CloseHeight:       channel.CloseHeight,
+			SettledBalance:    channel.SettledBalance,
+			TimeLockedBalance: channel.TimeLockedBalance,
+			CloseType: fmt.Sprintf(
+				"%d", channel.CloseType,
+			),
+			IsPending: channel.IsPending,
+			RemoteCurrentRevocation: PubKeyToString(
+				channel.RemoteCurrentRevocation,
+			),
+			RemoteNextRevocation: PubKeyToString(
+				channel.RemoteNextRevocation,
+			),
+			LocalChanConfig: ToChannelConfig(
+				params, channel.LocalChanConfig,
+			),
 		}
 	}
 	return dumpChannels, nil
