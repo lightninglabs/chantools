@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.4.0"
+	version       = "0.4.1"
 )
 
 var (

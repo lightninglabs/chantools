@@ -94,7 +94,7 @@ func (c *rescueFundingCommand) Execute(_ []string) error {
 	if len(c.ConfirmedOutPoint) == 0 {
 		chainOp = dbOp
 	} else {
-		chainOp, err = lnd.ParseOutpoint(c.ChannelPoint)
+		chainOp, err = lnd.ParseOutpoint(c.ConfirmedOutPoint)
 		if err != nil {
 			return fmt.Errorf("error parsing confirmed channel "+
 				"point: %v", err)
