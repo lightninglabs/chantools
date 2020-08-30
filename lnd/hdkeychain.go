@@ -2,7 +2,9 @@ package lnd
 
 import (
 	"fmt"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/lightningnetwork/lnd/shachain"
 	"strconv"
 	"strings"
 
@@ -62,6 +64,10 @@ func ParsePath(path string) ([]uint32, error) {
 	return indices, nil
 }
 
+func HardenedKey(key uint32) uint32 {
+	return key + HardenedKeyStart
+}
+
 // DeriveKey derives the public key and private key in the WIF format for a
 // given key path of the extended key.
 func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
@@ -96,6 +102,35 @@ func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	}
 
 	return derivedKey, pubKey, wif, nil
+}
+
+func PrivKeyFromPath(extendedKey *hdkeychain.ExtendedKey,
+	path []uint32) (*btcec.PrivateKey, error) {
+
+	derivedKey, err := DeriveChildren(extendedKey, path)
+	if err != nil {
+		return nil, fmt.Errorf("could not derive children: %v", err)
+	}
+	privKey, err := derivedKey.ECPrivKey()
+	if err != nil {
+		return nil, fmt.Errorf("could not derive private key: %v", err)
+	}
+	return privKey, nil
+}
+
+func ShaChainFromPath(extendedKey *hdkeychain.ExtendedKey,
+	path []uint32) (*shachain.RevocationProducer, error) {
+
+	privKey, err := PrivKeyFromPath(extendedKey, path)
+	if err != nil {
+		return nil, err
+	}
+	revRoot, err := chainhash.NewHash(privKey.Serialize())
+	if err != nil {
+		return nil, fmt.Errorf("could not create revocation root "+
+			"hash: %v", err)
+	}
+	return shachain.NewRevocationProducer(*revRoot), nil
 }
 
 func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
@@ -190,6 +225,30 @@ func GetP2WPKHScript(addr string, chainParams *chaincfg.Params) ([]byte,
 	builder := txscript.NewScriptBuilder()
 	builder.AddOp(txscript.OP_0)
 	builder.AddData(targetPubKeyHash)
+
+	return builder.Script()
+}
+
+// GetP2WSHScript creates a P2WSH output script from an address. If the address
+// is not a P2WSH address, an error is returned.
+func GetP2WSHScript(addr string, chainParams *chaincfg.Params) ([]byte,
+	error) {
+
+	targetScriptHash, isScriptHash, err := DecodeAddressHash(
+		addr, chainParams,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isScriptHash {
+		return nil, fmt.Errorf("address %s is not a P2WSH address",
+			addr)
+	}
+
+	builder := txscript.NewScriptBuilder()
+	builder.AddOp(txscript.OP_0)
+	builder.AddData(targetScriptHash)
 
 	return builder.Script()
 }

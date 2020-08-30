@@ -23,7 +23,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.4.1"
+	version       = "0.5.0"
 )
 
 var (
@@ -85,6 +85,11 @@ func runCommandParser() error {
 	_, _ = parser.AddCommand(
 		"sweeptimelock", "Sweep the force-closed state after the time "+
 			"lock has expired.", "", &sweepTimeLockCommand{},
+	)
+	_, _ = parser.AddCommand(
+		"sweeptimelockmanual", "Sweep the force-closed state of a "+
+			"single channel manually if only a channel backup "+
+			"file is available", "", &sweepTimeLockManualCommand{},
 	)
 	_, _ = parser.AddCommand(
 		"dumpchannels", "Dump all channel information from lnd's "+

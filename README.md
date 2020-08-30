@@ -21,6 +21,7 @@
   + [signrescuefunding](#signrescuefunding)
   + [summary](#summary)
   + [sweeptimelock](#sweeptimelock)
+  + [sweeptimelockmanual](#sweeptimelockmanual)
   + [vanitygen](#vanitygen)
   + [walletinfo](#walletinfo)
 
@@ -209,23 +210,24 @@ Help Options:
   -h, --help             Show this help message
 
 Available commands:
-  chanbackup         Create a channel.backup file from a channel database.
-  compactdb          Open a source channel.db database file in safe/read-only mode and copy it to a fresh database, compacting it in the process.
-  derivekey          Derive a key with a specific derivation path from the BIP32 HD root key.
-  dumpbackup         Dump the content of a channel.backup file.
-  dumpchannels       Dump all channel information from lnd's channel database.
-  filterbackup       Filter an lnd channel.backup file and remove certain channels.
-  fixoldbackup       Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
-  forceclose         Force-close the last state that is in the channel.db provided.
-  genimportscript    Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
-  rescueclosed       Try finding the private keys for funds that are in outputs of remotely force-closed channels.
-  rescuefunding      Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the initiator of the channel needs to run.
-  showrootkey        Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
-  signrescuefunding  Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the remote node (the non-initiator) of the channel needs to run.
-  summary            Compile a summary about the current state of channels.
-  sweeptimelock      Sweep the force-closed state after the time lock has expired.
-  vanitygen          Generate a seed with a custom lnd node identity public key that starts with the given prefix.
-  walletinfo         Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
+  chanbackup           Create a channel.backup file from a channel database.
+  compactdb            Open a source channel.db database file in safe/read-only mode and copy it to a fresh database, compacting it in the process.
+  derivekey            Derive a key with a specific derivation path from the BIP32 HD root key.
+  dumpbackup           Dump the content of a channel.backup file.
+  dumpchannels         Dump all channel information from lnd's channel database.
+  filterbackup         Filter an lnd channel.backup file and remove certain channels.
+  fixoldbackup         Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
+  forceclose           Force-close the last state that is in the channel.db provided.
+  genimportscript      Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
+  rescueclosed         Try finding the private keys for funds that are in outputs of remotely force-closed channels.
+  rescuefunding        Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the initiator of the channel needs to run.
+  showrootkey          Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
+  signrescuefunding    Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the remote node (the non-initiator) of the channel needs to run.
+  summary              Compile a summary about the current state of channels.
+  sweeptimelock        Sweep the force-closed state after the time lock has expired.
+  sweeptimelockmanual  Sweep the force-closed state of a single channel manually if only a channel backup file is available
+  vanitygen            Generate a seed with a custom lnd node identity public key that starts with the given prefix.
+  walletinfo           Shows relevant information about an lnd wallet.db file and optionally extracts the BIP32 HD root key.
 ```
 
 ## Commands
@@ -608,6 +610,47 @@ chantools --fromsummary results/forceclose-xxxx-yyyy.json \
   --rootkey xprvxxxxxxxxxx \
   --publish \
   --sweepaddr bc1q.....
+```
+
+### sweeptimelockmanual
+
+```text
+Usage:
+  chantools [OPTIONS] sweeptimelockmanual [sweeptimelockmanual-OPTIONS]
+
+[sweeptimelockmanual command options]
+          --rootkey=            BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed.
+          --publish             Should the sweep TX be published to the chain API?
+          --sweepaddr=          The address the funds should be sweeped to.
+          --maxcsvlimit=        Maximum CSV limit to use. (default 2000)
+          --feerate=            The fee rate to use for the sweep transaction in sat/vByte. (default 2 sat/vByte)
+          --timelockaddr=       The address of the time locked commitment output where the funds are stuck in.
+          --remoterevbasepoint= The remote's revocation base point, can be found in a channel.backup file.
+```
+
+Sweep the locally force closed state of a single channel manually if only a
+channel backup file is available. This can only be used if a channel is force
+closed from the local node but then that node's state is lost and only the
+`channel.backup` file is available.
+
+To get the value for `--remoterevbasepoint` you must use the
+[`dumpbackup`](#dumpbackup) command, then look up the value for
+`RemoteChanCfg -> RevocationBasePoint -> PubKey`.
+
+To get the value for `--timelockaddr` you must look up the channel's funding
+output on chain, then follow it to the force close output. The time locked
+address is always the one that's longer (because it's P2WSH and not P2PKH).
+
+Example command:
+
+```bash
+chantools sweeptimelockmanual \
+  --rootkey xprvxxxxxxxxxx \
+  --sweepaddr bc1q..... \
+  --timelockaddr bc1q............ \
+  --remoterevbasepoint 03xxxxxxx \
+  --feerate 10 \
+  --publish
 ```
 
 ### vanitygen

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -17,14 +18,16 @@ import (
 )
 
 const (
-	feeSatPerByte = 2
+	defaultFeeSatPerVByte = 2
+	defaultCsvLimit       = 2000
 )
 
 type sweepTimeLockCommand struct {
 	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
-	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to"`
+	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to."`
 	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
+	FeeRate     uint32 `long:"feerate" description:"The fee rate to use for the sweep transaction in sat/vByte. (default 2 sat/vByte)"`
 }
 
 func (c *sweepTimeLockCommand) Execute(_ []string) error {
@@ -58,19 +61,22 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 		return err
 	}
 
-	// Set default value
+	// Set default values.
 	if c.MaxCsvLimit == 0 {
-		c.MaxCsvLimit = 2000
+		c.MaxCsvLimit = defaultCsvLimit
+	}
+	if c.FeeRate == 0 {
+		c.FeeRate = defaultFeeSatPerVByte
 	}
 	return sweepTimeLock(
 		extendedKey, cfg.APIURL, entries, c.SweepAddr, c.MaxCsvLimit,
-		c.Publish,
+		c.Publish, c.FeeRate,
 	)
 }
 
 func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	entries []*dataformat.SummaryEntry, sweepAddr string, maxCsvTimeout int,
-	publish bool) error {
+	publish bool, feeRate uint32) error {
 
 	// Create signer and transaction template.
 	signer := &lnd.Signer{
@@ -82,6 +88,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepTx := wire.NewMsgTx(2)
 	totalOutputValue := int64(0)
 	signDescs := make([]*input.SignDescriptor, 0)
+	var estimator input.TxWeightEstimator
 
 	for _, entry := range entries {
 		// Skip entries that can't be swept.
@@ -135,12 +142,18 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		}
 		delayBase := delayPrivKey.PubKey()
 
+		lockScript, err := hex.DecodeString(fc.Outs[txindex].Script)
+		if err != nil {
+			return fmt.Errorf("error parsing target script: %v",
+				err)
+		}
+
 		// We can't rely on the CSV delay of the channel DB to be
 		// correct. But it doesn't cost us a lot to just brute force it.
 		csvTimeout, script, scriptHash, err := bruteForceDelay(
 			input.TweakPubKey(delayBase, commitPoint),
 			input.DeriveRevocationPubkey(revBase, commitPoint),
-			fc.Outs[txindex].Script, maxCsvTimeout,
+			lockScript, maxCsvTimeout,
 		)
 		if err != nil {
 			log.Errorf("Could not create matching script for %s "+
@@ -179,6 +192,9 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		}
 		totalOutputValue += int64(fc.Outs[txindex].Value)
 		signDescs = append(signDescs, signDesc)
+
+		// Account for the input weight.
+		estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
 	}
 
 	// Add our sweep destination output.
@@ -186,33 +202,23 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	if err != nil {
 		return err
 	}
+	estimator.AddP2WKHOutput()
+
+	// Calculate the fee based on the given fee rate and our weight
+	// estimation.
+	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
+	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+
+	log.Infof("Fee %d sats of %d total amount (estimated weight %d)",
+		totalFee, totalOutputValue, estimator.Weight())
+
 	sweepTx.TxOut = []*wire.TxOut{{
-		Value:    totalOutputValue,
+		Value:    totalOutputValue - int64(totalFee),
 		PkScript: sweepScript,
 	}}
-
-	// Very naive fee estimation algorithm: Sign a first time as if we would
-	// send the whole amount with zero fee, just to estimate how big the
-	// transaction would get in bytes. Then adjust the fee and sign again.
+	
+	// Sign the transaction now.
 	sigHashes := txscript.NewTxSigHashes(sweepTx)
-	for idx, desc := range signDescs {
-		desc.SigHashes = sigHashes
-		desc.InputIndex = idx
-		witness, err := input.CommitSpendTimeout(signer, desc, sweepTx)
-		if err != nil {
-			return err
-		}
-		sweepTx.TxIn[idx].Witness = witness
-	}
-
-	// Calculate a fee. This won't be very accurate so the feeSatPerByte
-	// should at least be 2 to not risk falling below the 1 sat/byte limit.
-	size := sweepTx.SerializeSize()
-	fee := int64(size * feeSatPerByte)
-	sweepTx.TxOut[0].Value = totalOutputValue - fee
-
-	// Sign again after output fixing.
-	sigHashes = txscript.NewTxSigHashes(sweepTx)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes
 		witness, err := input.CommitSpendTimeout(signer, desc, sweepTx)
@@ -227,8 +233,6 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	if err != nil {
 		return err
 	}
-	log.Infof("Fee %d sats of %d total amount (for size %d)",
-		fee, totalOutputValue, sweepTx.SerializeSize())
 
 	// Publish TX.
 	if publish {
@@ -251,23 +255,16 @@ func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error hex decoding pub key: %v", err)
 	}
-	return btcec.ParsePubKey(
-		pointBytes, btcec.S256(),
-	)
+	return btcec.ParsePubKey(pointBytes, btcec.S256())
 }
 
 func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
-	targetScriptHex string, maxCsvTimeout int) (int32, []byte, []byte,
+	targetScript []byte, maxCsvTimeout int) (int32, []byte, []byte,
 	error) {
 
-	targetScript, err := hex.DecodeString(targetScriptHex)
-	if err != nil {
-		return 0, nil, nil, fmt.Errorf("error parsing target script: "+
-			"%v", err)
-	}
 	if len(targetScript) != 34 {
 		return 0, nil, nil, fmt.Errorf("invalid target script: %s",
-			targetScriptHex)
+			targetScript)
 	}
 	for i := 0; i <= maxCsvTimeout; i++ {
 		s, err := input.CommitScriptToSelf(
@@ -287,5 +284,5 @@ func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
 		}
 	}
 	return 0, nil, nil, fmt.Errorf("csv timeout not found for target "+
-		"script %s", targetScriptHex)
+		"script %s", targetScript)
 }

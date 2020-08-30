@@ -18,6 +18,7 @@ type ExplorerAPI struct {
 }
 
 type TX struct {
+	TXID string  `json:"txid"`
 	Vin  []*Vin  `json:"vin"`
 	Vout []*Vout `json:"vout"`
 }
@@ -69,6 +70,23 @@ func (a *ExplorerAPI) Transaction(txid string) (*TX, error) {
 		vout.Outspend = &outspend
 	}
 	return tx, nil
+}
+
+func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
+	var txs []*TX
+	err := fetchJSON(fmt.Sprintf("%s/address/%s/txs", a.BaseURL, addr), &txs)
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, tx := range txs {
+		for idx, vout := range tx.Vout {
+			if vout.ScriptPubkeyAddr == addr {
+				return tx, idx, nil
+			}
+		}
+	}
+
+	return nil, 0, fmt.Errorf("no tx found")
 }
 
 func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
