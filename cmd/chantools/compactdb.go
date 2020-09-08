@@ -143,6 +143,11 @@ type walkFunc func(keys [][]byte, k, v []byte, seq uint64) error
 func (c *compactDBCommand) walk(db *bbolt.DB, walkFn walkFunc) error {
 	return db.View(func(tx *bbolt.Tx) error {
 		return tx.ForEach(func(name []byte, b *bbolt.Bucket) error {
+			if b == nil {
+				log.Errorf("Bucket %x was nil! Probable data "+
+					"corruption suspected.", name)
+				return nil
+			}
 			return c.walkBucket(
 				b, nil, name, nil, b.Sequence(), walkFn,
 			)
