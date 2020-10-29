@@ -4,6 +4,7 @@
 
 * [Installation](#installation)
 * [Channel recovery scenario](#channel-recovery-scenario)
+* [Seed and passphrase input](#seed-and-passphrase-input)
 * [Command overview](#command-overview)
 * [Commands](#commands)
   + [chanbackup](#chanbackup)
@@ -191,6 +192,47 @@ file based backup or the recovered file from the crashed node).
     ask them to force-close the channel from your end. If the channel was opened
     with the `option_static_remote_key`, (`lnd v0.8.0` and later), the funds can
     be swept by your node.
+
+## Seed and passphrase input
+
+All commands that require the seed (and, if set, the seed's passphrase) offer
+three distinct possibilities to specify it:
+1. **Enter manually on the terminal**: This is the safest option as it makes
+  sure that the seed isn't stored in the terminal's command history.
+2. **Pass the extened master root key as parameter**: This is added as an option
+  for users who don't have the full seed anymore, possibly because they used
+  `lnd`'s `--noseedbackup` flag and extracted the `xprv` from the wallet
+   database with the `walletinfo` command. Those users can specify the master
+   root key by passing the `--rootkey` command line flag to each command that
+   requires the seed.
+3. **Use environment variables**: This option makes it easy to automate usage of
+  `chantools` by removing the need to type into the terminal. There are three
+  environment variables that can be set to skip entering values through the
+  terminal:
+    - `AEZEED_MNEMONIC`: Specifies the 24 word `lnd` aezeed.
+    - `AEZEED_PASSPHRASE`: Specifies the passphrase for the aezeed. If no
+      passphrase was used during the creation of the seed, the special value
+      `AEZEED_PASSPHRASE="-"` needs to be passed to indicate no passphrase
+      should be used or read from the terminal.
+    - `WALLET_PASSWORD`: Specifies the encryption password that is needed to
+      access a `wallet.db` file. This is currently only used by the `walletinfo`
+      command.
+
+Example using environment variables:
+
+```shell script
+# We add a space in front of each command to tell bash we don't want this
+# command stored in the history.
+$    export AEZEED_MNEMONIC="abandon able ... ... ..."
+# We didn't set a passphrase for this example seed, we need to indicate this by
+# passing in a single dash character.
+$    export AEZEED_PASSPHRASE="-"
+$ chantools showrootkey
+
+2020-10-29 20:22:42.329 [INF] CHAN: chantools version v0.6.0 commit v0.6.0-3
+
+Your BIP32 HD root key is: xprv9s21ZrQH1...
+```
 
 ## Command overview
 
