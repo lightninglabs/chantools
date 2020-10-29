@@ -23,6 +23,10 @@ import (
 	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
 )
 
+const (
+	passwordEnvName = "WALLET_PASSWORD"
+)
+
 var (
 	// Namespace from github.com/btcsuite/btcwallet/wallet/wallet.go
 	waddrmgrNamespaceKey = []byte("waddrmgr")
@@ -50,6 +54,7 @@ func (c *walletInfoCommand) Execute(_ []string) error {
 	var (
 		publicWalletPw  = lnwallet.DefaultPublicPassphrase
 		privateWalletPw = lnwallet.DefaultPrivatePassphrase
+		err             error
 	)
 
 	// Check that we have a wallet DB.
@@ -57,13 +62,33 @@ func (c *walletInfoCommand) Execute(_ []string) error {
 		return fmt.Errorf("wallet DB is required")
 	}
 
-	// Ask the user for the wallet password. If it's empty, the default
-	// password will be used, since the lnd wallet is always encrypted.
-	pw, err := passwordFromConsole("Input wallet password: ")
-	if err != nil {
-		return err
-	}
-	if len(pw) > 0 {
+	// To automate things with chantools, we also offer reading the wallet
+	// password from environment variables.
+	pw := []byte(strings.TrimSpace(os.Getenv(passwordEnvName)))
+
+	// Because we cannot differentiate between an empty and a non-existent
+	// environment variable, we need a special character that indicates that
+	// no password should be used. We use a single dash (-) for that as that
+	// would be too short for an explicit password anyway.
+	switch {
+	// The user indicated in the environment variable that no passphrase
+	// should be used. We don't set any value.
+	case string(pw) == "-":
+
+	// The environment variable didn't contain anything, we'll read the
+	// passphrase from the terminal.
+	case len(pw) == 0:
+		pw, err = passwordFromConsole("Input wallet password: ")
+		if err != nil {
+			return err
+		}
+		if len(pw) > 0 {
+			publicWalletPw = pw
+			privateWalletPw = pw
+		}
+
+	// There was a password in the environment, just use it directly.
+	default:
 		publicWalletPw = pw
 		privateWalletPw = pw
 	}
