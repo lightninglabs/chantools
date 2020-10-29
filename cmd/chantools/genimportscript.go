@@ -44,7 +44,7 @@ func (c *genImportScriptCommand) Execute(_ []string) error {
 		}
 
 	default:
-		extendedKey, birthday, err = lnd.ReadAezeedFromTerminal(
+		extendedKey, birthday, err = lnd.ReadAezeed(
 			chainParams,
 		)
 		if err != nil {

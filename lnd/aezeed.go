@@ -20,8 +20,8 @@ var (
 	multipleSpaces  = regexp.MustCompile(" [ ]+")
 )
 
-func ReadAezeedFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
-	time.Time, error) {
+func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
+	error) {
 
 	// We'll now prompt the user to enter in their 24-word mnemonic.
 	fmt.Printf("Input your 24-word mnemonic separated by spaces: ")

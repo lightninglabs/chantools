@@ -57,7 +57,7 @@ func (c *rescueFundingCommand) Execute(_ []string) error {
 		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
 
 	default:
-		extendedKey, _, err = lnd.ReadAezeedFromTerminal(
+		extendedKey, _, err = lnd.ReadAezeed(
 			chainParams,
 		)
 	}

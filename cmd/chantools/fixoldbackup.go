@@ -30,7 +30,7 @@ func (c *fixOldBackupCommand) Execute(_ []string) error {
 		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
 
 	default:
-		extendedKey, _, err = lnd.ReadAezeedFromTerminal(chainParams)
+		extendedKey, _, err = lnd.ReadAezeed(chainParams)
 	}
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)

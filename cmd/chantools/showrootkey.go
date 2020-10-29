@@ -26,7 +26,7 @@ func (c *showRootKeyCommand) Execute(_ []string) error {
 		extendedKey, err = btc.ReadMnemonicFromTerminal(chainParams)
 
 	default:
-		extendedKey, _, err = lnd.ReadAezeedFromTerminal(chainParams)
+		extendedKey, _, err = lnd.ReadAezeed(chainParams)
 	}
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
