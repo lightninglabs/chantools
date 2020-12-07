@@ -163,8 +163,14 @@ file based backup or the recovered file from the crashed node).
   you are not time locked any longer. Depending on the size of the channel, you
   have to wait for somewhere between 144 and 2000 confirmations of the
   force-close transactions. Only continue with the next step after the channel
-  with the highest `csv_timeout` has reached that many confirmations of its
-  closing transaction.
+  with the highest `csv_delay` has reached that many confirmations of its
+  closing transaction. You can check this by looking up each force closed
+  channel transaction on a block explorer (like 
+  [blockstream.info](https://blockstream.info) for example). Open the result
+  JSON file of the last command (`./results/forceclose-yyyy-mm-dd.json`) and
+  look up every TXID in `"force_close" -> "txid"` on the explorer. If the number
+  of confirmations is equal to or greater to the value shown in
+  `"force_close" -> "csv_delay"` for each of the channels, you can proceed.
 
 10. **chantools sweeptimelock**: Once all force-close transactions have reached
   the number of transactions as the `csv_timeout` in the JSON demands, these
