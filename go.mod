@@ -11,7 +11,6 @@ require (
 	github.com/btcsuite/btcwallet/walletdb v1.3.4
 	github.com/coreos/bbolt v1.3.3
 	github.com/davecgh/go-spew v1.1.1
-	github.com/golang/protobuf v1.3.2 // indirect
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/lightningnetwork/lnd v0.11.1-beta
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
@@ -19,9 +18,8 @@ require (
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
-	gopkg.in/yaml.v2 v2.2.3 // indirect
 )
 
-replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.11.0-beta.rc4.0.20201214215106-06bde4fb8ccf
+replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.11.1-beta.rc5.0.20201214225837-5a6d8ff78da4
 
 go 1.13
