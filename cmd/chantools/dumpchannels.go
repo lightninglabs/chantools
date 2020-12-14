@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/guggero/chantools/dump"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 )
 
@@ -21,15 +21,11 @@ func (c *dumpChannelsCommand) Execute(_ []string) error {
 	if c.ChannelDB == "" {
 		return fmt.Errorf("channel DB is required")
 	}
-	db, err := channeldb.Open(
-		path.Dir(c.ChannelDB), path.Base(c.ChannelDB),
-		channeldb.OptionSetSyncFreelist(true),
-		channeldb.OptionReadOnly(true),
-	)
+	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
-	
+
 	if c.Closed {
 		return dumpClosedChannelInfo(db)
 	}

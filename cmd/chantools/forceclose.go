@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"path"
 	"time"
 
 	"github.com/btcsuite/btcd/txscript"
@@ -49,11 +48,7 @@ func (c *forceCloseCommand) Execute(_ []string) error {
 	if c.ChannelDB == "" {
 		return fmt.Errorf("rescue DB is required")
 	}
-	db, err := channeldb.Open(
-		path.Dir(c.ChannelDB), path.Base(c.ChannelDB),
-		channeldb.OptionSetSyncFreelist(true),
-		channeldb.OptionReadOnly(true),
-	)
+	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}

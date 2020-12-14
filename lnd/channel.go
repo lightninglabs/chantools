@@ -2,13 +2,15 @@ package lnd
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
+
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
-	"strconv"
-	"strings"
 )
 
 type LightningChannel struct {
@@ -55,17 +57,20 @@ func (lc *LightningChannel) SignedCommitTx() (*wire.MsgTx, error) {
 	// for the transaction.
 	localCommit := lc.ChannelState.LocalCommitment
 	commitTx := localCommit.CommitTx.Copy()
-	theirSig := append(localCommit.CommitSig, byte(txscript.SigHashAll))
-
-	// With this, we then generate the full witness so the caller can
-	// broadcast a fully signed transaction.
-	lc.SignDesc.SigHashes = txscript.NewTxSigHashes(commitTx)
-	ourSigRaw, err := lc.TXSigner.SignOutputRaw(commitTx, lc.SignDesc)
+	theirSig, err := btcec.ParseDERSignature(
+		localCommit.CommitSig, btcec.S256(),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	ourSig := append(ourSigRaw, byte(txscript.SigHashAll))
+	// With this, we then generate the full witness so the caller can
+	// broadcast a fully signed transaction.
+	lc.SignDesc.SigHashes = txscript.NewTxSigHashes(commitTx)
+	ourSig, err := lc.TXSigner.SignOutputRaw(commitTx, lc.SignDesc)
+	if err != nil {
+		return nil, err
+	}
 
 	// With the final signature generated, create the witness stack
 	// required to spend from the multi-sig output.

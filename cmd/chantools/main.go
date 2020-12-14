@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"path"
 	"strings"
 	"syscall"
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
 	"github.com/guggero/chantools/dataformat"
+	"github.com/guggero/chantools/lnd"
 	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chanbackup"
@@ -182,11 +182,7 @@ func parseInputType(cfg *config) ([]*dataformat.SummaryEntry, error) {
 		target = &dataformat.SummaryEntryFile{}
 
 	case cfg.FromChannelDB != "":
-		db, err := channeldb.Open(
-			path.Dir(cfg.FromChannelDB), path.Base(cfg.FromChannelDB),
-			channeldb.OptionSetSyncFreelist(true),
-			channeldb.OptionReadOnly(true),
-		)
+		db, err := lnd.OpenDB(cfg.FromChannelDB, true)
 		if err != nil {
 			return nil, fmt.Errorf("error opening channel DB: %v",
 				err)

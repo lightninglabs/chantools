@@ -216,7 +216,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		Value:    totalOutputValue - int64(totalFee),
 		PkScript: sweepScript,
 	}}
-	
+
 	// Sign the transaction now.
 	sigHashes := txscript.NewTxSigHashes(sweepTx)
 	for idx, desc := range signDescs {

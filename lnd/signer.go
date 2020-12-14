@@ -18,7 +18,7 @@ type Signer struct {
 }
 
 func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
-	signDesc *input.SignDescriptor) ([]byte, error) {
+	signDesc *input.SignDescriptor) (input.Signature, error) {
 	witnessScript := signDesc.WitnessScript
 
 	// First attempt to fetch the private key which corresponds to the
@@ -39,7 +39,7 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	}
 
 	// Chop off the sighash flag at the end of the signature.
-	return sig[:len(sig)-1], nil
+	return btcec.ParseDERSignature(sig[:len(sig)-1], btcec.S256())
 }
 
 func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
@@ -81,7 +81,7 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	if err != nil {
 		return fmt.Errorf("error signing with our key: %v", err)
 	}
-	ourSig := append(ourSigRaw, byte(txscript.SigHashAll))
+	ourSig := append(ourSigRaw.Serialize(), byte(txscript.SigHashAll))
 
 	// Great, we were able to create our sig, let's add it to the PSBT.
 	updater, err := psbt.NewUpdater(packet)

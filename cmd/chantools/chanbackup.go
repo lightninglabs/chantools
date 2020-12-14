@@ -2,12 +2,10 @@ package main
 
 import (
 	"fmt"
-	"path"
 
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
-	"github.com/lightningnetwork/lnd/channeldb"
 )
 
 type chanBackupCommand struct {
@@ -45,11 +43,7 @@ func (c *chanBackupCommand) Execute(_ []string) error {
 	if c.ChannelDB == "" {
 		return fmt.Errorf("channel DB is required")
 	}
-	db, err := channeldb.Open(
-		path.Dir(c.ChannelDB), path.Base(c.ChannelDB),
-		channeldb.OptionSetSyncFreelist(true),
-		channeldb.OptionReadOnly(true),
-	)
+	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
