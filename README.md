@@ -16,6 +16,7 @@
   + [fixoldbackup](#fixoldbackup)
   + [genimportscript](#genimportscript)
   + [forceclose](#forceclose)
+  + [removechannel](#removechannel)
   + [rescueclosed](#rescueclosed)
   + [rescuefunding](#rescuefunding)
   + [showrootkey](#showrootkey)
@@ -267,6 +268,7 @@ Available commands:
   fixoldbackup         Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key).
   forceclose           Force-close the last state that is in the channel.db provided.
   genimportscript      Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind.
+  removechannel        Remove a single channel from the given channel DB.
   rescueclosed         Try finding the private keys for funds that are in outputs of remotely force-closed channels.
   rescuefunding        Rescue funds locked in a funding multisig output that never resulted in a proper channel. This is the command the initiator of the channel needs to run.
   showrootkey          Extract and show the BIP32 HD root key from the 24 word lnd aezeed.
@@ -503,6 +505,26 @@ Example command:
 
 ```bash
 chantools genimportscript --format bitcoin-cli --recoverywindow 5000
+```
+
+### removechannel
+
+```text
+Usage:
+  chantools [OPTIONS] removechannel [removechannel-OPTIONS]
+
+[removechannel command options]
+          --channeldb=   The lnd channel.db file to remove the channel from.
+          --channel=     The channel to remove from the DB file, identified by its channel point (<txid>:<txindex>).
+```
+
+Removes a single channel from the given channel DB.
+
+Example command:
+
+```bash
+chantools --channeldb ~/.lnd/data/graph/mainnet/channel.db \
+  --channel 3149764effbe82718b280de425277e5e7b245a4573aa4a0203ac12cee1c37816:0
 ```
 
 ### rescueclosed

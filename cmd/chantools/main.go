@@ -156,6 +156,10 @@ func runCommandParser() error {
 			"-initiator) of the channel needs to run.", "",
 		&signRescueFundingCommand{},
 	)
+	_, _ = parser.AddCommand(
+		"removechannel", "Remove a single channel from the given "+
+			"channel DB.", "", &removeChannelCommand{},
+	)
 
 	_, err := parser.Parse()
 	return err
