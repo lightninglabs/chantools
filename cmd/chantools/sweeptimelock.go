@@ -221,6 +221,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sigHashes := txscript.NewTxSigHashes(sweepTx)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes
+		desc.InputIndex = idx
 		witness, err := input.CommitSpendTimeout(signer, desc, sweepTx)
 		if err != nil {
 			return err
