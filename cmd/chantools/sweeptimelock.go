@@ -19,14 +19,14 @@ import (
 
 const (
 	defaultFeeSatPerVByte = 2
-	defaultCsvLimit       = 2000
+	defaultCsvLimit       = 2016
 )
 
 type sweepTimeLockCommand struct {
 	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
 	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to."`
-	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
+	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2016)"`
 	FeeRate     uint32 `long:"feerate" description:"The fee rate to use for the sweep transaction in sat/vByte. (default 2 sat/vByte)"`
 }
 
