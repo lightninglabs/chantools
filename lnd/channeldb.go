@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	defaultOpenTimeout = time.Second * 10
+	DefaultOpenTimeout = time.Second * 10
 )
 
 func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
-	backend, err := openDB(dbPath, false, readonly, defaultOpenTimeout)
+	backend, err := openDB(dbPath, false, readonly, DefaultOpenTimeout)
 	if err != nil {
 		return nil, err
 	}

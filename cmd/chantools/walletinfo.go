@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/btcsuite/btcwallet/walletdb"
+	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet"
 
@@ -94,7 +95,10 @@ func (c *walletInfoCommand) Execute(_ []string) error {
 	}
 
 	// Try to load and open the wallet.
-	db, err := walletdb.Open("bdb", cleanAndExpandPath(c.WalletDB), false)
+	db, err := walletdb.Open(
+		"bdb", cleanAndExpandPath(c.WalletDB), false,
+		lnd.DefaultOpenTimeout,
+	)
 	if err != nil {
 		return fmt.Errorf("error opening wallet database: %v", err)
 	}
