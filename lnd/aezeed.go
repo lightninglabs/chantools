@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	numberDotsRegex = regexp.MustCompile("[\\d.\\-\\n\\r\\t]*")
+	numberDotsRegex = regexp.MustCompile(`[\d.\-\n\r\t]*`)
 	multipleSpaces  = regexp.MustCompile(" [ ]+")
 )
 

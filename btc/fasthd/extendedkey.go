@@ -16,8 +16,7 @@ import (
 )
 
 const (
-	HardenedKeyStart = 0x80000000              // 2^31
-	serializedKeyLen = 4 + 1 + 4 + 4 + 32 + 33 // 78 bytes
+	HardenedKeyStart = 0x80000000 // 2^31
 	keyLen           = 33
 )
 
@@ -50,7 +49,7 @@ func (k *FastDerivation) Child(i uint32) error {
 	binary.BigEndian.PutUint32(k.scratch[keyLen:], i)
 
 	hmac512 := hmac.New(sha512.New, k.chainCode)
-	hmac512.Write(k.scratch[:])
+	_, _ = hmac512.Write(k.scratch[:])
 	ilr := hmac512.Sum(nil)
 
 	il := ilr[:len(ilr)/2]
@@ -84,7 +83,7 @@ func NewFastDerivation(seed []byte, net *chaincfg.Params) (*FastDerivation, erro
 	// First take the HMAC-SHA512 of the master key and the seed data:
 	//   I = HMAC-SHA512(Key = "Bitcoin seed", Data = S)
 	hmac512 := hmac.New(sha512.New, masterKey)
-	hmac512.Write(seed)
+	_, _ = hmac512.Write(seed)
 	lr := hmac512.Sum(nil)
 
 	// Split "I" into two 32-byte sequences Il and Ir where:

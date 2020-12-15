@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func init() {
+func init() { //nolint:gochecknoinits
 	// Ensure word list is correct
 	// $ wget https://raw.githubusercontent.com/bitcoin/bips/master/bip-0039/english.txt
 	// $ crc32 english.txt

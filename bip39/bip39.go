@@ -66,7 +66,7 @@ func EntropyFromMnemonic(mnemonic string) ([]byte, error) {
 	b := big.NewInt(0)
 	for _, v := range mnemonicSlice {
 		index, found := wordMap[v]
-		if found == false {
+		if !found {
 			return nil, fmt.Errorf("word `%v` not found in "+
 				"reverse map", v)
 		}
@@ -106,7 +106,7 @@ func EntropyFromMnemonic(mnemonic string) ([]byte, error) {
 
 func computeChecksum(data []byte) []byte {
 	hasher := sha256.New()
-	hasher.Write(data)
+	_, _ = hasher.Write(data)
 	return hasher.Sum(nil)
 }
 

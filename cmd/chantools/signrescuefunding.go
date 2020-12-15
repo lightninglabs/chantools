@@ -3,12 +3,12 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/psbt"
-	"github.com/lightningnetwork/lnd/keychain"
 
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcutil/psbt"
 	"github.com/guggero/chantools/lnd"
+	"github.com/lightningnetwork/lnd/keychain"
 )
 
 type signRescueFundingCommand struct {

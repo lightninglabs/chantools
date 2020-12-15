@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/btcsuite/btcutil"
-	"github.com/guggero/chantools/btc"
 
+	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
 )
 
