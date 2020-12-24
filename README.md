@@ -41,8 +41,24 @@ a private API URL with `--apiurl`.
 
 ## Installation
 
-To install this tool, make sure you have `go 1.13.x` (or later) and `make`
-installed and run the following commands:
+The easiest way to install `chantools` is to [download a pre-built binary for
+your operating system and architecture](https://github.com/guggero/chantools/releases).
+
+Example (make sure you always use the latest version!):
+
+```shell
+$ cd /tmp
+$ wget -O chantools.tar.gz https://github.com/guggero/chantools/releases/download/v0.7.1/chantools-linux-amd64-v0.7.1.tar.gz
+$ tar -zxvf chantools.tar.gz
+$ sudo mv chantools-*/chantools /usr/local/bin/
+```
+
+### Compile from source
+
+If there isn't a pre-built binary for your operating system or architecture
+available or you want to build `chantools` from source for another reason, you
+need to make sure you have `go 1.13.x` (or later) and `make` installed and can
+then run the following commands:
 
 ```bash
 git clone https://github.com/guggero/chantools.git
