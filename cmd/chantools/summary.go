@@ -8,19 +8,41 @@ import (
 
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
+	"github.com/spf13/cobra"
 )
 
-type summaryCommand struct{}
+type summaryCommand struct {
+	ApiURL string
 
-func (c *summaryCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+	inputs *inputFlags
+	cmd    *cobra.Command
+}
 
+func newSummaryCommand() *cobra.Command {
+	cc := &summaryCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "summary",
+		Short: "Compile a summary about the current state of " +
+			"channels",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+			"be esplora compatible)",
+	)
+
+	cc.inputs = newInputFlags(cc.cmd)
+
+	return cc.cmd
+}
+
+func (c *summaryCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInputType(cfg)
+	entries, err := c.inputs.parseInputType()
 	if err != nil {
 		return err
 	}
-	return summarizeChannels(cfg.APIURL, entries)
+	return summarizeChannels(c.ApiURL, entries)
 }
 
 func summarizeChannels(apiURL string,

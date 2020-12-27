@@ -9,29 +9,37 @@ import (
 	"github.com/btcsuite/btcutil/psbt"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 type signRescueFundingCommand struct {
-	RootKey string `long:"rootkey" description:"BIP32 HD root (m/) key to derive the key for our part of the signature from."`
-	Psbt    string `long:"psbt" description:"The Partially Signed Bitcoin Transaction that was provided by the initiator of the channel to rescue."`
+	Psbt string
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *signRescueFundingCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newSignRescueFundingCommand() *cobra.Command {
+	cc := &signRescueFundingCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "signrescuefunding",
+		Short: "Rescue funds locked in a funding multisig output that " +
+			"never resulted in a proper channel; this is the " +
+			"command the remote node (the non-initiator) of the " +
+			"channel needs to run",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.Psbt, "psbt", "", "Partially Signed Bitcoin Transaction "+
+			"that was provided by the initiator of the channel to "+
+			"rescue",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	return cc.cmd
+}
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+func (c *signRescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}

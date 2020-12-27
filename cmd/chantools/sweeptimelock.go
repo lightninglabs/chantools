@@ -15,6 +15,7 @@ import (
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -23,29 +24,53 @@ const (
 )
 
 type sweepTimeLockCommand struct {
-	RootKey     string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	Publish     bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
-	SweepAddr   string `long:"sweepaddr" description:"The address the funds should be sweeped to."`
-	MaxCsvLimit int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2016)"`
-	FeeRate     uint32 `long:"feerate" description:"The fee rate to use for the sweep transaction in sat/vByte. (default 2 sat/vByte)"`
+	ApiURL      string
+	Publish     bool
+	SweepAddr   string
+	MaxCsvLimit uint16
+	FeeRate     uint16
+
+	rootKey *rootKey
+	inputs *inputFlags
+	cmd    *cobra.Command
 }
 
-func (c *sweepTimeLockCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newSweepTimeLockCommand() *cobra.Command {
+	cc := &sweepTimeLockCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "sweeptimelock",
+		Short: "Sweep the force-closed state after the time lock has " +
+			"expired",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+			"be esplora compatible)",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Publish, "publish", false, "publish sweep TX to the chain "+
+			"API instead of just printing the TX",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+	)
+	cc.cmd.Flags().Uint16Var(
+		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
+			"limit to use",
+	)
+	cc.cmd.Flags().Uint16Var(
+		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
+			"use for the sweep transaction in sat/vByte",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
+	cc.inputs = newInputFlags(cc.cmd)
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
@@ -56,7 +81,7 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInputType(cfg)
+	entries, err := c.inputs.parseInputType()
 	if err != nil {
 		return err
 	}
@@ -69,14 +94,14 @@ func (c *sweepTimeLockCommand) Execute(_ []string) error {
 		c.FeeRate = defaultFeeSatPerVByte
 	}
 	return sweepTimeLock(
-		extendedKey, cfg.APIURL, entries, c.SweepAddr, c.MaxCsvLimit,
+		extendedKey, c.ApiURL, entries, c.SweepAddr, c.MaxCsvLimit,
 		c.Publish, c.FeeRate,
 	)
 }
 
 func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
-	entries []*dataformat.SummaryEntry, sweepAddr string, maxCsvTimeout int,
-	publish bool, feeRate uint32) error {
+	entries []*dataformat.SummaryEntry, sweepAddr string,
+	maxCsvTimeout uint16, publish bool, feeRate uint16) error {
 
 	// Create signer and transaction template.
 	signer := &lnd.Signer{
@@ -260,14 +285,14 @@ func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 }
 
 func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
-	targetScript []byte, maxCsvTimeout int) (int32, []byte, []byte,
+	targetScript []byte, maxCsvTimeout uint16) (int32, []byte, []byte,
 	error) {
 
 	if len(targetScript) != 34 {
 		return 0, nil, nil, fmt.Errorf("invalid target script: %s",
 			targetScript)
 	}
-	for i := 0; i <= maxCsvTimeout; i++ {
+	for i := uint16(0); i <= maxCsvTimeout; i++ {
 		s, err := input.CommitScriptToSelf(
 			uint32(i), delayPubkey, revocationPubkey,
 		)

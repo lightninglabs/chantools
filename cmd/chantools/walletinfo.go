@@ -16,6 +16,7 @@ import (
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet"
+	"github.com/spf13/cobra"
 
 	// This is required to register bdb as a valid walletdb driver. In the
 	// init function of the package, it registers itself. The import is used
@@ -45,13 +46,33 @@ var (
 )
 
 type walletInfoCommand struct {
-	WalletDB    string `long:"walletdb" description:"The lnd wallet.db file to dump the contents from."`
-	WithRootKey bool   `long:"withrootkey" description:"Should the BIP32 HD root key of the wallet be printed to standard out?"`
+	WalletDB    string
+	WithRootKey bool
+
+	cmd *cobra.Command
 }
 
-func (c *walletInfoCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+func newWalletInfoCommand() *cobra.Command {
+	cc := &walletInfoCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "walletinfo",
+		Short: "Shows info about an lnd wallet.db file and optionally " +
+			"extracts the BIP32 HD root key",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.WalletDB, "walletdb", "", "lnd wallet.db file to dump the "+
+			"contents from",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.WithRootKey, "withrootkey", false, "print BIP32 HD root "+
+			"key of wallet to standard out",
+	)
 
+	return cc.cmd
+}
+
+func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	var (
 		publicWalletPw  = lnwallet.DefaultPublicPassphrase
 		privateWalletPw = lnwallet.DefaultPrivatePassphrase

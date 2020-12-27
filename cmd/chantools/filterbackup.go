@@ -6,34 +6,45 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 type filterBackupCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
-	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to filter."`
-	Discard   string `long:"discard" description:"A comma separated list of channel funding outpoints (format <fundingTXID>:<index>) to remove from the backup file."`
+	MultiFile string
+	Discard   string
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *filterBackupCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newFilterBackupCommand() *cobra.Command {
+	cc := &filterBackupCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "filterbackup",
+		Short: "Filter an lnd channel.backup file and remove certain " +
+			"channels",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.MultiFile, "multi_file", "", "lnd channel.backup file to "+
+			"filter",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.Discard, "discard", "", "comma separated list of channel "+
+			"funding outpoints (format <fundingTXID>:<index>) to "+
+			"remove from the backup file",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *filterBackupCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}

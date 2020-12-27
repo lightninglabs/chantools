@@ -15,6 +15,7 @@ import (
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -22,13 +23,32 @@ var (
 )
 
 type vanityGenCommand struct {
-	Prefix  string `long:"prefix" description:"Hex encoded prefix to find in node public key."`
-	Threads int    `long:"threads" description:"Number of parallel threads." default:"4"`
+	Prefix  string
+	Threads uint8
+
+	cmd *cobra.Command
 }
 
-func (c *vanityGenCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+func newVanityGenCommand() *cobra.Command {
+	cc := &vanityGenCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "vanitygen",
+		Short: "Generate a seed with a custom lnd node identity " +
+			"public key that starts with the given prefix",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.Prefix, "prefix", "", "hex encoded prefix to find in node "+
+			"public key",
+	)
+	cc.cmd.Flags().Uint8Var(
+		&cc.Threads, "threads", 4, "number of parallel threads",
+	)
 
+	return cc.cmd
+}
+
+func (c *vanityGenCommand) Execute(_ *cobra.Command, _ []string) error {
 	prefixBytes, err := hex.DecodeString(c.Prefix)
 	if err != nil {
 		return fmt.Errorf("hex decoding of prefix failed: %v", err)
@@ -55,7 +75,7 @@ func (c *vanityGenCommand) Execute(_ []string) error {
 	fmt.Printf("Running vanitygen on %d threads. Prefix bit length is %d, "+
 		"expecting to approach\nprobability p=1.0 after %s seeds.\n",
 		c.Threads, numBits, format(int64(numTries)))
-	runtime.GOMAXPROCS(c.Threads)
+	runtime.GOMAXPROCS(int(c.Threads))
 	var (
 		mtx         sync.Mutex
 		globalCount uint64
@@ -63,7 +83,7 @@ func (c *vanityGenCommand) Execute(_ []string) error {
 		start       = time.Now()
 	)
 
-	for i := 0; i < c.Threads; i++ {
+	for i := uint8(0); i < c.Threads; i++ {
 		go func() {
 			var (
 				entropy [16]byte

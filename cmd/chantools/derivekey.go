@@ -5,36 +5,47 @@ import (
 
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
+	"github.com/spf13/cobra"
 )
 
 type deriveKeyCommand struct {
-	BIP39   bool   `long:"bip39" description:"Read a classic BIP39 seed and passphrase from the terminal instead of asking for the lnd seed format or providing the --rootkey flag."`
-	RootKey string `long:"rootkey" description:"BIP32 HD root key to derive the key from."`
-	Path    string `long:"path" description:"The BIP32 derivation path to derive. Must start with \"m/\"."`
-	Neuter  bool   `long:"neuter" description:"Do not output the private key, just the public key."`
+	BIP39   bool
+	Path    string
+	Neuter  bool
+
+	rootKey *rootKey
+	cmd *cobra.Command
 }
 
-func (c *deriveKeyCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newDeriveKeyCommand() *cobra.Command {
+	cc := &deriveKeyCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "derivekey",
+		Short: "Derive a key with a specific derivation path",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().BoolVar(
+		&cc.BIP39, "bip39", false, "read a classic BIP39 seed and "+
+			"passphrase from the terminal instead of asking for "+
+			"lnd seed format or providing the --rootkey flag",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.Path, "path", "", "BIP32 derivation path to derive; must "+
+			"start with \"m/\"",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Neuter, "neuter", false, "don't output private key(s), "+
+			"only public key(s)",
 	)
 
-	// Check that root key is valid or fall back to terminal input.
-	switch {
-	case c.BIP39:
-		extendedKey, err = btc.ReadMnemonicFromTerminal(chainParams)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
+	
+	return cc.cmd
+}
 
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
-
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+func (c *deriveKeyCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}

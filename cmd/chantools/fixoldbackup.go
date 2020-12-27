@@ -5,36 +5,44 @@ import (
 	"os"
 	"time"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 type fixOldBackupCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
-	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to fix."`
+	MultiFile string
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *fixOldBackupCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newFixOldBackupCommand() *cobra.Command {
+	cc := &fixOldBackupCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "fixoldbackup",
+		Short: "Fixes an old channel.backup file that is affected by " +
+			"the lnd issue #3881 (unable to derive shachain root " +
+			"key)",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.MultiFile, "multi_file", "", "lnd channel.backup file to "+
+			"fix",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *fixOldBackupCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
+
 	// Check that we have a backup file.
 	if c.MultiFile == "" {
 		return fmt.Errorf("backup file is required")

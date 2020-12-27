@@ -16,30 +16,48 @@ import (
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
+	"github.com/spf13/cobra"
 )
 
 type forceCloseCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for force-closing channels."`
-	Publish   bool   `long:"publish" description:"Should the force-closing TX be published to the chain API?"`
+	ApiURL    string
+	ChannelDB string
+	Publish   bool
+
+	rootKey *rootKey
+	inputs  *inputFlags
+	cmd     *cobra.Command
 }
 
-func (c *forceCloseCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newForceCloseCommand() *cobra.Command {
+	cc := &forceCloseCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "forceclose",
+		Short: "Force-close the last state that is in the channel.db " +
+			"provided",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+			"be esplora compatible)",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to use "+
+			"for force-closing channels",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Publish, "publish", false, "publish force-closing TX to "+
+			"the chain API instead of just printing the TX",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
+	cc.inputs = newInputFlags(cc.cmd)
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
@@ -54,14 +72,14 @@ func (c *forceCloseCommand) Execute(_ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInputType(cfg)
+	entries, err := c.inputs.parseInputType()
 	if err != nil {
 		return err
 	}
-	return forceCloseChannels(extendedKey, entries, db, c.Publish)
+	return forceCloseChannels(c.ApiURL, extendedKey, entries, db, c.Publish)
 }
 
-func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
+func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB,
 	publish bool) error {
 
@@ -69,7 +87,7 @@ func forceCloseChannels(extendedKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return err
 	}
-	api := &btc.ExplorerAPI{BaseURL: cfg.APIURL}
+	api := &btc.ExplorerAPI{BaseURL: apiURL}
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,

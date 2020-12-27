@@ -6,12 +6,12 @@ import (
 
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/btcsuite/btcutil/psbt"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -34,33 +34,61 @@ var (
 )
 
 type rescueFundingCommand struct {
-	RootKey           string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
 	ChannelDB         string `long:"channeldb" description:"The lnd channel.db file to rescue a channel from. Must contain the pending channel specified with --channelpoint."`
 	ChannelPoint      string `long:"channelpoint" description:"The funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB."`
 	ConfirmedOutPoint string `long:"confirmedchannelpoint" description:"The channel outpoint that got confirmed on chain (<txid>:<txindex>). Normally this is the same as the --channelpoint so it will be set to that value if this is left empty."`
-	SweepAddr         string `long:"sweepaddr" description:"The address to sweep the rescued funds to."`
-	SatPerByte        int64  `long:"satperbyte" description:"The fee rate to use in satoshis/vByte."`
+	SweepAddr         string
+	FeeRate           uint16
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *rescueFundingCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		chainOp     *wire.OutPoint
-		err         error
+func newRescueFundingCommand() *cobra.Command {
+	cc := &rescueFundingCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "rescuefunding",
+		Short: "Rescue funds locked in a funding multisig output that " +
+			"never resulted in a proper channel; this is the " +
+			"command the initiator of the channel needs to run",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to "+
+			"rescue a channel from; must contain the pending "+
+			"channel specified with --channelpoint",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelPoint, "channelpoint", "", "funding transaction "+
+			"outpoint of the channel to rescue (<txid>:<txindex>) "+
+			"as it is recorded in the DB",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.ConfirmedOutPoint, "confirmedchannelpoint", "", "channel "+
+			"outpoint that got confirmed on chain "+
+			"(<txid>:<txindex>); normally this is the same as the "+
+			"--channelpoint so it will be set to that value if"+
+			"this is left empty",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+	)
+	cc.cmd.Flags().Uint16Var(
+		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
+			"use for the sweep transaction in sat/vByte",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(
-			chainParams,
-		)
-	}
+	return cc.cmd
+}
+
+func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
+	var (
+		chainOp *wire.OutPoint
+	)
+
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
@@ -104,13 +132,13 @@ func (c *rescueFundingCommand) Execute(_ []string) error {
 		return fmt.Errorf("error parsing sweep addr: %v", err)
 	}
 
-	if c.SatPerByte < 0 {
+	if c.FeeRate < 0 {
 		return fmt.Errorf("satperbyte must be greater than 0")
 	}
 
 	return rescueFunding(
 		db, signer, dbOp, chainOp, sweepScript,
-		btcutil.Amount(c.SatPerByte),
+		btcutil.Amount(c.FeeRate),
 	)
 }
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/coreos/bbolt"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -12,12 +13,38 @@ const (
 )
 
 type compactDBCommand struct {
-	TxMaxSize int64  `long:"txmaxsize" description:"Maximum transaction size. (default 65536)"`
-	SourceDB  string `long:"sourcedb" description:"The lnd channel.db file to create the database backup from."`
-	DestDB    string `long:"destdb" description:"The lnd new channel.db file to copy the compacted database to."`
+	TxMaxSize int64
+	SourceDB  string
+	DestDB    string
+
+	cmd *cobra.Command
 }
 
-func (c *compactDBCommand) Execute(_ []string) error {
+func newCompactDBCommand() *cobra.Command {
+	cc := &compactDBCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "compactdb",
+		Short: "Create a copy of a channel.db file in safe/read-only " +
+			"mode",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().Int64Var(
+		&cc.TxMaxSize, "txmaxsize", defaultTxMaxSize, "maximum "+
+			"transaction size",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.SourceDB, "sourcedb", "", "lnd channel.db file to create "+
+			"the database backup from",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.DestDB, "destdb", "", "new lnd channel.db file to copy "+
+			"the compacted database to",
+	)
+
+	return cc.cmd
+}
+
+func (c *compactDBCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a source and destination channel DB.
 	if c.SourceDB == "" {
 		return fmt.Errorf("source channel DB is required")

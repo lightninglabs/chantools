@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -16,42 +16,73 @@ const (
 )
 
 type genImportScriptCommand struct {
-	RootKey        string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	Format         string `long:"format" description:"The format of the generated import script. Currently supported are: bitcoin-cli, bitcoin-cli-watchonly, bitcoin-importwallet."`
-	LndPaths       bool   `long:"lndpaths" description:"Use all derivation paths that lnd uses. Results in a large number of results. Cannot be used in conjunction with --derivationpath."`
-	DerivationPath string `long:"derivationpath" description:"Use one specific derivation path. Specify the first levels of the derivation path before any internal/external branch. Cannot be used in conjunction with --lndpaths. (default m/84'/0'/0')"`
-	RecoveryWindow uint32 `long:"recoverywindow" description:"The number of keys to scan per internal/external branch. The output will consist of double this amount of keys. (default 2500)"`
-	RescanFrom     uint32 `long:"rescanfrom" description:"The block number to rescan from. Will be set automatically from the wallet birthday if the lnd 24 word aezeed is entered. (default 500000)"`
+	Format         string
+	LndPaths       bool
+	DerivationPath string
+	RecoveryWindow uint32
+	RescanFrom     uint32
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *genImportScriptCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
-		birthday    time.Time
-		strPaths    []string
-		paths       [][]uint32
+func newGenImportScriptCommand() *cobra.Command {
+	cc := &genImportScriptCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "genimportscript",
+		Short: "Generate a script containing the on-chain " +
+			"keys of an lnd wallet that can be imported into " +
+			"other software like bitcoind",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.Format, "format", "bitcoin-importwallet", "format of the "+
+			"generated import script; currently supported are: "+
+			"bitcoin-importwallet, bitcoin-cli and "+
+			"bitcoin-cli-watchonly",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.LndPaths, "lndpaths", false, "use all derivation paths "+
+			"that lnd used; results in a large number of results; "+
+			"cannot be used in conjunction with --derivationpath",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.DerivationPath, "derivationpath", "", "use one specific "+
+			"derivation path; specify the first levels of the "+
+			"derivation path before any internal/external branch; "+
+			"Cannot be used in conjunction with --lndpaths",
+	)
+	cc.cmd.Flags().Uint32Var(
+		&cc.RecoveryWindow, "recoverywindow", defaultRecoveryWindow,
+		"number of keys to scan per internal/external branch; output "+
+			"will consist of double this amount of keys",
+	)
+	cc.cmd.Flags().Uint32Var(
+		&cc.RescanFrom, "rescanfrom", defaultRescanFrom, "block "+
+			"number to rescan from; will be set automatically "+
+			"from the wallet birthday if the lnd 24 word aezeed "+
+			"is entered",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
-		if err != nil {
-			return fmt.Errorf("error reading root key: %v", err)
-		}
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 
-	default:
-		extendedKey, birthday, err = lnd.ReadAezeed(
-			chainParams,
-		)
-		if err != nil {
-			return fmt.Errorf("error reading root key: %v", err)
-		}
-		// The btcwallet gives the birthday a slack of 48 hours, let's
-		// do the same.
+	return cc.cmd
+}
+
+func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
+	var (
+		strPaths []string
+		paths    [][]uint32
+	)
+
+	extendedKey, birthday, err := c.rootKey.readWithBirthday()
+	if err != nil {
+		return fmt.Errorf("error reading root key: %v", err)
+	}
+
+	// The btcwallet gives the birthday a slack of 48 hours, let's do the 
+	// same.
+	if !birthday.IsZero() {
 		c.RescanFrom = btc.SeedBirthdayToBlock(
 			chainParams, birthday.Add(-48*time.Hour),
 		)

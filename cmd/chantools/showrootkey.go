@@ -5,16 +5,36 @@ import (
 
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/lnd"
+	"github.com/spf13/cobra"
 )
 
 type showRootKeyCommand struct {
-	BIP39 bool `long:"bip39" description:"Read a classic BIP39 seed and passphrase from the terminal instead of asking for the lnd seed format or providing the --rootkey flag."`
+	BIP39 bool
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *showRootKeyCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+func newShowRootKeyCommand() *cobra.Command {
+	cc := &showRootKeyCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "showrootkey",
+		Short: "Extract and show the BIP32 HD root key from the 24 " +
+			"word lnd aezeed",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().BoolVar(
+		&cc.BIP39, "bip39", false, "read a classic BIP39 seed and "+
+			"passphrase from the terminal instead of asking for "+
+			"lnd seed format or providing the --rootkey flag",
+	)
 
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
+
+	return cc.cmd
+}
+
+func (c *showRootKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	var (
 		extendedKey *hdkeychain.ExtendedKey
 		err         error
@@ -26,7 +46,7 @@ func (c *showRootKeyCommand) Execute(_ []string) error {
 		extendedKey, err = btc.ReadMnemonicFromTerminal(chainParams)
 
 	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
+		extendedKey, err = c.rootKey.read()
 	}
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)

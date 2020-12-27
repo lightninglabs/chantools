@@ -3,33 +3,42 @@ package main
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
+	"github.com/spf13/cobra"
 )
 
 type chanBackupCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that should be used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
-	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to create the backup from."`
-	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to create."`
+	ChannelDB string
+	MultiFile string
+
+	rootKey *rootKey
+	cmd     *cobra.Command
 }
 
-func (c *chanBackupCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newChanBackupCommand() *cobra.Command {
+	cc := &chanBackupCommand{}
+	cc.cmd = &cobra.Command{
+		Use:   "chanbackup",
+		Short: "Create a channel.backup file from a channel database",
+		RunE:  cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to "+
+			"create the backup from",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.MultiFile, "multi_file", "", "lnd channel.backup file to "+
+			"create",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "creating the backup")
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}

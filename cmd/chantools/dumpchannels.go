@@ -7,16 +7,37 @@ import (
 	"github.com/guggero/chantools/dump"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/spf13/cobra"
 )
 
 type dumpChannelsCommand struct {
-	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to dump the channels from."`
-	Closed    bool   `long:"closed" description:"Dump all closed channels instead of all open channels."`
+	ChannelDB string
+	Closed    bool
+
+	cmd *cobra.Command
 }
 
-func (c *dumpChannelsCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+func newDumpChannelsCommand() *cobra.Command {
+	cc := &dumpChannelsCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "dumpchannels",
+		Short: "Dump all channel information from an lnd channel " +
+			"database",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to dump "+
+			"channels from",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Closed, "closed", false, "dump closed channels instead of "+
+			"open",
+	)
 
+	return cc.cmd
+}
+
+func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
 		return fmt.Errorf("channel DB is required")

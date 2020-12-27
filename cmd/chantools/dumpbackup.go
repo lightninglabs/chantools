@@ -3,35 +3,40 @@ package main
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/guggero/chantools/dump"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 type dumpBackupCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key of the wallet that was used to create the backup. Leave empty to prompt for lnd 24 word aezeed."`
-	MultiFile string `long:"multi_file" description:"The lnd channel.backup file to dump."`
+	MultiFile string
+
+	rootKey *rootKey
+	cmd *cobra.Command
 }
 
-func (c *dumpBackupCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newDumpBackupCommand() *cobra.Command {
+	cc := &dumpBackupCommand{}
+	cc.cmd = &cobra.Command{
+		Use:   "dumpbackup",
+		Short: "Dump the content of a channel.backup file",
+		RunE:  cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.MultiFile, "multi_file", "", "lnd channel.backup file to "+
+			"dump",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
+	
+	return cc.cmd
+}
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+func (c *dumpBackupCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}

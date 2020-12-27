@@ -9,16 +9,37 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/spf13/cobra"
 )
 
 type removeChannelCommand struct {
-	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to remove the channel from."`
-	Channel   string `long:"channel" description:"The channel to remove from the DB file, identified by its channel point (<txid>:<txindex>)."`
+	ChannelDB string
+	Channel   string
+
+	cmd *cobra.Command
 }
 
-func (c *removeChannelCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
+func newRemoveChannelCommand() *cobra.Command {
+	cc := &removeChannelCommand{}
+	cc.cmd = &cobra.Command{
+		Use:   "removechannel",
+		Short: "Remove a single channel from the given channel DB",
+		RunE:  cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.backup file to "+
+			"remove the channel from",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.Channel, "channel", "", "channel to remove from the DB "+
+			"file, identified by its channel point "+
+			"(<txid>:<txindex>)",
+	)
 
+	return cc.cmd
+}
+
+func (c *removeChannelCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
 		return fmt.Errorf("channel DB is required")

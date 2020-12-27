@@ -16,6 +16,7 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -31,26 +32,34 @@ type cacheEntry struct {
 }
 
 type rescueClosedCommand struct {
-	RootKey   string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	ChannelDB string `long:"channeldb" description:"The lnd channel.db file to use for rescuing force-closed channels."`
+	ChannelDB string
+
+	rootKey *rootKey
+	inputs *inputFlags
+	cmd    *cobra.Command
 }
 
-func (c *rescueClosedCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newRescueClosedCommand() *cobra.Command {
+	cc := &rescueClosedCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "rescueclosed",
+		Short: "Try finding the private keys for funds that " +
+			"are in outputs of remotely force-closed channels",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to use "+
+			"for rescuing force-closed channels",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
+	cc.inputs = newInputFlags(cc.cmd)
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
@@ -65,7 +74,7 @@ func (c *rescueClosedCommand) Execute(_ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := parseInputType(cfg)
+	entries, err := c.inputs.parseInputType()
 	if err != nil {
 		return err
 	}

@@ -16,6 +16,7 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/lightningnetwork/lnd/shachain"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -25,31 +26,64 @@ const (
 )
 
 type sweepTimeLockManualCommand struct {
-	RootKey                   string `long:"rootkey" description:"BIP32 HD root key to use. Leave empty to prompt for lnd 24 word aezeed."`
-	Publish                   bool   `long:"publish" description:"Should the sweep TX be published to the chain API?"`
-	SweepAddr                 string `long:"sweepaddr" description:"The address the funds should be sweeped to."`
-	MaxCsvLimit               int    `long:"maxcsvlimit" description:"Maximum CSV limit to use. (default 2000)"`
-	FeeRate                   uint32 `long:"feerate" description:"The fee rate to use for the sweep transaction in sat/vByte. (default 2 sat/vByte)"`
-	TimeLockAddr              string `long:"timelockaddr" description:"The address of the time locked commitment output where the funds are stuck in."`
-	RemoteRevocationBasePoint string `long:"remoterevbasepoint" description:"The remote's revocation base point, can be found in a channel.backup file."`
+	ApiURL                    string
+	Publish                   bool
+	SweepAddr                 string
+	MaxCsvLimit               uint16
+	FeeRate                   uint16
+	TimeLockAddr              string
+	RemoteRevocationBasePoint string
+
+	rootKey *rootKey
+	inputs *inputFlags
+	cmd    *cobra.Command
 }
 
-func (c *sweepTimeLockManualCommand) Execute(_ []string) error {
-	setupChainParams(cfg)
-
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
+func newSweepTimeLockManualCommand() *cobra.Command {
+	cc := &sweepTimeLockManualCommand{}
+	cc.cmd = &cobra.Command{
+		Use: "sweeptimelockmanual",
+		Short: "Sweep the force-closed state of a single channel " +
+			"manually if only a channel backup file is available",
+		RunE: cc.Execute,
+	}
+	cc.cmd.Flags().StringVar(
+		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+			"be esplora compatible)",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Publish, "publish", false, "publish sweep TX to the chain "+
+			"API instead of just printing the TX",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+	)
+	cc.cmd.Flags().Uint16Var(
+		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
+			"limit to use",
+	)
+	cc.cmd.Flags().Uint16Var(
+		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
+			"use for the sweep transaction in sat/vByte",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.TimeLockAddr, "timelockaddr", "", "address of the time "+
+			"locked commitment output where the funds are stuck in",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.RemoteRevocationBasePoint, "remoterevbasepoint", "", ""+
+			"remote node's revocation base point, can be found "+
+			"in a channel.backup file",
 	)
 
-	// Check that root key is valid or fall back to console input.
-	switch {
-	case c.RootKey != "":
-		extendedKey, err = hdkeychain.NewKeyFromString(c.RootKey)
+	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
+	cc.inputs = newInputFlags(cc.cmd)
 
-	default:
-		extendedKey, _, err = lnd.ReadAezeed(chainParams)
-	}
+	return cc.cmd
+}
+
+func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error {
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
@@ -70,22 +104,15 @@ func (c *sweepTimeLockManualCommand) Execute(_ []string) error {
 			err)
 	}
 
-	// Set default values.
-	if c.MaxCsvLimit == 0 {
-		c.MaxCsvLimit = defaultCsvLimit
-	}
-	if c.FeeRate == 0 {
-		c.FeeRate = defaultFeeSatPerVByte
-	}
 	return sweepTimeLockManual(
-		extendedKey, cfg.APIURL, c.SweepAddr, c.TimeLockAddr,
+		extendedKey, c.ApiURL, c.SweepAddr, c.TimeLockAddr,
 		remoteRevPoint, c.MaxCsvLimit, c.Publish, c.FeeRate,
 	)
 }
 
 func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepAddr, timeLockAddr string, remoteRevPoint *btcec.PublicKey,
-	maxCsvTimeout int, publish bool, feeRate uint32) error {
+	maxCsvTimeout uint16, publish bool, feeRate uint16) error {
 
 	// First of all, we need to parse the lock addr and make sure we can
 	// brute force the script with the information we have. If not, we can't
@@ -276,7 +303,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
 	revRoot *shachain.RevocationProducer, lockScript []byte,
-	maxCsvTimeout int) (int32, []byte, []byte, *btcec.PublicKey, error) {
+	maxCsvTimeout uint16) (int32, []byte, []byte, *btcec.PublicKey, error) {
 
 	for i := uint64(0); i < maxPoints; i++ {
 		revPreimage, err := revRoot.AtIndex(i)
