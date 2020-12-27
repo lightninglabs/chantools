@@ -6,6 +6,13 @@ Remove a single channel from the given channel DB
 chantools removechannel [flags]
 ```
 
+### Examples
+
+```
+chantools --channeldb ~/.lnd/data/graph/mainnet/channel.db \
+	--channel 3149764effbe82718b280de425277e5e7b245a4573aa4a0203ac12cee1c37816:0
+```
+
 ### Options
 
 ```

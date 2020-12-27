@@ -2,8 +2,21 @@
 
 Compile a summary about the current state of channels
 
+### Synopsis
+
+From a list of channels, find out what their state is by
+querying the funding transaction on a block explorer API.
+
 ```
 chantools summary [flags]
+```
+
+### Examples
+
+```
+lncli listchannels | chantools summary --listchannels -
+
+chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db
 ```
 
 ### Options

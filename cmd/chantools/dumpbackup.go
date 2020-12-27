@@ -15,7 +15,7 @@ type dumpBackupCommand struct {
 	MultiFile string
 
 	rootKey *rootKey
-	cmd *cobra.Command
+	cmd     *cobra.Command
 }
 
 func newDumpBackupCommand() *cobra.Command {
@@ -23,7 +23,11 @@ func newDumpBackupCommand() *cobra.Command {
 	cc.cmd = &cobra.Command{
 		Use:   "dumpbackup",
 		Short: "Dump the content of a channel.backup file",
-		RunE:  cc.Execute,
+		Long: `This command dumps all information that is inside a 
+channel.backup file in a human readable format.`,
+		Example: `chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup`,
+		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
 		&cc.MultiFile, "multi_file", "", "lnd channel.backup file to "+
@@ -31,7 +35,7 @@ func newDumpBackupCommand() *cobra.Command {
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
-	
+
 	return cc.cmd
 }
 

@@ -2,8 +2,21 @@
 
 Create a channel.backup file from a channel database
 
+### Synopsis
+
+This command creates a new channel.backup from a 
+channel.db file.
+
 ```
 chantools chanbackup [flags]
+```
+
+### Examples
+
+```
+chantools chanbackup --rootkey xprvxxxxxxx \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
+	--multi_file new_channel_backup.backup
 ```
 
 ### Options

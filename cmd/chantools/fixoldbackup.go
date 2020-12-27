@@ -25,6 +25,13 @@ func newFixOldBackupCommand() *cobra.Command {
 		Short: "Fixes an old channel.backup file that is affected by " +
 			"the lnd issue #3881 (unable to derive shachain root " +
 			"key)",
+		Long: `Fixes an old channel.backup file that is affected by the
+lnd issue [#3881](https://github.com/lightningnetwork/lnd/issues/3881)
+(<code>[lncli] unable to restore chan backups: rpc error: code = Unknown desc =
+unable to unpack chan backup: unable to derive shachain root key: unable to
+derive private key</code>).`,
+		Example: `chantools fixoldbackup --rootkey xprvxxxxxxxxxx \
+	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

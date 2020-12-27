@@ -26,6 +26,11 @@ func newCompactDBCommand() *cobra.Command {
 		Use: "compactdb",
 		Short: "Create a copy of a channel.db file in safe/read-only " +
 			"mode",
+		Long: `This command opens a database in read-only mode and tries
+to create a copy of it to a destination file, compacting it in the process.`,
+		Example: `chantools compactdb \
+	--sourcedb ~/.lnd/data/graph/mainnet/channel.db \
+	--destdb ./results/compacted.db`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().Int64Var(

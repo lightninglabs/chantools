@@ -27,6 +27,15 @@ func newSignRescueFundingCommand() *cobra.Command {
 			"never resulted in a proper channel; this is the " +
 			"command the remote node (the non-initiator) of the " +
 			"channel needs to run",
+		Long: `This is part 2 of a two phase process to rescue a channel
+funding output that was created on chain by accident but never resulted in a
+proper channel and no commitment transactions exist to spend the funds locked in
+the 2-of-2 multisig.
+
+If successful, this will create a final on-chain transaction that can be
+broadcast by any Bitcoin node.`,
+		Example: `chantools signrescuefunding --rootkey xprvxxxxxxxxxx \
+	--psbt <the_base64_encoded_psbt_from_step_1>`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

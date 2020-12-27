@@ -2,8 +2,20 @@
 
 Derive a key with a specific derivation path
 
+### Synopsis
+
+This command derives a single key with the given BIP32
+derivation path from the root key and prints it to the console.
+
 ```
 chantools derivekey [flags]
+```
+
+### Examples
+
+```
+chantools derivekey --rootkey xprvxxxxxxxxxx \
+	--path "m/1017'/0'/5'/0/0'" --neuter
 ```
 
 ### Options

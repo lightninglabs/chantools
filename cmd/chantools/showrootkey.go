@@ -21,7 +21,11 @@ func newShowRootKeyCommand() *cobra.Command {
 		Use: "showrootkey",
 		Short: "Extract and show the BIP32 HD root key from the 24 " +
 			"word lnd aezeed",
-		RunE: cc.Execute,
+		Long: `This command converts the 24 word lnd aezeed phrase and
+password to the BIP32 HD root key that is used as the --rootkey flag in other
+commands of this tool.`,
+		Example: `chantools showrootkey`,
+		RunE:    cc.Execute,
 	}
 	cc.cmd.Flags().BoolVar(
 		&cc.BIP39, "bip39", false, "read a classic BIP39 seed and "+

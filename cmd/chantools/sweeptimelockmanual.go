@@ -35,8 +35,8 @@ type sweepTimeLockManualCommand struct {
 	RemoteRevocationBasePoint string
 
 	rootKey *rootKey
-	inputs *inputFlags
-	cmd    *cobra.Command
+	inputs  *inputFlags
+	cmd     *cobra.Command
 }
 
 func newSweepTimeLockManualCommand() *cobra.Command {
@@ -45,6 +45,23 @@ func newSweepTimeLockManualCommand() *cobra.Command {
 		Use: "sweeptimelockmanual",
 		Short: "Sweep the force-closed state of a single channel " +
 			"manually if only a channel backup file is available",
+		Long: `Sweep the locally force closed state of a single channel
+manually if only a channel backup file is available. This can only be used if a
+channel is force closed from the local node but then that node's state is lost
+and only the channel.backup file is available.
+
+To get the value for --remoterevbasepoint you must use the dumpbackup command,
+then look up the value for RemoteChanCfg -> RevocationBasePoint -> PubKey.
+
+To get the value for --timelockaddr you must look up the channel's funding
+output on chain, then follow it to the force close output. The time locked
+address is always the one that's longer (because it's P2WSH and not P2PKH).`,
+		Example: `chantools sweeptimelockmanual --rootkey xprvxxxxxxxx \
+	--sweepaddr bc1q..... \
+	--timelockaddr bc1q............ \
+	--remoterevbasepoint 03xxxxxxx \
+	--feerate 10 \
+	--publish`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

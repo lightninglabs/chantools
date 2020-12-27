@@ -23,6 +23,10 @@ func newDumpChannelsCommand() *cobra.Command {
 		Use: "dumpchannels",
 		Short: "Dump all channel information from an lnd channel " +
 			"database",
+		Long: `This command dumps all open and pending channels from the
+given lnd channel.db gile in a human readable format.`,
+		Example: `chantools dumpchannels \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

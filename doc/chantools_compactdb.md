@@ -2,8 +2,21 @@
 
 Create a copy of a channel.db file in safe/read-only mode
 
+### Synopsis
+
+This command opens a database in read-only mode and tries
+to create a copy of it to a destination file, compacting it in the process.
+
 ```
 chantools compactdb [flags]
+```
+
+### Examples
+
+```
+chantools compactdb \
+	--sourcedb ~/.lnd/data/graph/mainnet/channel.db \
+	--destdb ./results/compacted.db
 ```
 
 ### Options

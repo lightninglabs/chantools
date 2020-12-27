@@ -2,8 +2,21 @@
 
 Filter an lnd channel.backup file and remove certain channels
 
+### Synopsis
+
+Filter an lnd channel.backup file by removing certain 
+channels (identified by their funding transaction outpoints).
+
 ```
 chantools filterbackup [flags]
+```
+
+### Examples
+
+```
+chantools filterbackup --rootkey xprvxxxxxxxxxx \
+	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup \
+	--discard 2abcdef2b2bffaaa...db0abadd:1,4abcdef2b2bffaaa...db8abadd:0
 ```
 
 ### Options

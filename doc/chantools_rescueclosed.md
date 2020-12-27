@@ -2,8 +2,26 @@
 
 Try finding the private keys for funds that are in outputs of remotely force-closed channels
 
+### Synopsis
+
+If channels have already been force-closed by the remote
+peer, this command tries to find the private keys to sweep the funds from the
+output that belongs to our side. This can only be used if we have a channel DB
+that contains the latest commit point. Normally you would use SCB to get the
+funds from those channels. But this method can help if the other node doesn't
+know about the channels any more but we still have the channel.db from the
+moment they force-closed.
+
 ```
 chantools rescueclosed [flags]
+```
+
+### Examples
+
+```
+chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+	--fromsummary results/summary-xxxxxx.json \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 ```
 
 ### Options

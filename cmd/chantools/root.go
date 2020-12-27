@@ -42,10 +42,9 @@ var (
 var rootCmd = &cobra.Command{
 	Use:   "chantools",
 	Short: "Chantools helps recover funds from lightning channels",
-	Long: "This tool provides helper functions that can be used rescue\n" +
-		"funds locked in lnd channels in case lnd itself cannot run\n" +
-		"properly anymore.\n\nComplete documentation is available at " +
-		"https://github.com/guggero/chantools/.",
+	Long: `This tool provides helper functions that can be used rescue
+funds locked in lnd channels in case lnd itself cannot run properly anymore.
+Complete documentation is available at https://github.com/guggero/chantools/.`,
 	Version: fmt.Sprintf("v%s, commit %s", version, Commit),
 	PreRun: func(cmd *cobra.Command, args []string) {
 		switch {

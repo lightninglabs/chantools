@@ -2,8 +2,20 @@
 
 Dump the content of a channel.backup file
 
+### Synopsis
+
+This command dumps all information that is inside a 
+channel.backup file in a human readable format.
+
 ```
 chantools dumpbackup [flags]
+```
+
+### Examples
+
+```
+chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
 
 ### Options

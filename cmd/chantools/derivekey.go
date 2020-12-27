@@ -10,19 +10,23 @@ import (
 )
 
 type deriveKeyCommand struct {
-	BIP39   bool
-	Path    string
-	Neuter  bool
+	BIP39  bool
+	Path   string
+	Neuter bool
 
 	rootKey *rootKey
-	cmd *cobra.Command
+	cmd     *cobra.Command
 }
 
 func newDeriveKeyCommand() *cobra.Command {
 	cc := &deriveKeyCommand{}
 	cc.cmd = &cobra.Command{
-		Use: "derivekey",
+		Use:   "derivekey",
 		Short: "Derive a key with a specific derivation path",
+		Long: `This command derives a single key with the given BIP32
+derivation path from the root key and prints it to the console.`,
+		Example: `chantools derivekey --rootkey xprvxxxxxxxxxx \
+	--path "m/1017'/0'/5'/0/0'" --neuter`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().BoolVar(
@@ -40,7 +44,7 @@ func newDeriveKeyCommand() *cobra.Command {
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
-	
+
 	return cc.cmd
 }
 

@@ -2,8 +2,20 @@
 
 Extract and show the BIP32 HD root key from the 24 word lnd aezeed
 
+### Synopsis
+
+This command converts the 24 word lnd aezeed phrase and
+password to the BIP32 HD root key that is used as the --rootkey flag in other
+commands of this tool.
+
 ```
 chantools showrootkey [flags]
+```
+
+### Examples
+
+```
+chantools showrootkey
 ```
 
 ### Options

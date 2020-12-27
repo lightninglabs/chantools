@@ -31,8 +31,8 @@ type sweepTimeLockCommand struct {
 	FeeRate     uint16
 
 	rootKey *rootKey
-	inputs *inputFlags
-	cmd    *cobra.Command
+	inputs  *inputFlags
+	cmd     *cobra.Command
 }
 
 func newSweepTimeLockCommand() *cobra.Command {
@@ -41,6 +41,17 @@ func newSweepTimeLockCommand() *cobra.Command {
 		Use: "sweeptimelock",
 		Short: "Sweep the force-closed state after the time lock has " +
 			"expired",
+		Long: `Use this command to sweep the funds from channels that
+you force-closed with the forceclose command. You **MUST** use the result file
+that was created with the forceclose command, otherwise it won't work. You also
+have to wait until the highest time lock (can be up to 2016 blocks which is more
+than two weeks) of all the channels has passed. If you only want to sweep
+channels that have the default CSV limit of 1 day, you can set the --maxcsvlimit
+parameter to 144.`,
+		Example: `chantools sweeptimelock --rootkey xprvxxxxxxxxxx \
+	--fromsummary results/forceclose-xxxx-yyyy.json \
+	--sweepaddr bc1q.....
+  	--publish`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

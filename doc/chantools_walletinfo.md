@@ -2,8 +2,25 @@
 
 Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
 
+### Synopsis
+
+Shows some basic information about an lnd wallet.db file,
+like the node identity the wallet belongs to, how many on-chain addresses are
+used and, if enabled with --withrootkey the BIP32 HD root key of the wallet. The
+latter can be useful to recover funds from a wallet if the wallet password is
+still known but the seed was lost. **The 24 word seed phrase itself cannot be
+extracted** because it is hashed into the extended HD root key before storing it
+in the wallet.db.
+
 ```
 chantools walletinfo [flags]
+```
+
+### Examples
+
+```
+chantools walletinfo --withrootkey \
+	--walletdb ~/.lnd/data/chain/bitcoin/mainnet/wallet.db
 ```
 
 ### Options

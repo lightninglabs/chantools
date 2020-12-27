@@ -33,6 +33,22 @@ func newGenImportScriptCommand() *cobra.Command {
 		Short: "Generate a script containing the on-chain " +
 			"keys of an lnd wallet that can be imported into " +
 			"other software like bitcoind",
+		Long: `Generates a script that contains all on-chain private (or
+public) keys derived from an lnd 24 word aezeed wallet. That script can then be
+imported into other software like bitcoind.
+
+The following script formats are currently supported:
+* bitcoin-cli: Creates a list of bitcoin-cli importprivkey commands that can
+  be used in combination with a bitcoind full node to recover the funds locked
+  in those private keys.
+* bitcoin-cli-watchonly: Does the same as bitcoin-cli but with the
+  bitcoin-cli importpubkey command. That means, only the public keys are 
+  imported into bitcoind to watch the UTXOs of those keys. The funds cannot be
+  spent that way as they are watch-only.
+* bitcoin-importwallet: Creates a text output that is compatible with
+  bitcoind's importwallet command.`,
+		Example: `chantools genimportscript --format bitcoin-cli \
+	--recoverywindow 5000`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

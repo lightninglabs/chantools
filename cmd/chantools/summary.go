@@ -24,6 +24,11 @@ func newSummaryCommand() *cobra.Command {
 		Use: "summary",
 		Short: "Compile a summary about the current state of " +
 			"channels",
+		Long: `From a list of channels, find out what their state is by
+querying the funding transaction on a block explorer API.`,
+		Example: `lncli listchannels | chantools summary --listchannels -
+
+chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

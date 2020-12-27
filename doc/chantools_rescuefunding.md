@@ -2,8 +2,31 @@
 
 Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
 
+### Synopsis
+
+This is part 1 of a two phase process to rescue a channel
+funding output that was created on chain by accident but never resulted in a
+proper channel and no commitment transactions exist to spend the funds locked in
+the 2-of-2 multisig.
+
+**You need the cooperation of the channel partner (remote node) for this to
+work**! They need to run the second command of this process: signrescuefunding
+
+If successful, this will create a PSBT that then has to be sent to the channel
+partner (remote node operator).
+
 ```
 chantools rescuefunding [flags]
+```
+
+### Examples
+
+```
+chantools rescuefunding --rootkey xprvxxxxxxxxxx \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
+	--channelpoint xxxxxxx:xx \
+	--sweepaddr bc1qxxxxxxxxx \
+	--feerate 10
 ```
 
 ### Options

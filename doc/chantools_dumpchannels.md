@@ -2,8 +2,20 @@
 
 Dump all channel information from an lnd channel database
 
+### Synopsis
+
+This command dumps all open and pending channels from the
+given lnd channel.db gile in a human readable format.
+
 ```
 chantools dumpchannels [flags]
+```
+
+### Examples
+
+```
+chantools dumpchannels \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 ```
 
 ### Options
