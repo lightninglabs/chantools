@@ -1,0 +1,42 @@
+## chantools
+
+Chantools helps recover funds from lightning channels
+
+### Synopsis
+
+This tool provides helper functions that can be used rescue
+funds locked in lnd channels in case lnd itself cannot run
+properly anymore.
+
+Complete documentation is available at https://github.com/guggero/chantools/.
+
+### Options
+
+```
+  -h, --help      help for chantools
+  -r, --regtest   Indicates if regtest parameters should be used
+  -t, --testnet   Indicates if testnet parameters should be used
+```
+
+### SEE ALSO
+
+* [chantools chanbackup](chantools_chanbackup.md)	 - Create a channel.backup file from a channel database
+* [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
+* [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
+* [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file
+* [chantools dumpchannels](chantools_dumpchannels.md)	 - Dump all channel information from an lnd channel database
+* [chantools filterbackup](chantools_filterbackup.md)	 - Filter an lnd channel.backup file and remove certain channels
+* [chantools fixoldbackup](chantools_fixoldbackup.md)	 - Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
+* [chantools forceclose](chantools_forceclose.md)	 - Force-close the last state that is in the channel.db provided
+* [chantools genimportscript](chantools_genimportscript.md)	 - Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
+* [chantools removechannel](chantools_removechannel.md)	 - Remove a single channel from the given channel DB
+* [chantools rescueclosed](chantools_rescueclosed.md)	 - Try finding the private keys for funds that are in outputs of remotely force-closed channels
+* [chantools rescuefunding](chantools_rescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
+* [chantools showrootkey](chantools_showrootkey.md)	 - Extract and show the BIP32 HD root key from the 24 word lnd aezeed
+* [chantools signrescuefunding](chantools_signrescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
+* [chantools summary](chantools_summary.md)	 - Compile a summary about the current state of channels
+* [chantools sweeptimelock](chantools_sweeptimelock.md)	 - Sweep the force-closed state after the time lock has expired
+* [chantools sweeptimelockmanual](chantools_sweeptimelockmanual.md)	 - Sweep the force-closed state of a single channel manually if only a channel backup file is available
+* [chantools vanitygen](chantools_vanitygen.md)	 - Generate a seed with a custom lnd node identity public key that starts with the given prefix
+* [chantools walletinfo](chantools_walletinfo.md)	 - Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
+

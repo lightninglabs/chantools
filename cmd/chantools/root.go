@@ -64,6 +64,7 @@ var rootCmd = &cobra.Command{
 		log.Infof("chantools version v%s commit %s", version,
 			Commit)
 	},
+	DisableAutoGenTag: true,
 }
 
 func init() {
@@ -82,6 +83,7 @@ func init() {
 		newDeriveKeyCommand(),
 		newDumpBackupCommand(),
 		newDumpChannelsCommand(),
+		newDocCommand(),
 		newFilterBackupCommand(),
 		newFixOldBackupCommand(),
 		newForceCloseCommand(),

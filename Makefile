@@ -80,3 +80,7 @@ fmt:
 lint: $(LINT_BIN)
 	@$(call print, "Linting source.")
 	$(LINT)
+
+docs: install
+	@$(call print, "Rendering docs.")
+	chantools doc
