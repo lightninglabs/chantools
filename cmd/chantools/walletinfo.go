@@ -163,7 +163,7 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	rootKey := "n/a"
+	rootKey := na
 	if c.WithRootKey {
 		masterHDPrivKey, err := decryptRootKey(db, privateWalletPw)
 		if err != nil {
@@ -177,7 +177,7 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 		scopeInfo,
 	)
 
-	fmt.Printf(result)
+	fmt.Println(result)
 
 	// For the tests, also log as trace level which is disabled by default.
 	log.Tracef(result)

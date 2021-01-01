@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/guggero/chantools/btc"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -15,6 +14,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/build"
@@ -27,6 +27,7 @@ import (
 const (
 	defaultAPIURL = "https://blockstream.info/api"
 	version       = "0.8.0"
+	na            = "n/a"
 
 	Commit = ""
 )
@@ -67,7 +68,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.`,
 	DisableAutoGenTag: true,
 }
 
-func init() {
+func main() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&Testnet, "testnet", "t", false, "Indicates if testnet "+
 			"parameters should be used",
@@ -100,9 +101,7 @@ func init() {
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
 	)
-}
 
-func main() {
 	if err := rootCmd.Execute(); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

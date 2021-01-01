@@ -12,7 +12,7 @@ import (
 )
 
 type summaryCommand struct {
-	ApiURL string
+	APIURL string
 
 	inputs *inputFlags
 	cmd    *cobra.Command
@@ -32,7 +32,7 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
 
@@ -47,7 +47,7 @@ func (c *summaryCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return summarizeChannels(c.ApiURL, entries)
+	return summarizeChannels(c.APIURL, entries)
 }
 
 func summarizeChannels(apiURL string,

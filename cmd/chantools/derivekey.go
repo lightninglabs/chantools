@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
@@ -86,7 +87,7 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 		return fmt.Errorf("could not create address: %v", err)
 	}
 
-	privKey, xPriv := "n/a", "n/a"
+	privKey, xPriv := na, na
 	if !neuter {
 		privKey, xPriv = wif.String(), child.String()
 	}
@@ -96,7 +97,7 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 		pubKey.SerializeCompressed(), neutered, addrP2WKH, addrP2PKH,
 		privKey, xPriv,
 	)
-	fmt.Printf(result)
+	fmt.Println(result)
 
 	// For the tests, also log as trace level which is disabled by default.
 	log.Tracef(result)

@@ -24,7 +24,7 @@ const (
 )
 
 type sweepTimeLockCommand struct {
-	ApiURL      string
+	APIURL      string
 	Publish     bool
 	SweepAddr   string
 	MaxCsvLimit uint16
@@ -55,7 +55,7 @@ parameter to 144.`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
 	cc.cmd.Flags().BoolVar(
@@ -105,7 +105,7 @@ func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
 		c.FeeRate = defaultFeeSatPerVByte
 	}
 	return sweepTimeLock(
-		extendedKey, c.ApiURL, entries, c.SweepAddr, c.MaxCsvLimit,
+		extendedKey, c.APIURL, entries, c.SweepAddr, c.MaxCsvLimit,
 		c.Publish, c.FeeRate,
 	)
 }

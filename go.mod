@@ -12,7 +12,7 @@ require (
 	github.com/coreos/bbolt v1.3.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/gohugoio/hugo v0.79.1 // indirect
-	github.com/jessevdk/go-flags v1.4.0
+	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lightningnetwork/lnd v0.11.1-beta
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/miekg/dns v1.1.26 // indirect

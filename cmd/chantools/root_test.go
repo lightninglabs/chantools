@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -36,9 +35,9 @@ const (
 
 var (
 	datePattern = regexp.MustCompile(
-		"\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} ",
+		`\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} `,
 	)
-	addressPattern = regexp.MustCompile("\\(0x[0-9a-f]{10}\\)")
+	addressPattern = regexp.MustCompile(`\(0x[0-9a-f]{10}\)`)
 )
 
 type harness struct {
@@ -80,10 +79,10 @@ func (h *harness) clearLog() {
 	h.logBuffer.Reset()
 }
 
-func (h *harness) assertLogContains(format string, args ...interface{}) {
+func (h *harness) assertLogContains(format string) {
 	h.t.Helper()
 
-	require.Contains(h.t, h.logBuffer.String(), fmt.Sprintf(format, args...))
+	require.Contains(h.t, h.logBuffer.String(), format)
 }
 
 func (h *harness) assertLogEqual(a, b string) {

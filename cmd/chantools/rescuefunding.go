@@ -147,10 +147,6 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error parsing sweep addr: %v", err)
 	}
 
-	if c.FeeRate < 0 {
-		return fmt.Errorf("satperbyte must be greater than 0")
-	}
-
 	return rescueFunding(
 		db, signer, dbOp, chainOp, sweepScript,
 		btcutil.Amount(c.FeeRate),

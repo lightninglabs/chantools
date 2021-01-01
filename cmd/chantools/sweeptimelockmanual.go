@@ -26,7 +26,7 @@ const (
 )
 
 type sweepTimeLockManualCommand struct {
-	ApiURL                    string
+	APIURL                    string
 	Publish                   bool
 	SweepAddr                 string
 	MaxCsvLimit               uint16
@@ -65,7 +65,7 @@ address is always the one that's longer (because it's P2WSH and not P2PKH).`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
 	cc.cmd.Flags().BoolVar(
@@ -122,7 +122,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 	}
 
 	return sweepTimeLockManual(
-		extendedKey, c.ApiURL, c.SweepAddr, c.TimeLockAddr,
+		extendedKey, c.APIURL, c.SweepAddr, c.TimeLockAddr,
 		remoteRevPoint, c.MaxCsvLimit, c.Publish, c.FeeRate,
 	)
 }

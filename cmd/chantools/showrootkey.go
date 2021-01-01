@@ -40,7 +40,7 @@ func (c *showRootKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	result := fmt.Sprintf(showRootKeyFormat, extendedKey)
-	fmt.Printf(result)
+	fmt.Println(result)
 
 	// For the tests, also log as trace level which is disabled by default.
 	log.Tracef(result)

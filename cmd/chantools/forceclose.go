@@ -20,7 +20,7 @@ import (
 )
 
 type forceCloseCommand struct {
-	ApiURL    string
+	APIURL    string
 	ChannelDB string
 	Publish   bool
 
@@ -54,7 +54,7 @@ blocks) transaction *or* they have a watch tower looking out for them.
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ApiURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
 	cc.cmd.Flags().StringVar(
@@ -92,7 +92,7 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return forceCloseChannels(c.ApiURL, extendedKey, entries, db, c.Publish)
+	return forceCloseChannels(c.APIURL, extendedKey, entries, db, c.Publish)
 }
 
 func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,

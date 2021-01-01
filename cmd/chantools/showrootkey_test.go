@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/guggero/chantools/btc"
 	"os"
 	"testing"
 
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
 	"github.com/stretchr/testify/require"
 )
