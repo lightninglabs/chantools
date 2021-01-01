@@ -50,6 +50,7 @@ func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %v", err)
 	}
+	defer func() { _ = db.Close() }()
 
 	if c.Closed {
 		return dumpClosedChannelInfo(db)
@@ -69,6 +70,10 @@ func dumpOpenChannelInfo(chanDb *channeldb.DB) error {
 	}
 
 	spew.Dump(dumpChannels)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(spew.Sdump(dumpChannels))
+
 	return nil
 }
 
@@ -84,5 +89,9 @@ func dumpClosedChannelInfo(chanDb *channeldb.DB) error {
 	}
 
 	spew.Dump(dumpChannels)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(spew.Sdump(dumpChannels))
+
 	return nil
 }

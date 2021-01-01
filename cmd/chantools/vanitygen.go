@@ -51,7 +51,7 @@ phone]
 </pre>
 `,
 		Example: `chantools vanitygen --prefix 022222 --threads 8`,
-		RunE: cc.Execute,
+		RunE:    cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
 		&cc.Prefix, "prefix", "", "hex encoded prefix to find in node "+

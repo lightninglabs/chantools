@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/guggero/chantools/btc"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
+	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/build"
@@ -46,7 +47,7 @@ var rootCmd = &cobra.Command{
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
 Complete documentation is available at https://github.com/guggero/chantools/.`,
 	Version: fmt.Sprintf("v%s, commit %s", version, Commit),
-	PreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		switch {
 		case Testnet:
 			chainParams = &chaincfg.TestNet3Params
@@ -109,6 +110,7 @@ func main() {
 
 type rootKey struct {
 	RootKey string
+	BIP39   bool
 }
 
 func newRootKey(cmd *cobra.Command, desc string) *rootKey {
@@ -117,6 +119,11 @@ func newRootKey(cmd *cobra.Command, desc string) *rootKey {
 		&r.RootKey, "rootkey", "", "BIP32 HD root key of the wallet "+
 			"to use for "+desc+"; leave empty to prompt for "+
 			"lnd 24 word aezeed",
+	)
+	cmd.Flags().BoolVar(
+		&r.BIP39, "bip39", false, "read a classic BIP39 seed and "+
+			"passphrase from the terminal instead of asking for "+
+			"lnd seed format or providing the --rootkey flag",
 	)
 
 	return r
@@ -136,6 +143,10 @@ func (r *rootKey) readWithBirthday() (*hdkeychain.ExtendedKey, time.Time,
 		extendedKey, err := hdkeychain.NewKeyFromString(r.RootKey)
 		return extendedKey, time.Unix(0, 0), err
 
+	case r.BIP39:
+		extendedKey, err := btc.ReadMnemonicFromTerminal(chainParams)
+		return extendedKey, time.Unix(0, 0), err
+		
 	default:
 		return lnd.ReadAezeed(chainParams)
 	}
@@ -249,7 +260,7 @@ func setupLogging() {
 	if err != nil {
 		panic(err)
 	}
-	err = build.ParseAndSetDebugLevels("trace", logWriter)
+	err = build.ParseAndSetDebugLevels("debug", logWriter)
 	if err != nil {
 		panic(err)
 	}

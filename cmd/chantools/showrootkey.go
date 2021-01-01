@@ -3,14 +3,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/guggero/chantools/btc"
 	"github.com/spf13/cobra"
 )
 
-type showRootKeyCommand struct {
-	BIP39 bool
+const showRootKeyFormat = `
+Your BIP32 HD root key is: %v
+`
 
+type showRootKeyCommand struct {
 	rootKey *rootKey
 	cmd     *cobra.Command
 }
@@ -27,11 +27,6 @@ commands of this tool.`,
 		Example: `chantools showrootkey`,
 		RunE:    cc.Execute,
 	}
-	cc.cmd.Flags().BoolVar(
-		&cc.BIP39, "bip39", false, "read a classic BIP39 seed and "+
-			"passphrase from the terminal instead of asking for "+
-			"lnd seed format or providing the --rootkey flag",
-	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 
@@ -39,23 +34,16 @@ commands of this tool.`,
 }
 
 func (c *showRootKeyCommand) Execute(_ *cobra.Command, _ []string) error {
-	var (
-		extendedKey *hdkeychain.ExtendedKey
-		err         error
-	)
-
-	// Check that root key is valid or fall back to terminal input.
-	switch {
-	case c.BIP39:
-		extendedKey, err = btc.ReadMnemonicFromTerminal(chainParams)
-
-	default:
-		extendedKey, err = c.rootKey.read()
-	}
+	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
 
-	fmt.Printf("\nYour BIP32 HD root key is: %s\n", extendedKey.String())
+	result := fmt.Sprintf(showRootKeyFormat, extendedKey)
+	fmt.Printf(result)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(result)
+
 	return nil
 }

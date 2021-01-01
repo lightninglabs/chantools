@@ -17,6 +17,7 @@ require (
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/miekg/dns v1.1.26 // indirect
 	github.com/spf13/cobra v1.1.1
+	github.com/stretchr/testify v1.6.1
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 )

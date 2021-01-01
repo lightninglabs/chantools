@@ -2,15 +2,24 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/spf13/cobra"
 )
 
+const deriveKeyFormat = `
+Path:				%s
+Network: 			%s
+Public key: 			%x
+Extended public key (xpub): 	%v
+Address: 			%v
+Legacy address: 		%v
+Private key (WIF): 		%s
+Extended private key (xprv):	%s
+`
+
 type deriveKeyCommand struct {
-	BIP39  bool
 	Path   string
 	Neuter bool
 
@@ -29,11 +38,6 @@ derivation path from the root key and prints it to the console.`,
 	--path "m/1017'/0'/5'/0/0'" --neuter`,
 		RunE: cc.Execute,
 	}
-	cc.cmd.Flags().BoolVar(
-		&cc.BIP39, "bip39", false, "read a classic BIP39 seed and "+
-			"passphrase from the terminal instead of asking for "+
-			"lnd seed format or providing the --rootkey flag",
-	)
 	cc.cmd.Flags().StringVar(
 		&cc.Path, "path", "", "BIP32 derivation path to derive; must "+
 			"start with \"m/\"",
@@ -60,7 +64,6 @@ func (c *deriveKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	neuter bool) error {
 
-	fmt.Printf("Deriving path %s for network %s.\n", path, chainParams.Name)
 	child, pubKey, wif, err := lnd.DeriveKey(extendedKey, path, chainParams)
 	if err != nil {
 		return fmt.Errorf("could not derive keys: %v", err)
@@ -69,8 +72,6 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	if err != nil {
 		return fmt.Errorf("could not neuter child key: %v", err)
 	}
-	fmt.Printf("\nPublic key: %x\n", pubKey.SerializeCompressed())
-	fmt.Printf("Extended public key (xpub): %s\n", neutered.String())
 
 	// Print the address too.
 	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
@@ -84,13 +85,21 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	if err != nil {
 		return fmt.Errorf("could not create address: %v", err)
 	}
-	fmt.Printf("Address: %s\n", addrP2WKH)
-	fmt.Printf("Legacy address: %s\n", addrP2PKH)
 
+	privKey, xPriv := "n/a", "n/a"
 	if !neuter {
-		fmt.Printf("\nPrivate key (WIF): %s\n", wif.String())
-		fmt.Printf("Extended private key (xprv): %s\n", child.String())
+		privKey, xPriv = wif.String(), child.String()
 	}
+
+	result := fmt.Sprintf(
+		deriveKeyFormat, path, chainParams.Name,
+		pubKey.SerializeCompressed(), neutered, addrP2WKH, addrP2PKH,
+		privKey, xPriv,
+	)
+	fmt.Printf(result)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(result)
 
 	return nil
 }

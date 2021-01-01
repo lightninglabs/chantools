@@ -96,7 +96,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
 
-	// The btcwallet gives the birthday a slack of 48 hours, let's do the 
+	// The btcwallet gives the birthday a slack of 48 hours, let's do the
 	// same.
 	if !birthday.IsZero() {
 		c.RescanFrom = btc.SeedBirthdayToBlock(

@@ -64,9 +64,14 @@ func dumpChannelBackup(multiFile *chanbackup.MultiFile,
 	if err != nil {
 		return fmt.Errorf("could not extract multi file: %v", err)
 	}
-	spew.Dump(dump.BackupMulti{
+	content := dump.BackupMulti{
 		Version:       multi.Version,
 		StaticBackups: dump.BackupDump(multi, chainParams),
-	})
+	}
+	spew.Dump(content)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(spew.Sdump(content))
+
 	return nil
 }

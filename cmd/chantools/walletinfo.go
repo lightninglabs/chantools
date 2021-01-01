@@ -1,11 +1,8 @@
 package main
 
 import (
-	"encoding/hex"
 	"fmt"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -15,6 +12,7 @@ import (
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/spf13/cobra"
 
@@ -27,6 +25,19 @@ import (
 
 const (
 	passwordEnvName = "WALLET_PASSWORD"
+
+	walletInfoFormat = `
+Identity Pubkey:		%x
+BIP32 HD extended root key:	%s
+Wallet scopes:
+%s
+`
+
+	keyScopeformat = `
+Scope:	m/%d'/%d'
+  Number of internal %s addresses:	%d
+  Number of external %s addresses: 	%d
+`
 )
 
 var (
@@ -126,13 +137,14 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Try to load and open the wallet.
 	db, err := walletdb.Open(
-		"bdb", cleanAndExpandPath(c.WalletDB), false,
+		"bdb", lncfg.CleanAndExpandPath(c.WalletDB), false,
 		lnd.DefaultOpenTimeout,
 	)
 	if err != nil {
 		return fmt.Errorf("error opening wallet database: %v", err)
 	}
-	defer closeWalletDb(db)
+	defer func() { _ = db.Close() }()
+
 	w, err := wallet.Open(db, publicWalletPw, openCallbacks, chainParams, 0)
 	if err != nil {
 		return err
@@ -147,21 +159,33 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print the wallet info and if requested the root key.
-	err = walletInfo(w)
+	identityKey, scopeInfo, err := walletInfo(w)
 	if err != nil {
 		return err
 	}
+	rootKey := "n/a"
 	if c.WithRootKey {
 		masterHDPrivKey, err := decryptRootKey(db, privateWalletPw)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("BIP32 HD extended root key: %s\n", masterHDPrivKey)
+		rootKey = string(masterHDPrivKey)
 	}
+
+	result := fmt.Sprintf(
+		walletInfoFormat, identityKey.SerializeCompressed(), rootKey,
+		scopeInfo,
+	)
+
+	fmt.Printf(result)
+
+	// For the tests, also log as trace level which is disabled by default.
+	log.Tracef(result)
+
 	return nil
 }
 
-func walletInfo(w *wallet.Wallet) error {
+func walletInfo(w *wallet.Wallet) (*btcec.PublicKey, string, error) {
 	keyRing := keychain.NewBtcWalletKeyRing(w, chainParams.HDCoinType)
 	idPrivKey, err := keyRing.DerivePrivKey(keychain.KeyDescriptor{
 		KeyLocator: keychain.KeyLocator{
@@ -170,47 +194,48 @@ func walletInfo(w *wallet.Wallet) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("unable to open key ring for coin type %d: "+
-			"%v", chainParams.HDCoinType, err)
+		return nil, "", fmt.Errorf("unable to open key ring for coin "+
+			"type %d: %v", chainParams.HDCoinType, err)
 	}
-	idPrivKey.Curve = btcec.S256()
-	fmt.Printf(
-		"Identity Pubkey: %s\n",
-		hex.EncodeToString(idPrivKey.PubKey().SerializeCompressed()),
-	)
 
-	// Print information about the different addresses in use.
-	printScopeInfo(
-		"np2wkh", w,
-		w.Manager.ScopesForExternalAddrType(
+	// Collect information about the different addresses in use.
+	scopeNp2wkh, err := printScopeInfo(
+		"np2wkh", w, w.Manager.ScopesForExternalAddrType(
 			waddrmgr.NestedWitnessPubKey,
 		),
 	)
-	printScopeInfo(
-		"p2wkh", w,
-		w.Manager.ScopesForExternalAddrType(
+	if err != nil {
+		return nil, "", err
+	}
+	scopeP2wkh, err := printScopeInfo(
+		"p2wkh", w, w.Manager.ScopesForExternalAddrType(
 			waddrmgr.WitnessPubKey,
 		),
 	)
-	return nil
+	if err != nil {
+		return nil, "", err
+	}
+
+	return idPrivKey.PubKey(), scopeNp2wkh + scopeP2wkh, nil
 }
 
-func printScopeInfo(name string, w *wallet.Wallet, scopes []waddrmgr.KeyScope) {
+func printScopeInfo(name string, w *wallet.Wallet,
+	scopes []waddrmgr.KeyScope) (string, error) {
+
+	scopeInfo := ""
 	for _, scope := range scopes {
 		props, err := w.AccountProperties(scope, defaultAccount)
 		if err != nil {
-			fmt.Printf("Error fetching account properties: %v", err)
+			return "", fmt.Errorf("error fetching account "+
+				"properties: %v", err)
 		}
-		fmt.Printf("Scope: %s\n", scope.String())
-		fmt.Printf(
-			"  Number of internal (change) %s addresses: %d\n",
-			name, props.InternalKeyCount,
-		)
-		fmt.Printf(
-			"  Number of external %s addresses: %d\n", name,
-			props.ExternalKeyCount,
+		scopeInfo += fmt.Sprintf(
+			keyScopeformat, scope.Purpose, scope.Coin, name,
+			props.InternalKeyCount, name, props.ExternalKeyCount,
 		)
 	}
+
+	return scopeInfo, nil
 }
 
 func decryptRootKey(db walletdb.DB, privPassphrase []byte) ([]byte, error) {
@@ -222,18 +247,14 @@ func decryptRootKey(db walletdb.DB, privPassphrase []byte) ([]byte, error) {
 	err := walletdb.View(db, func(tx walletdb.ReadTx) error {
 		ns := tx.ReadBucket(waddrmgrNamespaceKey)
 		if ns == nil {
-			return fmt.Errorf(
-				"namespace '%s' does not exist",
-				waddrmgrNamespaceKey,
-			)
+			return fmt.Errorf("namespace '%s' does not exist",
+				waddrmgrNamespaceKey)
 		}
 
 		mainBucket := ns.NestedReadBucket(mainBucketName)
 		if mainBucket == nil {
-			return fmt.Errorf(
-				"bucket '%s' does not exist",
-				mainBucketName,
-			)
+			return fmt.Errorf("bucket '%s' does not exist",
+				mainBucketName)
 		}
 
 		val := mainBucket.Get(masterPrivKeyName)
@@ -251,6 +272,7 @@ func decryptRootKey(db walletdb.DB, privPassphrase []byte) ([]byte, error) {
 			masterHDPrivEnc = make([]byte, len(val))
 			copy(masterHDPrivEnc, val)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -275,37 +297,4 @@ func decryptRootKey(db walletdb.DB, privPassphrase []byte) ([]byte, error) {
 	}
 	copy(cryptoKeyPriv[:], cryptoKeyPrivBytes)
 	return cryptoKeyPriv.Decrypt(masterHDPrivEnc)
-}
-
-func closeWalletDb(db walletdb.DB) {
-	err := db.Close()
-	if err != nil {
-		fmt.Printf("Error closing database: %v", err)
-	}
-}
-
-// cleanAndExpandPath expands environment variables and leading ~ in the
-// passed path, cleans the result, and returns it.
-// This function is taken from https://github.com/btcsuite/btcd
-func cleanAndExpandPath(path string) string {
-	if path == "" {
-		return ""
-	}
-
-	// Expand initial ~ to OS specific home directory.
-	if strings.HasPrefix(path, "~") {
-		var homeDir string
-		u, err := user.Current()
-		if err == nil {
-			homeDir = u.HomeDir
-		} else {
-			homeDir = os.Getenv("HOME")
-		}
-
-		path = strings.Replace(path, "~", homeDir, 1)
-	}
-
-	// NOTE: The os.ExpandEnv doesn't work with Windows-style %VARIABLE%,
-	// but the variables can still be expanded via POSIX-style $VARIABLE.
-	return filepath.Clean(os.ExpandEnv(path))
 }

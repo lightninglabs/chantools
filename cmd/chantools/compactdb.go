@@ -64,10 +64,14 @@ func (c *compactDBCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("error opening source DB: %v", err)
 	}
+	defer func() { _ = src.Close() }()
+
 	dst, err := c.openDB(c.DestDB, false)
 	if err != nil {
 		return fmt.Errorf("error opening destination DB: %v", err)
 	}
+	defer func() { _ = dst.Close() }()
+
 	err = c.compact(dst, src)
 	if err != nil {
 		return fmt.Errorf("error compacting DB: %v", err)

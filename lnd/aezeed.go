@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	memonicEnvName    = "AEZEED_MNEMONIC"
-	passphraseEnvName = "AEZEED_PASSPHRASE"
+	MnemonicEnvName   = "AEZEED_MNEMONIC"
+	PassphraseEnvName = "AEZEED_PASSPHRASE"
 )
 
 var (
@@ -30,7 +30,7 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 
 	// To automate things with chantools, we also offer reading the seed
 	// from environment variables.
-	mnemonicStr := strings.TrimSpace(os.Getenv(memonicEnvName))
+	mnemonicStr := strings.TrimSpace(os.Getenv(MnemonicEnvName))
 
 	// If nothing is set in the environment, read the seed from the
 	// terminal.
@@ -70,7 +70,7 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 	// Additionally, the user may have a passphrase, that will also need to
 	// be provided so the daemon can properly decipher the cipher seed.
 	// Try the environment variable first.
-	passphrase := strings.TrimSpace(os.Getenv(passphraseEnvName))
+	passphrase := strings.TrimSpace(os.Getenv(PassphraseEnvName))
 
 	// Because we cannot differentiate between an empty and a non-existent
 	// environment variable, we need a special character that indicates that
