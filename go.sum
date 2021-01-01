@@ -306,6 +306,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.8.5/go.mod h1:vNeuVxBJEsws4ogUvrchl83t
 github.com/grpc-ecosystem/grpc-gateway v1.9.0/go.mod h1:vNeuVxBJEsws4ogUvrchl83t/GYV9WGTSLVdBhOQFDY=
 github.com/grpc-ecosystem/grpc-gateway v1.14.3 h1:OCJlWkOUoTnl0neNGlf4fUm3TmbEtguw7vR+nGtnDjY=
 github.com/grpc-ecosystem/grpc-gateway v1.14.3/go.mod h1:6CwZWGDSPRJidgKAtJVvND6soZe6fT7iteq8wDPdhb0=
+github.com/guggero/lnd v0.11.0-beta.rc4.0.20210101121045-2ae6e51765fe h1:jALvgjIGF31xvEInOdMZgyM3BdwkLlUUHdz6H11cWp8=
+github.com/guggero/lnd v0.11.0-beta.rc4.0.20210101121045-2ae6e51765fe/go.mod h1:2GyP1IG1kXV5Af/LOCxnXfux1OP3fAGr8zptS5PB2YI=
 github.com/guggero/lnd v0.11.1-beta.rc5.0.20201214225837-5a6d8ff78da4 h1:jdsGb7+DPYJnMTx6/HmOVbUFXWls39ZhsasrLRbMyJY=
 github.com/guggero/lnd v0.11.1-beta.rc5.0.20201214225837-5a6d8ff78da4/go.mod h1:PGIgxy8aH70Li33YVYkHSaCM8m8LjEevk5h1Dpldrr4=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
@@ -397,10 +399,13 @@ github.com/lightninglabs/neutrino v0.11.0 h1:lPpYFCtsfJX2W5zI4pWycPmbbBdr7zU+Baf
 github.com/lightninglabs/neutrino v0.11.0/go.mod h1:CuhF0iuzg9Sp2HO6ZgXgayviFTn1QHdSTJlMncK80wg=
 github.com/lightninglabs/neutrino v0.11.1-0.20200316235139-bffc52e8f200 h1:j4iZ1XlUAPQmW6oSzMcJGILYsRHNs+4O3Gk+2Ms5Dww=
 github.com/lightninglabs/neutrino v0.11.1-0.20200316235139-bffc52e8f200/go.mod h1:MlZmoKa7CJP3eR1s5yB7Rm5aSyadpKkxqAwLQmog7N0=
+github.com/lightninglabs/neutrino v0.11.1-0.20201210023533-e1978372d15e h1:K5LCCnSAk3NVT/aCy8wNPv0I5JfyLgijg1VX8Gz306E=
+github.com/lightninglabs/neutrino v0.11.1-0.20201210023533-e1978372d15e/go.mod h1:KDWfQDKp+CFBxO1t2NRmWuagTY2sYIjpHB1k5vrojTI=
 github.com/lightninglabs/protobuf-hex-display v1.3.3-0.20191212020323-b444784ce75d/go.mod h1:KDb67YMzoh4eudnzClmvs2FbiLG9vxISmLApUkCa4uI=
 github.com/lightningnetwork/lightning-onion v1.0.2-0.20200501022730-3c8c8d0b89ea h1:oCj48NQ8u7Vz+MmzHqt0db6mxcFZo3Ho7M5gCJauY/k=
 github.com/lightningnetwork/lightning-onion v1.0.2-0.20200501022730-3c8c8d0b89ea/go.mod h1:rigfi6Af/KqsF7Za0hOgcyq2PNH4AN70AaMRxcJkff4=
 github.com/lightningnetwork/lnd/cert v1.0.2/go.mod h1:fmtemlSMf5t4hsQmcprSoOykypAPp+9c+0d0iqTScMo=
+github.com/lightningnetwork/lnd/cert v1.0.3/go.mod h1:3MWXVLLPI0Mg0XETm9fT4N9Vyy/8qQLmaM5589bEggM=
 github.com/lightningnetwork/lnd/clock v1.0.1 h1:QQod8+m3KgqHdvVMV+2DRNNZS1GRFir8mHZYA+Z2hFo=
 github.com/lightningnetwork/lnd/clock v1.0.1/go.mod h1:KnQudQ6w0IAMZi1SgvecLZQZ43ra2vpDNj7H/aasemg=
 github.com/lightningnetwork/lnd/queue v1.0.1 h1:jzJKcTy3Nj5lQrooJ3aaw9Lau3I0IwvQR5sqtjdv2R0=

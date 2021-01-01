@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.7.1"
+	version       = "0.8.0"
 
 	Commit = ""
 )
@@ -88,6 +88,7 @@ func init() {
 		newFixOldBackupCommand(),
 		newForceCloseCommand(),
 		newGenImportScriptCommand(),
+		newMigrateDBCommand(),
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
 		newRescueFundingCommand(),
@@ -146,7 +147,7 @@ func (r *rootKey) readWithBirthday() (*hdkeychain.ExtendedKey, time.Time,
 	case r.BIP39:
 		extendedKey, err := btc.ReadMnemonicFromTerminal(chainParams)
 		return extendedKey, time.Unix(0, 0), err
-		
+
 	default:
 		return lnd.ReadAezeed(chainParams)
 	}

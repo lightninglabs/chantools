@@ -241,6 +241,10 @@ Your BIP32 HD root key is: xprv9s21ZrQH1...
 ## Command overview
 
 ```text
+This tool provides helper functions that can be used rescue
+funds locked in lnd channels in case lnd itself cannot run properly anymore.
+Complete documentation is available at https://github.com/guggero/chantools/.
+
 Usage:
   chantools [command]
 
@@ -255,6 +259,7 @@ Available Commands:
   forceclose          Force-close the last state that is in the channel.db provided
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
   help                Help about any command
+  migratedb           Apply all recent lnd channel database migrations
   removechannel       Remove a single channel from the given channel DB
   rescueclosed        Try finding the private keys for funds that are in outputs of remotely force-closed channels
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
@@ -288,6 +293,7 @@ Quick access:
 + [filterbackup](doc/chantools_filterbackup.md)
 + [fixoldbackup](doc/chantools_fixoldbackup.md)
 + [genimportscript](doc/chantools_genimportscript.md)
++ [migratedb](doc/chantools_migratedb.md)
 + [forceclose](doc/chantools_forceclose.md)
 + [removechannel](doc/chantools_removechannel.md)
 + [rescueclosed](doc/chantools_rescueclosed.md)

@@ -27,6 +27,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools fixoldbackup](chantools_fixoldbackup.md)	 - Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
 * [chantools forceclose](chantools_forceclose.md)	 - Force-close the last state that is in the channel.db provided
 * [chantools genimportscript](chantools_genimportscript.md)	 - Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
+* [chantools migratedb](chantools_migratedb.md)	 - Apply all recent lnd channel database migrations
 * [chantools removechannel](chantools_removechannel.md)	 - Remove a single channel from the given channel DB
 * [chantools rescueclosed](chantools_rescueclosed.md)	 - Try finding the private keys for funds that are in outputs of remotely force-closed channels
 * [chantools rescuefunding](chantools_rescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run

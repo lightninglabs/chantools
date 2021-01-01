@@ -22,6 +22,6 @@ require (
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899
 )
 
-replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.11.1-beta.rc5.0.20201214225837-5a6d8ff78da4
+replace github.com/lightningnetwork/lnd => github.com/guggero/lnd v0.11.0-beta.rc4.0.20210101121045-2ae6e51765fe
 
 go 1.13
