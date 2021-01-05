@@ -21,6 +21,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools chanbackup](chantools_chanbackup.md)	 - Create a channel.backup file from a channel database
 * [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
+* [chantools dropchannelgraph](chantools_dropchannelgraph.md)	 - Remove all graph related data from a channel DB
 * [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file
 * [chantools dumpchannels](chantools_dumpchannels.md)	 - Dump all channel information from an lnd channel database
 * [chantools filterbackup](chantools_filterbackup.md)	 - Filter an lnd channel.backup file and remove certain channels

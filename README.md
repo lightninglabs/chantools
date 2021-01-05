@@ -288,6 +288,7 @@ Quick access:
 + [chanbackup](doc/chantools_chanbackup.md)
 + [compactdb](doc/chantools_compactdb.md)
 + [derivekey](doc/chantools_derivekey.md)
++ [dropchannelgraph](chantools_dropchannelgraph.md)
 + [dumpbackup](doc/chantools_dumpbackup.md)
 + [dumpchannels](doc/chantools_dumpchannels.md)
 + [filterbackup](doc/chantools_filterbackup.md)

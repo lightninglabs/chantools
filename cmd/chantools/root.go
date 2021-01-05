@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.8.0"
+	version       = "0.8.1"
 	na            = "n/a"
 
 	Commit = ""
@@ -82,6 +82,7 @@ func main() {
 		newChanBackupCommand(),
 		newCompactDBCommand(),
 		newDeriveKeyCommand(),
+		newDropChannelGraphCommand(),
 		newDumpBackupCommand(),
 		newDumpChannelsCommand(),
 		newDocCommand(),
