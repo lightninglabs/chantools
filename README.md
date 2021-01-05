@@ -252,6 +252,7 @@ Available Commands:
   chanbackup          Create a channel.backup file from a channel database
   compactdb           Create a copy of a channel.db file in safe/read-only mode
   derivekey           Derive a key with a specific derivation path
+  dropchannelgraph    Remove all graph related data from a channel DB
   dumpbackup          Dump the content of a channel.backup file
   dumpchannels        Dump all channel information from an lnd channel database
   filterbackup        Filter an lnd channel.backup file and remove certain channels
@@ -288,7 +289,7 @@ Quick access:
 + [chanbackup](doc/chantools_chanbackup.md)
 + [compactdb](doc/chantools_compactdb.md)
 + [derivekey](doc/chantools_derivekey.md)
-+ [dropchannelgraph](chantools_dropchannelgraph.md)
++ [dropchannelgraph](doc/chantools_dropchannelgraph.md)
 + [dumpbackup](doc/chantools_dumpbackup.md)
 + [dumpchannels](doc/chantools_dumpchannels.md)
 + [filterbackup](doc/chantools_filterbackup.md)
