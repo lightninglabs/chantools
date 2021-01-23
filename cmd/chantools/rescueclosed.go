@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +33,9 @@ type cacheEntry struct {
 }
 
 type rescueClosedCommand struct {
-	ChannelDB string
+	ChannelDB   string
+	Addr        string
+	CommitPoint string
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -51,15 +54,33 @@ output that belongs to our side. This can only be used if we have a channel DB
 that contains the latest commit point. Normally you would use SCB to get the
 funds from those channels. But this method can help if the other node doesn't
 know about the channels any more but we still have the channel.db from the
-moment they force-closed.`,
+moment they force-closed.
+
+The alternative use case for this command is if you got the commit point by
+running the fund-recovery branch of my guggero/lnd fork in combination with the
+fakechanbackup command. Then you need to specify the --commit_point and 
+--force_close_addr flags instead of the --channeldb and --fromsummary flags.`,
 		Example: `chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 	--fromsummary results/summary-xxxxxx.json \
-	--channeldb ~/.lnd/data/graph/mainnet/channel.db`,
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db
+
+chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+	--force_close_addr bc1q... \
+	--commit_point 03xxxx`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
 		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to use "+
 			"for rescuing force-closed channels",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.Addr, "force_close_addr", "", "the address the channel "+
+			"was force closed to",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.CommitPoint, "commit_point", "", "the commit point that "+
+			"was obtained from the logs after running the "+
+			"fund-recovery branch of guggero/lnd",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
@@ -74,21 +95,49 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %v", err)
 	}
 
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return fmt.Errorf("rescue DB is required")
-	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
-	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
-	}
+	// What way of recovery has the user chosen? From summary and DB or from
+	// address and commit point?
+	switch {
+	case c.ChannelDB != "":
+		db, err := lnd.OpenDB(c.ChannelDB, true)
+		if err != nil {
+			return fmt.Errorf("error opening rescue DB: %v", err)
+		}
 
-	// Parse channel entries from any of the possible input files.
-	entries, err := c.inputs.parseInputType()
-	if err != nil {
-		return err
+		// Parse channel entries from any of the possible input files.
+		entries, err := c.inputs.parseInputType()
+		if err != nil {
+			return err
+		}
+		return rescueClosedChannels(extendedKey, entries, db)
+
+	case c.Addr != "":
+		// First parse address to get targetPubKeyHash from it later.
+		targetAddr, err := btcutil.DecodeAddress(c.Addr, chainParams)
+		if err != nil {
+			return fmt.Errorf("error parsing addr: %v", err)
+		}
+
+		// Now parse the commit point.
+		commitPointRaw, err := hex.DecodeString(c.CommitPoint)
+		if err != nil {
+			return fmt.Errorf("error decoding commit point: %v",
+				err)
+		}
+		commitPoint, err := btcec.ParsePubKey(
+			commitPointRaw, btcec.S256(),
+		)
+		if err != nil {
+			return fmt.Errorf("error parsing commit point: %v", err)
+		}
+
+		return rescueClosedChannel(extendedKey, targetAddr, commitPoint)
+
+	default:
+		return fmt.Errorf("you either need to specify --channeldb and " +
+			"--fromsummary or --force_close_addr and " +
+			"--commit_point but not a mixture of them")
 	}
-	return rescueClosedChannels(extendedKey, entries, db)
 }
 
 func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
@@ -166,6 +215,47 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return ioutil.WriteFile(fileName, summaryBytes, 0644)
+}
+
+func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
+	addr btcutil.Address, commitPoint *btcec.PublicKey) error {
+
+	// Make the check on the decoded address according to the active
+	// network (testnet or mainnet only).
+	if !addr.IsForNet(chainParams) {
+		return fmt.Errorf("address: %v is not valid for this network: "+
+			"%v", addr, chainParams.Name)
+	}
+
+	// Must be a bech32 native SegWit address.
+	switch addr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		log.Infof("Brute forcing private key for tweaked public key "+
+			"hash %x\n", addr.ScriptAddress())
+
+	default:
+		return fmt.Errorf("address: must be a bech32 P2WPKH address")
+	}
+
+	err := fillCache(extendedKey)
+	if err != nil {
+		return err
+	}
+
+	wif, err := addrInCache(addr.String(), commitPoint)
+	switch {
+	case err == nil:
+		log.Infof("Found private key %s for address %v!", wif, addr)
+
+		return nil
+
+	case err == errAddrNotFound:
+		return fmt.Errorf("did not find private key for address %v",
+			addr)
+
+	default:
+		return err
+	}
 }
 
 func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
