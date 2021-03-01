@@ -24,6 +24,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools dropchannelgraph](chantools_dropchannelgraph.md)	 - Remove all graph related data from a channel DB
 * [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file
 * [chantools dumpchannels](chantools_dumpchannels.md)	 - Dump all channel information from an lnd channel database
+* [chantools fakechanbackup](chantools_fakechanbackup.md)	 - Fake a channel backup file to attempt fund recovery
 * [chantools filterbackup](chantools_filterbackup.md)	 - Filter an lnd channel.backup file and remove certain channels
 * [chantools fixoldbackup](chantools_fixoldbackup.md)	 - Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
 * [chantools forceclose](chantools_forceclose.md)	 - Force-close the last state that is in the channel.db provided

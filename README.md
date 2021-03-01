@@ -292,6 +292,7 @@ Quick access:
 + [dropchannelgraph](doc/chantools_dropchannelgraph.md)
 + [dumpbackup](doc/chantools_dumpbackup.md)
 + [dumpchannels](doc/chantools_dumpchannels.md)
++ [fakechanbackup](doc/chantools_fakechanbackup.md)
 + [filterbackup](doc/chantools_filterbackup.md)
 + [fixoldbackup](doc/chantools_fixoldbackup.md)
 + [genimportscript](doc/chantools_genimportscript.md)

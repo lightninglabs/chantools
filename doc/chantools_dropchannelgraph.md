@@ -7,6 +7,10 @@ Remove all graph related data from a channel DB
 This command removes all graph data from a channel DB,
 forcing the lnd node to do a full graph sync.
 
+CAUTION: Running this command will make it impossible to use the channel DB
+with an older version of lnd. Downgrading is not possible and you'll need to
+run lnd v0.12.0-beta or later after using this command!'
+
 ```
 chantools dropchannelgraph [flags]
 ```
