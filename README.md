@@ -54,6 +54,10 @@ for. This scenario assumes that you do have access to the crashed node's seed,
 `channel.backup` file and some state of a `channel.db` file (perhaps from a
 file based backup or the recovered file from the crashed node).
 
+Following this guide will help you get your channel **funds** back! The channels
+themselves can't be restored to work normally unless step 1 is successful (
+compacting the DB).
+
 ![rescue flow](doc/rescue-flow.png)
 
 **Explanation:**
