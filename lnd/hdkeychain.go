@@ -173,7 +173,8 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 	// First parse address to get targetHash from it later.
 	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("unable to decode address %s: %v",
+			addr, err)
 	}
 
 	// Make the check on the decoded address according to the active
