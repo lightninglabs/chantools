@@ -197,7 +197,7 @@ compacting the DB).
   - Find out who the node belongs to: Maybe you opened the channel with someone
     you know. Or maybe their node alias contains some information about who the
     node belongs to. If you can find out who operates the remote node, you can
-    ask them to force-close the channel from your end. If the channel was opened
+    ask them to force-close the channel from their end. If the channel was opened
     with the `option_static_remote_key`, (`lnd v0.8.0` and later), the funds can
     be swept by your node.
 
