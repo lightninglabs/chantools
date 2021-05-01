@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	cacheSize = 2000
+	cacheSize = 5000
 	cache     []*cacheEntry
 
 	errAddrNotFound = errors.New("addr not found")
@@ -248,6 +248,14 @@ func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
 		return err
 	}
 
+	// Add a nil commit point to the list of possible commit points to also
+	// try brute forcing a static_remote_key address.
+	possibleCommitPoints = append(possibleCommitPoints, nil)
+
+	// We'll also keep track of all rescued keys for an additional log
+	// output.
+	resultMap := make(map[string]string)
+
 	// Try naive/lucky guess by trying out all combinations.
 outer:
 	for _, entry := range entries {
@@ -273,6 +281,8 @@ outer:
 			switch {
 			case err == nil:
 				entry.ClosingTX.SweepPrivkey = wif
+				resultMap[addr] = wif
+
 				continue outer
 
 			case err == errAddrNotFound:
@@ -282,6 +292,15 @@ outer:
 			}
 		}
 	}
+
+	importStr := ""
+	for addr, wif := range resultMap {
+		importStr += fmt.Sprintf(`importprivkey "%s" "%s" false%s`, wif,
+			addr, "\n")
+	}
+	log.Infof("Found %d private keys! Import them into bitcoind through "+
+		"the console by pasting: \n%srescanblockchain 481824\n",
+		len(resultMap), importStr)
 
 	summaryBytes, err := json.MarshalIndent(&dataformat.SummaryEntryFile{
 		Channels: entries,
@@ -328,6 +347,21 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 		return nil
 
 	case err == errAddrNotFound:
+		// Try again as a static_remote_key.
+
+	default:
+		return err
+	}
+
+	// Try again as a static_remote_key address.
+	wif, err = addrInCache(addr.String(), nil)
+	switch {
+	case err == nil:
+		log.Infof("Found private key %s for address %v!", wif, addr)
+
+		return nil
+
+	case err == errAddrNotFound:
 		return fmt.Errorf("did not find private key for address %v",
 			addr)
 
@@ -345,6 +379,33 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	}
 	if scriptHash {
 		return "", fmt.Errorf("address must be a P2WPKH address")
+	}
+
+	// If the commit point is nil, we try with plain private keys to match
+	// static_remote_key outputs.
+	if perCommitPoint == nil {
+		for i := 0; i < cacheSize; i++ {
+			cacheEntry := cache[i]
+			hashedPubKey := btcutil.Hash160(
+				cacheEntry.pubKey.SerializeCompressed(),
+			)
+			equal := subtle.ConstantTimeCompare(
+				targetPubKeyHash, hashedPubKey,
+			)
+			if equal == 1 {
+				wif, err := btcutil.NewWIF(
+					cacheEntry.privKey, chainParams, true,
+				)
+				if err != nil {
+					return "", err
+				}
+				log.Infof("The private key for addr %s "+
+					"(static_remote_key) found after "+
+					"%d tries: %s", addr, i, wif.String(),
+				)
+				return wif.String(), nil
+			}
+		}
 	}
 
 	// Loop through all cached payment base point keys, tweak each of it
