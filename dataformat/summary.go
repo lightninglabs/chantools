@@ -9,6 +9,7 @@ type ClosingTX struct {
 	ForceClose   bool   `json:"force_close"`
 	AllOutsSpent bool   `json:"all_outputs_spent"`
 	OurAddr      string `json:"our_addr"`
+	ToRemoteAddr string `json:"to_remote_addr"`
 	SweepPrivkey string `json:"sweep_privkey"`
 	ConfHeight   uint32 `json:"conf_height"`
 }

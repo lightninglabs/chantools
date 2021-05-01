@@ -11,6 +11,7 @@ require (
 	github.com/btcsuite/btcwallet/walletdb v1.3.4
 	github.com/coreos/bbolt v1.3.3
 	github.com/davecgh/go-spew v1.1.1
+	github.com/gogo/protobuf v1.2.1
 	github.com/gohugoio/hugo v0.79.1 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/lightningnetwork/lnd v0.11.1-beta

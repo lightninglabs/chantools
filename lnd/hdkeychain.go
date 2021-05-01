@@ -293,8 +293,8 @@ func (r *HDKeyRing) DeriveKey(keyLoc keychain.KeyLocator) (
 	}, nil
 }
 
-// Check if a key descriptor is correct by making sure that we can derive the
-// key that it describes.
+// CheckDescriptor checks if a key descriptor is correct by making sure that we
+// can derive the key that it describes.
 func (r *HDKeyRing) CheckDescriptor(
 	keyDesc keychain.KeyDescriptor) error {
 
@@ -334,4 +334,18 @@ func (r *HDKeyRing) CheckDescriptor(
 	// We scanned the max range and didn't find a key. It's very likely not
 	// derivable with the given information.
 	return keychain.ErrCannotDerivePrivKey
+}
+
+// NodePubKey returns the public key that represents an lnd node's public
+// network identity.
+func (r *HDKeyRing) NodePubKey() (*btcec.PublicKey, error) {
+	keyDesc, err := r.DeriveKey(keychain.KeyLocator{
+		Family: keychain.KeyFamilyNodeKey,
+		Index:  0,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return keyDesc.PubKey, nil
 }

@@ -17,6 +17,17 @@ faked/skeleton channel.backup file that at least lets us talk to the other node
 and ask them to do their part. Then we can later brute-force the private key for
 the transaction output of our part of the funds (see rescueclosed command).
 
+There are two versions of this command: The first one is to create a fake
+backup for a single channel where all flags (except --from_channel_graph) need
+to be set. This is the easiest to use since it only relies on data that is
+publicly available (for example on 1ml.com) but involves more manual work.
+The second version of the command only takes the --from_channel_graph and
+--multi_file flags and tries to assemble all channels found in the public
+network graph (must be provided in the JSON format that the 
+'lncli describegraph' command returns) into a fake backup file. This is the
+most convenient way to use this command but requires one to have a fully synced
+lnd node.
+
 ```
 chantools fakechanbackup [flags]
 ```
@@ -27,24 +38,27 @@ chantools fakechanbackup [flags]
 chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
 	--capacity 123456 \
 	--channelpoint f39310xxxxxxxxxx:1 \
-	--initiator \
 	--remote_node_addr 022c260xxxxxxxx@213.174.150.1:9735 \
 	--short_channel_id 566222x300x1 \
+	--multi_file fake.backup
+
+chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
+	--from_channel_graph lncli_describegraph.json \
 	--multi_file fake.backup
 ```
 
 ### Options
 
 ```
-      --bip39                     read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --capacity uint             the channel's capacity in satoshis
-      --channelpoint string       funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is displayed on 1ml.com
-  -h, --help                      help for fakechanbackup
-      --initiator                 whether our node was the initiator (funder) of the channel
-      --multi_file string         the fake channel backup file to create (default "results/fake-2021-03-01-10-12-23.backup")
-      --remote_node_addr string   the remote node connection information in the format pubkey@host:port
-      --rootkey string            BIP32 HD root key of the wallet to use for encrypting the backup; leave empty to prompt for lnd 24 word aezeed
-      --short_channel_id string   the short channel ID in the format <blockheight>x<transactionindex>x<outputindex>
+      --bip39                       read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
+      --capacity uint               the channel's capacity in satoshis
+      --channelpoint string         funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is displayed on 1ml.com
+      --from_channel_graph string   the full LN channel graph in the JSON format that the 'lncli describegraph' returns
+  -h, --help                        help for fakechanbackup
+      --multi_file string           the fake channel backup file to create (default "results/fake-2021-05-01-22-08-48.backup")
+      --remote_node_addr string     the remote node connection information in the format pubkey@host:port
+      --rootkey string              BIP32 HD root key of the wallet to use for encrypting the backup; leave empty to prompt for lnd 24 word aezeed
+      --short_channel_id string     the short channel ID in the format <blockheight>x<transactionindex>x<outputindex>
 ```
 
 ### Options inherited from parent commands

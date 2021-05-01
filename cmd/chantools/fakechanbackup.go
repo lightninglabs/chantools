@@ -4,17 +4,22 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"github.com/lightningnetwork/lnd/tor"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/spf13/cobra"
 )
@@ -23,9 +28,11 @@ type fakeChanBackupCommand struct {
 	NodeAddr     string
 	ChannelPoint string
 	ShortChanID  string
-	Initiator    bool
 	Capacity     uint64
-	MultiFile    string
+
+	FromChannelGraph string
+
+	MultiFile string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -47,13 +54,27 @@ output. But to initiate DLP, we would need to have a channel.backup file.
 Fortunately, if we have enough information about the channel, we can create a
 faked/skeleton channel.backup file that at least lets us talk to the other node
 and ask them to do their part. Then we can later brute-force the private key for
-the transaction output of our part of the funds (see rescueclosed command).`,
+the transaction output of our part of the funds (see rescueclosed command).
+
+There are two versions of this command: The first one is to create a fake
+backup for a single channel where all flags (except --from_channel_graph) need
+to be set. This is the easiest to use since it only relies on data that is
+publicly available (for example on 1ml.com) but involves more manual work.
+The second version of the command only takes the --from_channel_graph and
+--multi_file flags and tries to assemble all channels found in the public
+network graph (must be provided in the JSON format that the 
+'lncli describegraph' command returns) into a fake backup file. This is the
+most convenient way to use this command but requires one to have a fully synced
+lnd node.`,
 		Example: `chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
 	--capacity 123456 \
 	--channelpoint f39310xxxxxxxxxx:1 \
-	--initiator \
 	--remote_node_addr 022c260xxxxxxxx@213.174.150.1:9735 \
 	--short_channel_id 566222x300x1 \
+	--multi_file fake.backup
+
+chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
+	--from_channel_graph lncli_describegraph.json \
 	--multi_file fake.backup`,
 		RunE: cc.Execute,
 	}
@@ -76,9 +97,10 @@ the transaction output of our part of the funds (see rescueclosed command).`,
 		&cc.Capacity, "capacity", 0, "the channel's capacity in "+
 			"satoshis",
 	)
-	cc.cmd.Flags().BoolVar(
-		&cc.Initiator, "initiator", false, "whether our node was the "+
-			"initiator (funder) of the channel",
+	cc.cmd.Flags().StringVar(
+		&cc.FromChannelGraph, "from_channel_graph", "", "the full "+
+			"LN channel graph in the JSON format that the "+
+			"'lncli describegraph' returns",
 	)
 	multiFileName := fmt.Sprintf("results/fake-%s.backup",
 		time.Now().Format("2006-01-02-15-04-05"))
@@ -102,6 +124,21 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
+	}
+
+	if c.FromChannelGraph != "" {
+		graphBytes, err := ioutil.ReadFile(c.FromChannelGraph)
+		if err != nil {
+			return fmt.Errorf("error reading graph JSON file %s: "+
+				"%v", c.FromChannelGraph, err)
+		}
+		graph := &lnrpc.ChannelGraph{}
+		err = jsonpb.UnmarshalString(string(graphBytes), graph)
+		if err != nil {
+			return fmt.Errorf("error parsing graph JSON: %v", err)
+		}
+
+		return backupFromGraph(graph, keyRing, multiFile)
 	}
 
 	// Parse channel point of channel to fake.
@@ -160,8 +197,134 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 			"be equal to index on --channelpoint")
 	}
 
-	// Create some fake channel config.
-	chanCfg := channeldb.ChannelConfig{
+	singles := []chanbackup.Single{newSingle(
+		*chanOp, shortChanID, nodePubkey, []net.Addr{addr},
+		btcutil.Amount(c.Capacity),
+	)}
+	return writeBackups(singles, keyRing, multiFile)
+}
+
+func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
+	multiFile *chanbackup.MultiFile) error {
+
+	// Since we have the master root key, we can find out our local node's
+	// identity pubkey by just deriving it.
+	nodePubKey, err := keyRing.NodePubKey()
+	if err != nil {
+		return fmt.Errorf("error deriving node pubkey: %v", err)
+	}
+	nodePubKeyStr := hex.EncodeToString(nodePubKey.SerializeCompressed())
+
+	// Let's now find all channels in the graph that our node is part of.
+	channels := lnd.AllNodeChannels(graph, nodePubKeyStr)
+
+	// Let's create a single backup entry for each channel.
+	singles := make([]chanbackup.Single, len(channels))
+	for idx, channel := range channels {
+		var peerPubKeyStr string
+		if channel.Node1Pub == nodePubKeyStr {
+			peerPubKeyStr = channel.Node2Pub
+		} else {
+			peerPubKeyStr = channel.Node1Pub
+		}
+
+		peerPubKeyBytes, err := hex.DecodeString(peerPubKeyStr)
+		if err != nil {
+			return fmt.Errorf("error parsing hex: %v", err)
+		}
+		peerPubKey, err := btcec.ParsePubKey(
+			peerPubKeyBytes, btcec.S256(),
+		)
+		if err != nil {
+			return fmt.Errorf("error parsing pubkey: %v", err)
+		}
+
+		peer, err := lnd.FindNode(graph, peerPubKeyStr)
+		if err != nil {
+			return err
+		}
+		peerAddresses := make([]net.Addr, len(peer.Addresses))
+		for idx, peerAddr := range peer.Addresses {
+			var err error
+			if strings.Contains(peerAddr.Addr, ".onion") {
+				peerAddresses[idx], err = tor.ParseAddr(
+					peerAddr.Addr, "",
+				)
+				if err != nil {
+					return fmt.Errorf("error parsing "+
+						"tor address: %v", err)
+				}
+
+				continue
+			}
+			peerAddresses[idx], err = net.ResolveTCPAddr(
+				"tcp", peerAddr.Addr,
+			)
+			if err != nil {
+				return fmt.Errorf("could not parse addr: %s",
+					err)
+			}
+		}
+
+		shortChanID := lnwire.NewShortChanIDFromInt(channel.ChannelId)
+		chanOp, err := lnd.ParseOutpoint(channel.ChanPoint)
+		if err != nil {
+			return fmt.Errorf("error parsing channel point: %v",
+				err)
+		}
+
+		singles[idx] = newSingle(
+			*chanOp, shortChanID, peerPubKey, peerAddresses,
+			btcutil.Amount(channel.Capacity),
+		)
+	}
+
+	return writeBackups(singles, keyRing, multiFile)
+}
+
+func writeBackups(singles []chanbackup.Single, keyRing keychain.KeyRing,
+	multiFile *chanbackup.MultiFile) error {
+
+	newMulti := chanbackup.Multi{
+		Version:       chanbackup.DefaultMultiVersion,
+		StaticBackups: singles,
+	}
+	var packed bytes.Buffer
+	err := newMulti.PackToWriter(&packed, keyRing)
+	if err != nil {
+		return fmt.Errorf("unable to multi-pack backups: %v", err)
+	}
+
+	return multiFile.UpdateAndSwap(packed.Bytes())
+}
+
+func newSingle(fundingOutPoint wire.OutPoint, shortChanID lnwire.ShortChannelID,
+	nodePubKey *btcec.PublicKey, addrs []net.Addr,
+	capacity btcutil.Amount) chanbackup.Single {
+
+	return chanbackup.Single{
+		Version:         chanbackup.DefaultSingleVersion,
+		IsInitiator:     true,
+		ChainHash:       *chainParams.GenesisHash,
+		FundingOutpoint: fundingOutPoint,
+		ShortChannelID:  shortChanID,
+		RemoteNodePub:   nodePubKey,
+		Addresses:       addrs,
+		Capacity:        capacity,
+		LocalChanCfg:    fakeChanCfg(nodePubKey),
+		RemoteChanCfg:   fakeChanCfg(nodePubKey),
+		ShaChainRootDesc: keychain.KeyDescriptor{
+			PubKey: nodePubKey,
+			KeyLocator: keychain.KeyLocator{
+				Family: keychain.KeyFamilyRevocationRoot,
+				Index:  1,
+			},
+		},
+	}
+}
+
+func fakeChanCfg(nodePubkey *btcec.PublicKey) channeldb.ChannelConfig {
+	return channeldb.ChannelConfig{
 		ChannelConstraints: channeldb.ChannelConstraints{
 			DustLimit:        500,
 			ChanReserve:      5000,
@@ -206,34 +369,4 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 			},
 		},
 	}
-
-	newMulti := chanbackup.Multi{
-		Version: chanbackup.DefaultMultiVersion,
-		StaticBackups: []chanbackup.Single{{
-			Version:         chanbackup.DefaultSingleVersion,
-			IsInitiator:     c.Initiator,
-			ChainHash:       *chainParams.GenesisHash,
-			FundingOutpoint: *chanOp,
-			ShortChannelID:  shortChanID,
-			RemoteNodePub:   nodePubkey,
-			Addresses:       []net.Addr{addr},
-			Capacity:        btcutil.Amount(c.Capacity),
-			LocalChanCfg:    chanCfg,
-			RemoteChanCfg:   chanCfg,
-			ShaChainRootDesc: keychain.KeyDescriptor{
-				PubKey: nodePubkey,
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyRevocationRoot,
-					Index:  1,
-				},
-			},
-		}},
-	}
-	var packed bytes.Buffer
-	err = newMulti.PackToWriter(&packed, keyRing)
-	if err != nil {
-		return fmt.Errorf("unable to multi-pack backups: %v", err)
-	}
-
-	return multiFile.UpdateAndSwap(packed.Bytes())
 }
