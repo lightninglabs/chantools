@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -25,6 +26,8 @@ var (
 	cache     []*cacheEntry
 
 	errAddrNotFound = errors.New("addr not found")
+
+	patternCommitPoint = regexp.MustCompile(`commit_point=([0-9a-f]{66})`)
 )
 
 type cacheEntry struct {
@@ -36,6 +39,7 @@ type rescueClosedCommand struct {
 	ChannelDB   string
 	Addr        string
 	CommitPoint string
+	LndLog      string
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -59,14 +63,24 @@ moment they force-closed.
 The alternative use case for this command is if you got the commit point by
 running the fund-recovery branch of my guggero/lnd fork in combination with the
 fakechanbackup command. Then you need to specify the --commit_point and 
---force_close_addr flags instead of the --channeldb and --fromsummary flags.`,
+--force_close_addr flags instead of the --channeldb and --fromsummary flags.
+
+If you need to rescue a whole bunch of channels all at once, you can also
+specify the --fromsummary and --lnd_log flags to automatically look for force
+close addresses in the summary and the corresponding commit points in the
+lnd log file. This only works if lnd is running the fund-recovery branch of my
+guggero/lnd fork.`,
 		Example: `chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 	--fromsummary results/summary-xxxxxx.json \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 
 chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 	--force_close_addr bc1q... \
-	--commit_point 03xxxx`,
+	--commit_point 03xxxx
+
+chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+	--fromsummary results/summary-xxxxxx.json \
+	--lnd_log ~/.lnd/logs/bitcoin/mainnet/lnd.log`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
@@ -82,7 +96,10 @@ chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 			"was obtained from the logs after running the "+
 			"fund-recovery branch of guggero/lnd",
 	)
-
+	cc.cmd.Flags().StringVar(
+		&cc.LndLog, "lnd_log", "", "the lnd log file to read to get "+
+			"the commit_point values when rescuing multiple "+
+			"channels at the same time")
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 	cc.inputs = newInputFlags(cc.cmd)
 
@@ -109,7 +126,13 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		if err != nil {
 			return err
 		}
-		return rescueClosedChannels(extendedKey, entries, db)
+
+		commitPoints, err := commitPointsFromDB(db)
+		if err != nil {
+			return fmt.Errorf("error reading commit points from "+
+				"db: %v", err)
+		}
+		return rescueClosedChannels(extendedKey, entries, commitPoints)
 
 	case c.Addr != "":
 		// First parse address to get targetPubKeyHash from it later.
@@ -133,6 +156,20 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 
 		return rescueClosedChannel(extendedKey, targetAddr, commitPoint)
 
+	case c.LndLog != "":
+		// Parse channel entries from any of the possible input files.
+		entries, err := c.inputs.parseInputType()
+		if err != nil {
+			return err
+		}
+
+		commitPoints, err := commitPointsFromLogFile(c.LndLog)
+		if err != nil {
+			return fmt.Errorf("error parsing commit points from "+
+				"log file: %v", err)
+		}
+		return rescueClosedChannels(extendedKey, entries, commitPoints)
+
 	default:
 		return fmt.Errorf("you either need to specify --channeldb and " +
 			"--fromsummary or --force_close_addr and " +
@@ -140,62 +177,103 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 }
 
+func commitPointsFromDB(chanDb *channeldb.DB) ([]*btcec.PublicKey, error) {
+	var result []*btcec.PublicKey
+
+	channels, err := chanDb.FetchAllChannels()
+	if err != nil {
+		return nil, err
+	}
+
+	// Try naive/lucky guess with information from channel DB.
+	for _, channel := range channels {
+		if channel.RemoteNextRevocation != nil {
+			result = append(result, channel.RemoteNextRevocation)
+		}
+
+		if channel.RemoteCurrentRevocation != nil {
+			result = append(result, channel.RemoteCurrentRevocation)
+		}
+	}
+
+	return result, nil
+}
+
+func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
+	logFileBytes, err := ioutil.ReadFile(lndLog)
+	if err != nil {
+		return nil, fmt.Errorf("error reading log file %s: %v", lndLog,
+			err)
+	}
+
+	allMatches := patternCommitPoint.FindAllStringSubmatch(
+		string(logFileBytes), -1,
+	)
+	dedupMap := make(map[string]*btcec.PublicKey, len(allMatches))
+	for _, groups := range allMatches {
+		commitPointBytes, err := hex.DecodeString(groups[1])
+		if err != nil {
+			return nil, fmt.Errorf("error parsing commit point "+
+				"hex: %v", err)
+		}
+
+		commitPoint, err := btcec.ParsePubKey(
+			commitPointBytes, btcec.S256(),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing commit point: %v",
+				err)
+		}
+
+		dedupMap[groups[1]] = commitPoint
+	}
+
+	var result []*btcec.PublicKey
+	for _, commitPoint := range dedupMap {
+		result = append(result, commitPoint)
+	}
+
+	log.Infof("Extracted %d commit points from log file %s", len(result),
+		lndLog)
+
+	return result, nil
+}
+
 func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
-	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB) error {
+	entries []*dataformat.SummaryEntry,
+	possibleCommitPoints []*btcec.PublicKey) error {
 
 	err := fillCache(extendedKey)
 	if err != nil {
 		return err
 	}
 
-	channels, err := chanDb.FetchAllChannels()
-	if err != nil {
-		return err
-	}
-
-	// Try naive/lucky guess with information from channel DB.
-	for _, channel := range channels {
-		channelPoint := channel.FundingOutpoint.String()
-		var channelEntry *dataformat.SummaryEntry
-		for _, entry := range entries {
-			if entry.ChannelPoint == channelPoint {
-				channelEntry = entry
-			}
-		}
-
+	// Try naive/lucky guess by trying out all combinations.
+outer:
+	for _, entry := range entries {
 		// Don't try anything with open channels, fully closed channels
 		// or channels where we already have the private key.
-		if channelEntry == nil || channelEntry.ClosingTX == nil ||
-			channelEntry.ClosingTX.AllOutsSpent ||
-			channelEntry.ClosingTX.OurAddr == "" ||
-			channelEntry.ClosingTX.SweepPrivkey != "" {
+		if entry.ClosingTX == nil ||
+			entry.ClosingTX.AllOutsSpent ||
+			(entry.ClosingTX.OurAddr == "" &&
+				entry.ClosingTX.ToRemoteAddr == "") ||
+			entry.ClosingTX.SweepPrivkey != "" {
+
 			continue
 		}
 
-		if channel.RemoteNextRevocation != nil {
-			wif, err := addrInCache(
-				channelEntry.ClosingTX.OurAddr,
-				channel.RemoteNextRevocation,
-			)
-			switch {
-			case err == nil:
-				channelEntry.ClosingTX.SweepPrivkey = wif
-
-			case err == errAddrNotFound:
-
-			default:
-				return err
+		// Try with every possible commit point now.
+		for _, commitPoint := range possibleCommitPoints {
+			addr := entry.ClosingTX.OurAddr
+			if addr == "" {
+				addr = entry.ClosingTX.ToRemoteAddr
 			}
-		}
 
-		if channel.RemoteCurrentRevocation != nil {
-			wif, err := addrInCache(
-				channelEntry.ClosingTX.OurAddr,
-				channel.RemoteCurrentRevocation,
-			)
+			wif, err := addrInCache(addr, commitPoint)
 			switch {
 			case err == nil:
-				channelEntry.ClosingTX.SweepPrivkey = wif
+				entry.ClosingTX.SweepPrivkey = wif
+				continue outer
 
 			case err == errAddrNotFound:
 

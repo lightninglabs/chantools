@@ -17,6 +17,12 @@ running the fund-recovery branch of my guggero/lnd fork in combination with the
 fakechanbackup command. Then you need to specify the --commit_point and 
 --force_close_addr flags instead of the --channeldb and --fromsummary flags.
 
+If you need to rescue a whole bunch of channels all at once, you can also
+specify the --fromsummary and --lnd_log flags to automatically look for force
+close addresses in the summary and the corresponding commit points in the
+lnd log file. This only works if lnd is running the fund-recovery branch of my
+guggero/lnd fork.
+
 ```
 chantools rescueclosed [flags]
 ```
@@ -31,6 +37,10 @@ chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 chantools rescueclosed --rootkey xprvxxxxxxxxxx \
 	--force_close_addr bc1q... \
 	--commit_point 03xxxx
+
+chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+	--fromsummary results/summary-xxxxxx.json \
+	--lnd_log ~/.lnd/logs/bitcoin/mainnet/lnd.log
 ```
 
 ### Options
@@ -44,6 +54,7 @@ chantools rescueclosed --rootkey xprvxxxxxxxxxx \
       --fromsummary string        channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                      help for rescueclosed
       --listchannels string       channel input is in the format of lncli's listchannels format; specify '-' to read from stdin
+      --lnd_log string            the lnd log file to read to get the commit_point values when rescuing multiple channels at the same time
       --pendingchannels string    channel input is in the format of lncli's pendingchannels format; specify '-' to read from stdin
       --rootkey string            BIP32 HD root key of the wallet to use for decrypting the backup; leave empty to prompt for lnd 24 word aezeed
 ```
