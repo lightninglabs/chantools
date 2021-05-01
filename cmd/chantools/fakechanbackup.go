@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/lightningnetwork/lnd/tor"
 	"io/ioutil"
 	"net"
 	"strconv"
@@ -21,6 +20,7 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/tor"
 	"github.com/spf13/cobra"
 )
 
@@ -166,21 +166,21 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Parse the short channel ID.
-	splitChanId := strings.Split(c.ShortChanID, "x")
-	if len(splitChanId) != 3 {
+	splitChanID := strings.Split(c.ShortChanID, "x")
+	if len(splitChanID) != 3 {
 		return fmt.Errorf("--short_channel_id expected in format: " +
 			"<blockheight>x<transactionindex>x<outputindex>",
 		)
 	}
-	blockHeight, err := strconv.ParseInt(splitChanId[0], 10, 32)
+	blockHeight, err := strconv.ParseInt(splitChanID[0], 10, 32)
 	if err != nil {
 		return fmt.Errorf("could not parse block height: %s", err)
 	}
-	txIndex, err := strconv.ParseInt(splitChanId[1], 10, 32)
+	txIndex, err := strconv.ParseInt(splitChanID[1], 10, 32)
 	if err != nil {
 		return fmt.Errorf("could not parse transaction index: %s", err)
 	}
-	chanOutputIdx, err := strconv.ParseInt(splitChanId[2], 10, 32)
+	chanOutputIdx, err := strconv.ParseInt(splitChanID[2], 10, 32)
 	if err != nil {
 		return fmt.Errorf("could not parse output index: %s", err)
 	}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -87,6 +88,30 @@ func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
 	}
 
 	return nil, 0, fmt.Errorf("no tx found")
+}
+
+func (a *ExplorerAPI) Address(outpoint string) (string, error) {
+	parts := strings.Split(outpoint, ":")
+
+	if len(parts) != 2 {
+		return "", fmt.Errorf("invalid outpoint: %v", outpoint)
+	}
+
+	tx, err := a.Transaction(parts[0])
+	if err != nil {
+		return "", err
+	}
+
+	vout, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return "", err
+	}
+
+	if len(tx.Vout) <= vout {
+		return "", fmt.Errorf("invalid output index: %d", vout)
+	}
+
+	return tx.Vout[vout].ScriptPubkeyAddr, nil
 }
 
 func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {

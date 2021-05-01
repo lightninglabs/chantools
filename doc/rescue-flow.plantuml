@@ -24,6 +24,7 @@ if "Pending/Open\nchannels left?" then
   else
     -->[no] ===MANUAL===
     --> "<b>11:</b> Manual intervention necessary"
+    --> "<b>12:</b> Use Zombie Channel Recovery Matcher"
     --> (*)
   endif
 else

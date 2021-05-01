@@ -140,6 +140,13 @@ func IdentityPath(params *chaincfg.Params) string {
 	)
 }
 
+func MultisigPath(params *chaincfg.Params, index int) string {
+	return fmt.Sprintf(
+		LndDerivationPath+"/0/%d", params.HDCoinType,
+		keychain.KeyFamilyMultiSig, index,
+	)
+}
+
 func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 	mkPath := func(f keychain.KeyFamily) string {
 		return fmt.Sprintf(

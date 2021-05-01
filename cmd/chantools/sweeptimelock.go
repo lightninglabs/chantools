@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	defaultFeeSatPerVByte = 2
+	defaultFeeSatPerVByte = 30
 	defaultCsvLimit       = 2016
 )
 

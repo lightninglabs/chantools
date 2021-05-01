@@ -102,7 +102,7 @@ func reportOutspend(api *ExplorerAPI,
 				entry.ClosingTX.ToRemoteAddr = o.ScriptPubkeyAddr
 			}
 		}
-		
+
 		if couldBeOurs(entry, utxo) {
 			summaryFile.ChannelsWithPotential++
 			summaryFile.FundsForceClose += utxo[0].Value

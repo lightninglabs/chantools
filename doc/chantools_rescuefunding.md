@@ -36,7 +36,7 @@ chantools rescuefunding \
       --channeldb string               lnd channel.db file to rescue a channel from; must contain the pending channel specified with --channelpoint
       --channelpoint string            funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB
       --confirmedchannelpoint string   channel outpoint that got confirmed on chain (<txid>:<txindex>); normally this is the same as the --channelpoint so it will be set to that value ifthis is left empty
-      --feerate uint16                 fee rate to use for the sweep transaction in sat/vByte (default 2)
+      --feerate uint16                 fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                           help for rescuefunding
       --rootkey string                 BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string               address to sweep the funds to

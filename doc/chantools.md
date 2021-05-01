@@ -40,4 +40,5 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools sweeptimelockmanual](chantools_sweeptimelockmanual.md)	 - Sweep the force-closed state of a single channel manually if only a channel backup file is available
 * [chantools vanitygen](chantools_vanitygen.md)	 - Generate a seed with a custom lnd node identity public key that starts with the given prefix
 * [chantools walletinfo](chantools_walletinfo.md)	 - Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
+* [chantools zombierecovery](chantools_zombierecovery.md)	 - Try rescuing funds stuck in channels with zombie nodes
 

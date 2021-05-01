@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.8.3"
+	version       = "0.8.4"
 	na            = "n/a"
 
 	Commit = ""
@@ -102,6 +102,7 @@ func main() {
 		newSweepTimeLockManualCommand(),
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
+		newZombieRecoveryCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

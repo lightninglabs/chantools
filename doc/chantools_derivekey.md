@@ -15,7 +15,7 @@ chantools derivekey [flags]
 
 ```
 chantools derivekey --path "m/1017'/0'/5'/0/0'" \
-    --neuter
+	--neuter
 
 chantools derivekey --identity
 ```

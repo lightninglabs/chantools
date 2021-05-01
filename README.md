@@ -185,7 +185,7 @@ compacting the DB).
   don't have a `channel.db` file or because `chantools` couldn't rescue all your
   node's channels. There are a few things you can try manually that have some
   chance of working:
-  - Make sure you can connect to all nodes when restoring from SCB: It happens
+    - Make sure you can connect to all nodes when restoring from SCB: It happens
     all the time that nodes change their IP addresses. When restoring from a
     static channel backup, your node tries to connect to the node using the IP
     address encoded in the backup file. If the address changed, the SCB restore
@@ -194,12 +194,19 @@ compacting the DB).
     `lncli connect <node-pubkey>@<updated-ip-address>:<port>` in the recovered
     `lnd` node from step 3 and wait a few hours to see if the channel is now
     being force closed by the remote node.
-  - Find out who the node belongs to: Maybe you opened the channel with someone
+    - Find out who the node belongs to: Maybe you opened the channel with someone
     you know. Or maybe their node alias contains some information about who the
     node belongs to. If you can find out who operates the remote node, you can
     ask them to force-close the channel from their end. If the channel was opened
     with the `option_static_remote_key`, (`lnd v0.8.0` and later), the funds can
     be swept by your node.
+
+12. **Use Zombie Channel Recovery Matcher**: As a final, last resort, you can
+  go to [node-recovery.com](https://www.node-recovery.com/) and register your
+  node's ID for being matched up against other nodes with the same problem.
+  <br/><br/>
+  Once you were contacted with a match, follow the instructions on the
+  [Zombie Channel Recovery Guide](doc/zombierecovery.md) page.
 
 ## Seed and passphrase input
 

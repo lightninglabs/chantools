@@ -225,7 +225,7 @@ func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
 		dedupMap[groups[1]] = commitPoint
 	}
 
-	var result []*btcec.PublicKey
+	result := make([]*btcec.PublicKey, 0, len(dedupMap))
 	for _, commitPoint := range dedupMap {
 		result = append(result, commitPoint)
 	}

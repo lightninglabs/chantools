@@ -90,7 +90,7 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 		return fmt.Errorf("error creating PSBT updater: %v", err)
 	}
 	status, err := updater.Sign(
-		0, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
+		inputIndex, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
 		witnessScript,
 	)
 	if err != nil {

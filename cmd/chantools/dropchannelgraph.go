@@ -67,6 +67,6 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err := rwTx.DeleteTopLevelBucket(graphMetaBucket); err != nil {
 		return err
 	}
-	
+
 	return rwTx.Commit()
 }
