@@ -25,7 +25,7 @@ func newDumpBackupCommand() *cobra.Command {
 		Short: "Dump the content of a channel.backup file",
 		Long: `This command dumps all information that is inside a 
 channel.backup file in a human readable format.`,
-		Example: `chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+		Example: `chantools dumpbackup \
 	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup`,
 		RunE: cc.Execute,
 	}

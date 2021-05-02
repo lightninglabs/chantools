@@ -19,7 +19,7 @@ chantools signrescuefunding [flags]
 ### Examples
 
 ```
-chantools signrescuefunding --rootkey xprvxxxxxxxxxx \
+chantools signrescuefunding \
 	--psbt <the_base64_encoded_psbt_from_step_1>
 ```
 

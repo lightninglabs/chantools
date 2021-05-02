@@ -14,7 +14,7 @@ chantools filterbackup [flags]
 ### Examples
 
 ```
-chantools filterbackup --rootkey xprvxxxxxxxxxx \
+chantools filterbackup \
 	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup \
 	--discard 2abcdef2b2bffaaa...db0abadd:1,4abcdef2b2bffaaa...db8abadd:0
 ```

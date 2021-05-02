@@ -70,16 +70,13 @@ specify the --fromsummary and --lnd_log flags to automatically look for force
 close addresses in the summary and the corresponding commit points in the
 lnd log file. This only works if lnd is running the fund-recovery branch of my
 guggero/lnd fork.`,
-		Example: `chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+		Example: `chantools rescueclosed \
 	--fromsummary results/summary-xxxxxx.json \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 
-chantools rescueclosed --rootkey xprvxxxxxxxxxx \
-	--force_close_addr bc1q... \
-	--commit_point 03xxxx
+chantools rescueclosed --force_close_addr bc1q... --commit_point 03xxxx
 
-chantools rescueclosed --rootkey xprvxxxxxxxxxx \
-	--fromsummary results/summary-xxxxxx.json \
+chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
 	--lnd_log ~/.lnd/logs/bitcoin/mainnet/lnd.log`,
 		RunE: cc.Execute,
 	}

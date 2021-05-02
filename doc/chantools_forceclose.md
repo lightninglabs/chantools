@@ -24,7 +24,7 @@ chantools forceclose [flags]
 ### Examples
 
 ```
-chantools forceclose --rootkey xprvxxxxxxxxxx \
+chantools forceclose \
 	--fromsummary results/summary-xxxx-yyyy.json
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--publish

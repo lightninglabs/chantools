@@ -14,8 +14,8 @@ chantools derivekey [flags]
 ### Examples
 
 ```
-chantools derivekey --rootkey xprvxxxxxxxxxx \
-	--path "m/1017'/0'/5'/0/0'" --neuter
+chantools derivekey --path "m/1017'/0'/5'/0/0'" \
+	--neuter
 ```
 
 ### Options

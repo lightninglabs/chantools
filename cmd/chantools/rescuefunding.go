@@ -61,7 +61,7 @@ work**! They need to run the second command of this process: signrescuefunding
 
 If successful, this will create a PSBT that then has to be sent to the channel
 partner (remote node operator).`,
-		Example: `chantools rescuefunding --rootkey xprvxxxxxxxxxx \
+		Example: `chantools rescuefunding \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--channelpoint xxxxxxx:xx \
 	--sweepaddr bc1qxxxxxxxxx \

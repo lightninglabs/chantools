@@ -17,7 +17,7 @@ chantools fixoldbackup [flags]
 ### Examples
 
 ```
-chantools fixoldbackup --rootkey xprvxxxxxxxxxx \
+chantools fixoldbackup \
 	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
 

@@ -66,15 +66,14 @@ network graph (must be provided in the JSON format that the
 'lncli describegraph' command returns) into a fake backup file. This is the
 most convenient way to use this command but requires one to have a fully synced
 lnd node.`,
-		Example: `chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
+		Example: `chantools fakechanbackup \
 	--capacity 123456 \
 	--channelpoint f39310xxxxxxxxxx:1 \
 	--remote_node_addr 022c260xxxxxxxx@213.174.150.1:9735 \
 	--short_channel_id 566222x300x1 \
 	--multi_file fake.backup
 
-chantools fakechanbackup --rootkey xprvxxxxxxxxxx \
-	--from_channel_graph lncli_describegraph.json \
+chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
 	--multi_file fake.backup`,
 		RunE: cc.Execute,
 	}

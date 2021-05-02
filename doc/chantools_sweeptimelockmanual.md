@@ -23,7 +23,7 @@ chantools sweeptimelockmanual [flags]
 ### Examples
 
 ```
-chantools sweeptimelockmanual --rootkey xprvxxxxxxxx \
+chantools sweeptimelockmanual \
 	--sweepaddr bc1q..... \
 	--timelockaddr bc1q............ \
 	--remoterevbasepoint 03xxxxxxx \

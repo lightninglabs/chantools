@@ -48,7 +48,7 @@ have to wait until the highest time lock (can be up to 2016 blocks which is more
 than two weeks) of all the channels has passed. If you only want to sweep
 channels that have the default CSV limit of 1 day, you can set the --maxcsvlimit
 parameter to 144.`,
-		Example: `chantools sweeptimelock --rootkey xprvxxxxxxxxxx \
+		Example: `chantools sweeptimelock \
 	--fromsummary results/forceclose-xxxx-yyyy.json \
 	--sweepaddr bc1q.....
   	--publish`,

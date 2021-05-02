@@ -14,7 +14,7 @@ chantools chanbackup [flags]
 ### Examples
 
 ```
-chantools chanbackup --rootkey xprvxxxxxxx \
+chantools chanbackup \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--multi_file new_channel_backup.backup
 ```

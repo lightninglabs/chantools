@@ -56,7 +56,7 @@ then look up the value for RemoteChanCfg -> RevocationBasePoint -> PubKey.
 To get the value for --timelockaddr you must look up the channel's funding
 output on chain, then follow it to the force close output. The time locked
 address is always the one that's longer (because it's P2WSH and not P2PKH).`,
-		Example: `chantools sweeptimelockmanual --rootkey xprvxxxxxxxx \
+		Example: `chantools sweeptimelockmanual \
 	--sweepaddr bc1q..... \
 	--timelockaddr bc1q............ \
 	--remoterevbasepoint 03xxxxxxx \

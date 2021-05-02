@@ -23,7 +23,7 @@ func newChanBackupCommand() *cobra.Command {
 		Short: "Create a channel.backup file from a channel database",
 		Long: `This command creates a new channel.backup from a 
 channel.db file.`,
-		Example: `chantools chanbackup --rootkey xprvxxxxxxx \
+		Example: `chantools chanbackup \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--multi_file new_channel_backup.backup`,
 		RunE: cc.Execute,

@@ -19,7 +19,7 @@ chantools sweeptimelock [flags]
 ### Examples
 
 ```
-chantools sweeptimelock --rootkey xprvxxxxxxxxxx \
+chantools sweeptimelock \
 	--fromsummary results/forceclose-xxxx-yyyy.json \
 	--sweepaddr bc1q.....
   	--publish

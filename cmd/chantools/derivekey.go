@@ -35,8 +35,8 @@ func newDeriveKeyCommand() *cobra.Command {
 		Short: "Derive a key with a specific derivation path",
 		Long: `This command derives a single key with the given BIP32
 derivation path from the root key and prints it to the console.`,
-		Example: `chantools derivekey --rootkey xprvxxxxxxxxxx \
-	--path "m/1017'/0'/5'/0/0'" --neuter`,
+		Example: `chantools derivekey --path "m/1017'/0'/5'/0/0'" \
+	--neuter`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(

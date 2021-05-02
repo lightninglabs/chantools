@@ -14,7 +14,7 @@ chantools dumpbackup [flags]
 ### Examples
 
 ```
-chantools dumpbackup --rootkey xprvxxxxxxxxxx \
+chantools dumpbackup \
 	--multi_file ~/.lnd/data/chain/bitcoin/mainnet/channel.backup
 ```
 

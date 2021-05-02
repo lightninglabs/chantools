@@ -47,7 +47,7 @@ come online before you can sweep the funds from the time locked (144 - 2000
 blocks) transaction *or* they have a watch tower looking out for them.
 
 **This should absolutely be the last resort and you have been warned!**`,
-		Example: `chantools forceclose --rootkey xprvxxxxxxxxxx \
+		Example: `chantools forceclose \
 	--fromsummary results/summary-xxxx-yyyy.json
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--publish`,

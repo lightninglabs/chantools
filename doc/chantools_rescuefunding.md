@@ -22,7 +22,7 @@ chantools rescuefunding [flags]
 ### Examples
 
 ```
-chantools rescuefunding --rootkey xprvxxxxxxxxxx \
+chantools rescuefunding \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--channelpoint xxxxxxx:xx \
 	--sweepaddr bc1qxxxxxxxxx \

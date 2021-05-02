@@ -34,7 +34,7 @@ the 2-of-2 multisig.
 
 If successful, this will create a final on-chain transaction that can be
 broadcast by any Bitcoin node.`,
-		Example: `chantools signrescuefunding --rootkey xprvxxxxxxxxxx \
+		Example: `chantools signrescuefunding \
 	--psbt <the_base64_encoded_psbt_from_step_1>`,
 		RunE: cc.Execute,
 	}

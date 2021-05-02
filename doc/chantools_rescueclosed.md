@@ -30,16 +30,13 @@ chantools rescueclosed [flags]
 ### Examples
 
 ```
-chantools rescueclosed --rootkey xprvxxxxxxxxxx \
+chantools rescueclosed \
 	--fromsummary results/summary-xxxxxx.json \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 
-chantools rescueclosed --rootkey xprvxxxxxxxxxx \
-	--force_close_addr bc1q... \
-	--commit_point 03xxxx
+chantools rescueclosed --force_close_addr bc1q... --commit_point 03xxxx
 
-chantools rescueclosed --rootkey xprvxxxxxxxxxx \
-	--fromsummary results/summary-xxxxxx.json \
+chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
 	--lnd_log ~/.lnd/logs/bitcoin/mainnet/lnd.log
 ```
 
