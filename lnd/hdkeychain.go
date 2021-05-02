@@ -133,6 +133,13 @@ func ShaChainFromPath(extendedKey *hdkeychain.ExtendedKey,
 	return shachain.NewRevocationProducer(*revRoot), nil
 }
 
+func IdentityPath(params *chaincfg.Params) string {
+	return fmt.Sprintf(
+		LndDerivationPath+"/0/0", params.HDCoinType,
+		keychain.KeyFamilyNodeKey,
+	)
+}
+
 func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 	mkPath := func(f keychain.KeyFamily) string {
 		return fmt.Sprintf(

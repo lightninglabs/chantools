@@ -21,8 +21,9 @@ Extended private key (xprv):	%s
 `
 
 type deriveKeyCommand struct {
-	Path   string
-	Neuter bool
+	Path     string
+	Neuter   bool
+	Identity bool
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -36,7 +37,9 @@ func newDeriveKeyCommand() *cobra.Command {
 		Long: `This command derives a single key with the given BIP32
 derivation path from the root key and prints it to the console.`,
 		Example: `chantools derivekey --path "m/1017'/0'/5'/0/0'" \
-	--neuter`,
+	--neuter
+
+chantools derivekey --identity`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
@@ -46,6 +49,10 @@ derivation path from the root key and prints it to the console.`,
 	cc.cmd.Flags().BoolVar(
 		&cc.Neuter, "neuter", false, "don't output private key(s), "+
 			"only public key(s)",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Identity, "identity", false, "derive the lnd "+
+			"identity_pubkey",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
@@ -57,6 +64,11 @@ func (c *deriveKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %v", err)
+	}
+
+	if c.Identity {
+		c.Path = lnd.IdentityPath(chainParams)
+		c.Neuter = true
 	}
 
 	return deriveKey(extendedKey, c.Path, c.Neuter)
