@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -16,6 +17,11 @@ const (
 
 func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
 	backend, err := openDB(dbPath, false, readonly, DefaultOpenTimeout)
+	if err == bbolt.ErrTimeout {
+		return nil, fmt.Errorf("error opening %s: make sure lnd is "+
+			"not running, database is locked by another process",
+			dbPath)
+	}
 	if err != nil {
 		return nil, err
 	}

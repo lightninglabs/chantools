@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go.etcd.io/bbolt"
 	"os"
 	"strings"
 
@@ -140,6 +141,11 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 		"bdb", lncfg.CleanAndExpandPath(c.WalletDB), false,
 		lnd.DefaultOpenTimeout,
 	)
+	if err == bbolt.ErrTimeout {
+		return fmt.Errorf("error opening wallet database, make sure " +
+			"lnd is not running and holding the exclusive lock " +
+			"on the wallet")
+	}
 	if err != nil {
 		return fmt.Errorf("error opening wallet database: %v", err)
 	}
