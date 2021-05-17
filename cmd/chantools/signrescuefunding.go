@@ -44,6 +44,8 @@ broadcast by any Bitcoin node.`,
 			"rescue",
 	)
 
+	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
+	
 	return cc.cmd
 }
 
