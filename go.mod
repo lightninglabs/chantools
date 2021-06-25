@@ -15,7 +15,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gogo/protobuf v1.2.1
 	github.com/google/go-cmp v0.5.3 // indirect
-	github.com/lightningnetwork/lnd v0.11.1-beta
+	github.com/lightningnetwork/lnd v0.12.1-beta
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/miekg/dns v1.1.26 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
