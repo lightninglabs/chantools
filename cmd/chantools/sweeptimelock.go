@@ -14,6 +14,7 @@ import (
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
+	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
@@ -104,28 +105,28 @@ func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.FeeRate == 0 {
 		c.FeeRate = defaultFeeSatPerVByte
 	}
-	return sweepTimeLock(
+	return sweepTimeLockFromSummary(
 		extendedKey, c.APIURL, entries, c.SweepAddr, c.MaxCsvLimit,
 		c.Publish, c.FeeRate,
 	)
 }
 
-func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
+type sweepTarget struct {
+	channelPoint        string
+	txid                chainhash.Hash
+	index               uint32
+	lockScript          []byte
+	value               int64
+	commitPoint         *btcec.PublicKey
+	revocationBasePoint *btcec.PublicKey
+	delayBasePointDesc  *keychain.KeyDescriptor
+}
+
+func sweepTimeLockFromSummary(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	entries []*dataformat.SummaryEntry, sweepAddr string,
 	maxCsvTimeout uint16, publish bool, feeRate uint16) error {
 
-	// Create signer and transaction template.
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
-	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
-
-	sweepTx := wire.NewMsgTx(2)
-	totalOutputValue := int64(0)
-	signDescs := make([]*input.SignDescriptor, 0)
-	var estimator input.TxWeightEstimator
-
+	targets := make([]*sweepTarget, 0, len(entries))
 	for _, entry := range entries {
 		// Skip entries that can't be swept.
 		if entry.ForceClose == nil ||
@@ -169,14 +170,14 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		}
 		revBase, err := pubKeyFromHex(fc.RevocationBasePoint.PubKey)
 		if err != nil {
-			return fmt.Errorf("error parsing commit point: %v", err)
+			return fmt.Errorf("error parsing revocation base "+
+				"point: %v", err)
 		}
-		delayDesc := fc.DelayBasePoint.Desc()
-		delayPrivKey, err := signer.FetchPrivKey(delayDesc)
+		delayDesc, err := fc.DelayBasePoint.Desc()
 		if err != nil {
-			return fmt.Errorf("error getting private key: %v", err)
+			return fmt.Errorf("error parsing delay base point: %v",
+				err)
 		}
-		delayBase := delayPrivKey.PubKey()
 
 		lockScript, err := hex.DecodeString(fc.Outs[txindex].Script)
 		if err != nil {
@@ -184,29 +185,69 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 				err)
 		}
 
-		// We can't rely on the CSV delay of the channel DB to be
-		// correct. But it doesn't cost us a lot to just brute force it.
-		csvTimeout, script, scriptHash, err := bruteForceDelay(
-			input.TweakPubKey(delayBase, commitPoint),
-			input.DeriveRevocationPubkey(revBase, commitPoint),
-			lockScript, maxCsvTimeout,
-		)
-		if err != nil {
-			log.Errorf("Could not create matching script for %s "+
-				"or csv too high: %v", entry.ChannelPoint,
-				err)
-			continue
-		}
-
 		// Create the transaction input.
 		txHash, err := chainhash.NewHashFromStr(fc.TXID)
 		if err != nil {
 			return fmt.Errorf("error parsing tx hash: %v", err)
 		}
+
+		targets = append(targets, &sweepTarget{
+			channelPoint:        entry.ChannelPoint,
+			txid:                *txHash,
+			index:               uint32(txindex),
+			lockScript:          lockScript,
+			value:               int64(fc.Outs[txindex].Value),
+			commitPoint:         commitPoint,
+			revocationBasePoint: revBase,
+			delayBasePointDesc:  delayDesc,
+		})
+	}
+
+	return sweepTimeLock(
+		extendedKey, apiURL, targets, sweepAddr, maxCsvTimeout, publish,
+		feeRate,
+	)
+}
+
+func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
+	targets []*sweepTarget, sweepAddr string, maxCsvTimeout uint16,
+	publish bool, feeRate uint16) error {
+
+	// Create signer and transaction template.
+	signer := &lnd.Signer{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
+	}
+	api := &btc.ExplorerAPI{BaseURL: apiURL}
+
+	sweepTx := wire.NewMsgTx(2)
+	totalOutputValue := int64(0)
+	signDescs := make([]*input.SignDescriptor, 0)
+	var estimator input.TxWeightEstimator
+
+	for _, target := range targets {
+		// We can't rely on the CSV delay of the channel DB to be
+		// correct. But it doesn't cost us a lot to just brute force it.
+		csvTimeout, script, scriptHash, err := bruteForceDelay(
+			input.TweakPubKey(
+				target.delayBasePointDesc.PubKey,
+				target.commitPoint,
+			), input.DeriveRevocationPubkey(
+				target.revocationBasePoint,
+				target.commitPoint,
+			), target.lockScript, maxCsvTimeout,
+		)
+		if err != nil {
+			log.Errorf("Could not create matching script for %s "+
+				"or csv too high: %v", target.channelPoint, err)
+			continue
+		}
+
+		// Create the transaction input.
 		sweepTx.TxIn = append(sweepTx.TxIn, &wire.TxIn{
 			PreviousOutPoint: wire.OutPoint{
-				Hash:  *txHash,
-				Index: uint32(txindex),
+				Hash:  target.txid,
+				Index: target.index,
 			},
 			Sequence: input.LockTimeToSequence(
 				false, uint32(csvTimeout),
@@ -215,18 +256,19 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 		// Create the sign descriptor for the input.
 		signDesc := &input.SignDescriptor{
-			KeyDesc: *delayDesc,
+			KeyDesc: *target.delayBasePointDesc,
 			SingleTweak: input.SingleTweakBytes(
-				commitPoint, delayBase,
+				target.commitPoint,
+				target.delayBasePointDesc.PubKey,
 			),
 			WitnessScript: script,
 			Output: &wire.TxOut{
 				PkScript: scriptHash,
-				Value:    int64(fc.Outs[txindex].Value),
+				Value:    target.value,
 			},
 			HashType: txscript.SigHashAll,
 		}
-		totalOutputValue += int64(fc.Outs[txindex].Value)
+		totalOutputValue += target.value
 		signDescs = append(signDescs, signDesc)
 
 		// Account for the input weight.

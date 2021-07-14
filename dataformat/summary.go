@@ -1,6 +1,9 @@
 package dataformat
 
 import (
+	"encoding/hex"
+	"fmt"
+	"github.com/btcsuite/btcd/btcec"
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
@@ -20,13 +23,25 @@ type BasePoint struct {
 	PubKey string `json:"pubkey"`
 }
 
-func (b *BasePoint) Desc() *keychain.KeyDescriptor {
+func (b *BasePoint) Desc() (*keychain.KeyDescriptor, error) {
+	pubKeyHex, err := hex.DecodeString(b.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding base point pubkey: %v",
+			err)
+	}
+	pubKey, err := btcec.ParsePubKey(pubKeyHex, btcec.S256())
+	if err != nil {
+		return nil, fmt.Errorf("error parsing base point pubkey: %v",
+			err)
+	}
+
 	return &keychain.KeyDescriptor{
 		KeyLocator: keychain.KeyLocator{
 			Family: keychain.KeyFamily(b.Family),
 			Index:  b.Index,
 		},
-	}
+		PubKey: pubKey,
+	}, nil
 }
 
 type Out struct {
