@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.8.6"
+	version       = "0.9.0"
 	na            = "n/a"
 
 	Commit = ""
@@ -37,7 +37,7 @@ var (
 	Regtest bool
 
 	logWriter   = build.NewRotatingLogWriter()
-	log         = build.NewSubLogger("CHAN", logWriter.GenSubLogger)
+	log         = build.NewSubLogger("CHAN", genSubLogger(logWriter))
 	chainParams = &chaincfg.MainNetParams
 )
 
@@ -270,12 +270,19 @@ func setupLogging() {
 	}
 }
 
+// genSubLogger creates a sub logger with an empty shutdown function.
+func genSubLogger(logWriter *build.RotatingLogWriter) func(string) btclog.Logger {
+	return func(s string) btclog.Logger {
+		return logWriter.GenSubLogger(s, func() {})
+	}
+}
+
 // addSubLogger is a helper method to conveniently create and register the
 // logger of one or more sub systems.
 func addSubLogger(subsystem string, useLoggers ...func(btclog.Logger)) {
 	// Create and register just a single logger to prevent them from
 	// overwriting each other internally.
-	logger := build.NewSubLogger(subsystem, logWriter.GenSubLogger)
+	logger := build.NewSubLogger(subsystem, genSubLogger(logWriter))
 	setSubLogger(subsystem, logger, useLoggers...)
 }
 
