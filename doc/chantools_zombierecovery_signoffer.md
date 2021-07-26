@@ -2,6 +2,11 @@
 
 [3/3] Sign an offer sent by the remote peer to recover funds
 
+### Synopsis
+
+Inspect and sign an offer that was sent by the remote
+peer to recover funds from one or more channels.
+
 ```
 chantools zombierecovery signoffer [flags]
 ```

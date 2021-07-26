@@ -11,7 +11,7 @@ needs to read the database content.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.12.0-beta or later after using this command!'
+run lnd v0.13.1-beta or later after using this command!'
 
 ```
 chantools migratedb [flags]

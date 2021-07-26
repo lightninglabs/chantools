@@ -299,6 +299,7 @@ Detailed documentation for each sub command is available in the
 Quick access:
 + [chanbackup](doc/chantools_chanbackup.md)
 + [compactdb](doc/chantools_compactdb.md)
++ [deletepayments](doc/chantools_deletepayments.md)
 + [derivekey](doc/chantools_derivekey.md)
 + [dropchannelgraph](doc/chantools_dropchannelgraph.md)
 + [dumpbackup](doc/chantools_dumpbackup.md)
@@ -319,3 +320,4 @@ Quick access:
 + [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md)
 + [vanitygen](doc/chantools_vanitygen.md)
 + [walletinfo](doc/chantools_walletinfo.md)
++ [zombierecovery](doc/chantools_zombierecovery.md)

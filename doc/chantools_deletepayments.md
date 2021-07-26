@@ -1,24 +1,25 @@
-## chantools dropchannelgraph
+## chantools deletepayments
 
-Remove all graph related data from a channel DB
+Remove all (failed) payments from a channel DB
 
 ### Synopsis
 
-This command removes all graph data from a channel DB,
-forcing the lnd node to do a full graph sync.
+This command removes all payments from a channel DB.
+If only the failed payments should be deleted (and not the successful ones), the
+--failedonly flag can be specified.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
 run lnd v0.13.1-beta or later after using this command!'
 
 ```
-chantools dropchannelgraph [flags]
+chantools deletepayments [flags]
 ```
 
 ### Examples
 
 ```
-chantools dropchannelgraph \
+chantools deletepayments --failedonly \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 ```
 
@@ -26,7 +27,8 @@ chantools dropchannelgraph \
 
 ```
       --channeldb string   lnd channel.db file to dump channels from
-  -h, --help               help for dropchannelgraph
+      --failedonly         don't delete all payments, only failed ones
+  -h, --help               help for deletepayments
 ```
 
 ### Options inherited from parent commands
