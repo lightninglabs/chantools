@@ -403,6 +403,8 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 				return wif.String(), nil
 			}
 		}
+
+		return "", errAddrNotFound
 	}
 
 	// Loop through all cached payment base point keys, tweak each of it
