@@ -65,7 +65,14 @@ The second version of the command only takes the --from_channel_graph and
 network graph (must be provided in the JSON format that the 
 'lncli describegraph' command returns) into a fake backup file. This is the
 most convenient way to use this command but requires one to have a fully synced
-lnd node.`,
+lnd node.
+
+Any fake channel backup _needs_ to be used with the custom fork of lnd
+specifically built for this purpose: https://github.com/guggero/lnd/releases
+Also the debuglevel must be set to debug (lnd.conf, set 'debuglevel=debug') when
+running the above lnd for it to produce the correct log file that will be needed
+for the rescueclosed command.
+`,
 		Example: `chantools fakechanbackup \
 	--capacity 123456 \
 	--channelpoint f39310xxxxxxxxxx:1 \

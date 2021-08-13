@@ -13,15 +13,17 @@ know about the channels any more but we still have the channel.db from the
 moment they force-closed.
 
 The alternative use case for this command is if you got the commit point by
-running the fund-recovery branch of my guggero/lnd fork in combination with the
-fakechanbackup command. Then you need to specify the --commit_point and 
+running the fund-recovery branch of my guggero/lnd fork (see 
+https://github.com/guggero/lnd/releases for a binary release) in combination
+with the fakechanbackup command. Then you need to specify the --commit_point and 
 --force_close_addr flags instead of the --channeldb and --fromsummary flags.
 
 If you need to rescue a whole bunch of channels all at once, you can also
 specify the --fromsummary and --lnd_log flags to automatically look for force
 close addresses in the summary and the corresponding commit points in the
 lnd log file. This only works if lnd is running the fund-recovery branch of my
-guggero/lnd fork.
+guggero/lnd (https://github.com/guggero/lnd/releases) fork and only if the
+debuglevel is set to debug (lnd.conf, set 'debuglevel=debug').
 
 ```
 chantools rescueclosed [flags]
