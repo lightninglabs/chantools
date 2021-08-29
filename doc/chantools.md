@@ -37,6 +37,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools showrootkey](chantools_showrootkey.md)	 - Extract and show the BIP32 HD root key from the 24 word lnd aezeed
 * [chantools signrescuefunding](chantools_signrescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
 * [chantools summary](chantools_summary.md)	 - Compile a summary about the current state of channels
+* [chantools sweepremoteclosed](chantools_sweepremoteclosed.md)	 - Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
 * [chantools sweeptimelock](chantools_sweeptimelock.md)	 - Sweep the force-closed state after the time lock has expired
 * [chantools sweeptimelockmanual](chantools_sweeptimelockmanual.md)	 - Sweep the force-closed state of a single channel manually if only a channel backup file is available
 * [chantools vanitygen](chantools_vanitygen.md)	 - Generate a seed with a custom lnd node identity public key that starts with the given prefix

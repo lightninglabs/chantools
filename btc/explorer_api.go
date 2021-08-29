@@ -53,6 +53,20 @@ type Status struct {
 	BlockHash   string `json:"block_hash"`
 }
 
+type Stats struct {
+	FundedTXOCount uint32 `json:"funded_txo_count"`
+	FundedTXOSum   uint64 `json:"funded_txo_sum"`
+	SpentTXOCount  uint32 `json:"spent_txo_count"`
+	SpentTXOSum    uint64 `json:"spent_txo_sum"`
+	TXCount        uint32 `json:"tx_count"`
+}
+
+type AddressStats struct {
+	Address      string `json:"address"`
+	ChainStats   *Stats `json:"chain_stats"`
+	MempoolStats *Stats `json:"mempool_stats"`
+}
+
 func (a *ExplorerAPI) Transaction(txid string) (*TX, error) {
 	tx := &TX{}
 	err := fetchJSON(fmt.Sprintf("%s/tx/%s", a.BaseURL, txid), tx)
@@ -88,6 +102,46 @@ func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
 	}
 
 	return nil, 0, fmt.Errorf("no tx found")
+}
+
+func (a *ExplorerAPI) Unspent(addr string) ([]*Vout, error) {
+	var (
+		stats   = &AddressStats{}
+		outputs []*Vout
+		txs     []*TX
+		err     error
+	)
+	err = fetchJSON(fmt.Sprintf("%s/address/%s", a.BaseURL, addr), &stats)
+	if err != nil {
+		return nil, err
+	}
+
+	confirmedUnspent := stats.ChainStats.FundedTXOSum -
+		stats.ChainStats.SpentTXOSum
+	unconfirmedUnspent := stats.MempoolStats.FundedTXOSum -
+		stats.MempoolStats.SpentTXOSum
+
+	if confirmedUnspent+unconfirmedUnspent == 0 {
+		return nil, nil
+	}
+
+	err = fetchJSON(fmt.Sprintf("%s/address/%s/txs", a.BaseURL, addr), &txs)
+	if err != nil {
+		return nil, err
+	}
+	for _, tx := range txs {
+		for voutIdx, vout := range tx.Vout {
+			if vout.ScriptPubkeyAddr == addr {
+				vout.Outspend = &Outspend{
+					Txid: tx.TXID,
+					Vin:  voutIdx,
+				}
+				outputs = append(outputs, vout)
+			}
+		}
+	}
+
+	return outputs, nil
 }
 
 func (a *ExplorerAPI) Address(outpoint string) (string, error) {

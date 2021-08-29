@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"strconv"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/shachain"
 )
@@ -18,6 +20,7 @@ import (
 const (
 	HardenedKeyStart            = uint32(hdkeychain.HardenedKeyStart)
 	WalletDefaultDerivationPath = "m/84'/0'/0'"
+	WalletBIP49DerivationPath   = "m/49'/0'/0'"
 	LndDerivationPath           = "m/1017'/%d'/%d'"
 )
 
@@ -220,6 +223,21 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 	return targetHash, isScriptHash, nil
 }
 
+func GetWitnessAddrScript(addr btcutil.Address,
+	chainParams *chaincfg.Params) ([]byte, error) {
+
+	if !addr.IsForNet(chainParams) {
+		return nil, fmt.Errorf("address %v is not for net %v", addr,
+			chainParams.Name)
+	}
+
+	builder := txscript.NewScriptBuilder()
+	builder.AddOp(txscript.OP_0)
+	builder.AddData(addr.ScriptAddress())
+
+	return builder.Script()
+}
+
 // GetP2WPKHScript creates a P2WKH output script from an address. If the address
 // is not a P2WKH address, an error is returned.
 func GetP2WPKHScript(addr string, chainParams *chaincfg.Params) ([]byte,
@@ -266,6 +284,53 @@ func GetP2WSHScript(addr string, chainParams *chaincfg.Params) ([]byte,
 	builder.AddData(targetScriptHash)
 
 	return builder.Script()
+}
+
+func P2PKHAddr(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressPubKeyHash, error) {
+
+	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
+	addrP2PKH, err := btcutil.NewAddressPubKeyHash(hash160, params)
+	if err != nil {
+		return nil, fmt.Errorf("could not create address: %v", err)
+	}
+
+	return addrP2PKH, nil
+}
+
+func P2WKHAddr(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressWitnessPubKeyHash, error) {
+
+	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
+	return btcutil.NewAddressWitnessPubKeyHash(hash160, params)
+}
+
+func NP2WKHAddr(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressScriptHash, error) {
+
+	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
+	addrP2WKH, err := btcutil.NewAddressWitnessPubKeyHash(hash160, params)
+	if err != nil {
+		return nil, fmt.Errorf("could not create address: %v", err)
+	}
+	script, err := txscript.PayToAddrScript(addrP2WKH)
+	if err != nil {
+		return nil, fmt.Errorf("could not create script: %v", err)
+	}
+	return btcutil.NewAddressScriptHash(script, params)
+}
+
+func P2AnchorStaticRemote(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressWitnessScriptHash, []byte,
+	error) {
+
+	commitScript, err := input.CommitScriptToRemoteConfirmed(pubKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create script: %v", err)
+	}
+	scriptHash := sha256.Sum256(commitScript)
+	p2wsh, err := btcutil.NewAddressWitnessScriptHash(scriptHash[:], params)
+	return p2wsh, commitScript, err
 }
 
 type HDKeyRing struct {

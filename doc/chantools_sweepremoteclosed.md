@@ -1,0 +1,55 @@
+## chantools sweepremoteclosed
+
+Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
+
+### Synopsis
+
+This command helps users sweep funds that are in 
+outputs of channels that were force-closed by the remote party. This command
+only needs to be used if no channel.backup file is available. By manually
+contacting the remote peers and asking them to force-close the channels, the
+funds can be swept after the force-close transaction was confirmed.
+
+Supported remote force-closed channel types are:
+ - STATIC_REMOTE_KEY (a.k.a. tweakless channels)
+ - ANCHOR (a.k.a. anchor output channels)
+
+
+```
+chantools sweepremoteclosed [flags]
+```
+
+### Examples
+
+```
+chantools sweepremoteclosed \
+	--recoverywindow 300 \
+	--feerate 20 \
+	--sweepaddr bc1q..... \
+  	--publish
+```
+
+### Options
+
+```
+      --apiurl string           API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --bip39                   read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
+      --feerate uint16          fee rate to use for the sweep transaction in sat/vByte (default 30)
+  -h, --help                    help for sweepremoteclosed
+      --publish                 publish sweep TX to the chain API instead of just printing the TX
+      --recoverywindow uint32   number of keys to scan per derivation path (default 200)
+      --rootkey string          BIP32 HD root key of the wallet to use for sweeping the wallet; leave empty to prompt for lnd 24 word aezeed
+      --sweepaddr string        address to sweep the funds to
+```
+
+### Options inherited from parent commands
+
+```
+  -r, --regtest   Indicates if regtest parameters should be used
+  -t, --testnet   Indicates if testnet parameters should be used
+```
+
+### SEE ALSO
+
+* [chantools](chantools.md)	 - Chantools helps recover funds from lightning channels
+

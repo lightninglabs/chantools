@@ -316,6 +316,7 @@ Quick access:
 + [showrootkey](doc/chantools_showrootkey.md)
 + [signrescuefunding](doc/chantools_signrescuefunding.md)
 + [summary](doc/chantools_summary.md)
++ [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)
 + [sweeptimelock](doc/chantools_sweeptimelock.md)
 + [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md)
 + [vanitygen](doc/chantools_vanitygen.md)

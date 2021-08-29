@@ -101,6 +101,7 @@ func main() {
 		newSummaryCommand(),
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
+		newSweepRemoteClosedCommand(),
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
 		newZombieRecoveryCommand(),

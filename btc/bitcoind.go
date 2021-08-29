@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
@@ -193,24 +192,15 @@ func (i *ImportWallet) Format(hdKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return "", fmt.Errorf("could not encode WIF: %v", err)
 	}
-	pubKey, err := hdKey.ECPubKey()
-	if err != nil {
-		return "", fmt.Errorf("could not derive private key: %v", err)
-	}
-	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
-	addrP2PKH, err := btcutil.NewAddressPubKeyHash(hash160, params)
+	addrP2PKH, err := lnd.P2PKHAddr(privKey.PubKey(), params)
 	if err != nil {
 		return "", fmt.Errorf("could not create address: %v", err)
 	}
-	addrP2WKH, err := btcutil.NewAddressWitnessPubKeyHash(hash160, params)
+	addrP2WKH, err := lnd.P2WKHAddr(privKey.PubKey(), params)
 	if err != nil {
 		return "", fmt.Errorf("could not create address: %v", err)
 	}
-	script, err := txscript.PayToAddrScript(addrP2WKH)
-	if err != nil {
-		return "", fmt.Errorf("could not create script: %v", err)
-	}
-	addrNP2WKH, err := btcutil.NewAddressScriptHash(script, params)
+	addrNP2WKH, err := lnd.NP2WKHAddr(privKey.PubKey(), params)
 	if err != nil {
 		return "", fmt.Errorf("could not create address: %v", err)
 	}
