@@ -3,6 +3,7 @@ package btc
 import (
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/btcsuite/btcd/chaincfg"
@@ -16,6 +17,7 @@ const (
 	FormatCli          = "bitcoin-cli"
 	FormatCliWatchOnly = "bitcoin-cli-watchonly"
 	FormatImportwallet = "bitcoin-importwallet"
+	FormatElectrum     = "electrum"
 )
 
 type KeyExporter interface {
@@ -40,6 +42,9 @@ func ParseFormat(format string) KeyExporter {
 
 	case FormatImportwallet:
 		return &ImportWallet{}
+
+	case FormatElectrum:
+		return &Electrum{}
 	}
 }
 
@@ -213,5 +218,37 @@ func (i *ImportWallet) Format(hdKey *hdkeychain.ExtendedKey,
 }
 
 func (i *ImportWallet) Trailer(_ uint32) string {
+	return ""
+}
+
+type Electrum struct{}
+
+func (p *Electrum) Header() string {
+	return "# Copy the content of this file (without this line) into " +
+		"Electrum."
+}
+
+func (p *Electrum) Format(hdKey *hdkeychain.ExtendedKey,
+	params *chaincfg.Params, path string, branch, index uint32) (string,
+	error) {
+
+	privKey, err := hdKey.ECPrivKey()
+	if err != nil {
+		return "", fmt.Errorf("could not derive private key: %v", err)
+	}
+	wif, err := btcutil.NewWIF(privKey, params, true)
+	if err != nil {
+		return "", fmt.Errorf("could not encode WIF: %v", err)
+	}
+
+	prefix := "p2wpkh"
+	if strings.HasPrefix(path, lnd.WalletBIP49DerivationPath) {
+		prefix = "p2wpkh-p2sh"
+	}
+	
+	return fmt.Sprintf("%s:%s", prefix, wif.String()), nil
+}
+
+func (p *Electrum) Trailer(_ uint32) string {
 	return ""
 }

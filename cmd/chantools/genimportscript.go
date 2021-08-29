@@ -21,6 +21,7 @@ type genImportScriptCommand struct {
 	DerivationPath string
 	RecoveryWindow uint32
 	RescanFrom     uint32
+	Stdout         bool
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -46,7 +47,9 @@ The following script formats are currently supported:
   imported into bitcoind to watch the UTXOs of those keys. The funds cannot be
   spent that way as they are watch-only.
 * bitcoin-importwallet: Creates a text output that is compatible with
-  bitcoind's importwallet command.`,
+  bitcoind's importwallet command.
+* electrum: Creates a text output that contains one private key per line with
+  the address type as the prefix, the way Electrum expects them.`,
 		Example: `chantools genimportscript --format bitcoin-cli \
 	--recoverywindow 5000`,
 		RunE: cc.Execute,
@@ -54,8 +57,8 @@ The following script formats are currently supported:
 	cc.cmd.Flags().StringVar(
 		&cc.Format, "format", "bitcoin-importwallet", "format of the "+
 			"generated import script; currently supported are: "+
-			"bitcoin-importwallet, bitcoin-cli and "+
-			"bitcoin-cli-watchonly",
+			"bitcoin-importwallet, bitcoin-cli, "+
+			"bitcoin-cli-watchonly and electrum",
 	)
 	cc.cmd.Flags().BoolVar(
 		&cc.LndPaths, "lndpaths", false, "use all derivation paths "+
@@ -79,6 +82,9 @@ The following script formats are currently supported:
 			"from the wallet birthday if the lnd 24 word aezeed "+
 			"is entered",
 	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Stdout, "stdout", false, "write generated import script "+
+			"to standard out instead of writing it to a file")
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 
@@ -137,10 +143,25 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 
+	writer := os.Stdout
+	if !c.Stdout {
+		fileName := fmt.Sprintf("results/genimportscript-%s.txt",
+			time.Now().Format("2006-01-02-15-04-05"))
+		log.Infof("Writing import script with format '%s' to %s",
+			c.Format, fileName)
+
+		var err error
+		writer, err = os.Create(fileName)
+		if err != nil {
+			return fmt.Errorf("error creating result file %s: %v",
+				fileName, err)
+		}
+	}
+
 	exporter := btc.ParseFormat(c.Format)
 	err = btc.ExportKeys(
 		extendedKey, strPaths, paths, chainParams, c.RecoveryWindow,
-		c.RescanFrom, exporter, os.Stdout,
+		c.RescanFrom, exporter, writer,
 	)
 	if err != nil {
 		return fmt.Errorf("error exporting keys: %v", err)

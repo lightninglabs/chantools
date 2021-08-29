@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.9.2"
+	version       = "0.9.3"
 	na            = "n/a"
 
 	Commit = ""

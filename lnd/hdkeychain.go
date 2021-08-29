@@ -157,19 +157,9 @@ func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 		)
 	}
 	pathStrings := []string{
-		"m/44'/0'/0'",
-		"m/49'/0'/0'",
+		WalletBIP49DerivationPath,
 		WalletDefaultDerivationPath,
-		mkPath(keychain.KeyFamilyMultiSig),
-		mkPath(keychain.KeyFamilyRevocationBase),
-		mkPath(keychain.KeyFamilyHtlcBase),
 		mkPath(keychain.KeyFamilyPaymentBase),
-		mkPath(keychain.KeyFamilyDelayBase),
-		mkPath(keychain.KeyFamilyRevocationRoot),
-		mkPath(keychain.KeyFamilyNodeKey),
-		mkPath(keychain.KeyFamilyStaticBackup),
-		mkPath(keychain.KeyFamilyTowerSession),
-		mkPath(keychain.KeyFamilyTowerID),
 	}
 	paths := make([][]uint32, len(pathStrings))
 	for idx, path := range pathStrings {
