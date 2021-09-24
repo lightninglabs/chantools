@@ -158,6 +158,12 @@ compacting the DB).
   <br/><br/>
   This will create a new file called `./results/forceclose-yyyy-mm-dd.json`
   which will be needed for the next command.
+  <br/><br/>
+  If you get the error `non-mandatory-script-verify-flag (Signature must be zero
+  for failed CHECK(MULTI)SIG operation)`, you might be affected by an old bug
+  of `lnd` that was fixed in the meantime. But it means the signature in the
+  force-close transaction is invalid and needs to be fixed. There is [a guide
+  on how to do exactly that here](doc/fix-commitment-tx.md).
 
 9. **Wait for timelocks**: The previous command closed the remaining open
   channels by publishing your node's state of the channel. By design of the
