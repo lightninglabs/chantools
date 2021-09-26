@@ -167,9 +167,27 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("could not parse pubkey: %s", err)
 	}
-	addr, err := net.ResolveTCPAddr("tcp", splitNodeInfo[1])
+	host, portStr, err := net.SplitHostPort(splitNodeInfo[1])
 	if err != nil {
-		return fmt.Errorf("could not parse addr: %s", err)
+		return fmt.Errorf("could not split host and port: %v",
+			err)
+	}
+
+	var addr net.Addr
+	if tor.IsOnionHost(host) {
+		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return fmt.Errorf("could not parse port: %v", err)
+		}
+		addr = &tor.OnionAddr{
+			OnionService: host,
+			Port:         port,
+		}
+	} else {
+		addr, err = net.ResolveTCPAddr("tcp", splitNodeInfo[1])
+		if err != nil {
+			return fmt.Errorf("could not parse addr: %s", err)
+		}
 	}
 
 	// Parse the short channel ID.
