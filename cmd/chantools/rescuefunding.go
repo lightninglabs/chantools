@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/guggero/chantools/btc"
+	"github.com/lightningnetwork/lnd/keychain"
 
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/psbt"
 	"github.com/guggero/chantools/lnd"
-	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
@@ -34,11 +37,16 @@ var (
 )
 
 type rescueFundingCommand struct {
-	ChannelDB         string `long:"channeldb" description:"The lnd channel.db file to rescue a channel from. Must contain the pending channel specified with --channelpoint."`
-	ChannelPoint      string `long:"channelpoint" description:"The funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB."`
-	ConfirmedOutPoint string `long:"confirmedchannelpoint" description:"The channel outpoint that got confirmed on chain (<txid>:<txindex>). Normally this is the same as the --channelpoint so it will be set to that value if this is left empty."`
-	SweepAddr         string
-	FeeRate           uint16
+	ChannelDB         string
+	DBChannelPoint    string
+	ConfirmedOutPoint string
+
+	LocalKeyIndex uint32
+	RemotePubKey  string
+
+	SweepAddr string
+	FeeRate   uint16
+	APIURL    string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -63,7 +71,14 @@ If successful, this will create a PSBT that then has to be sent to the channel
 partner (remote node operator).`,
 		Example: `chantools rescuefunding \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
-	--channelpoint xxxxxxx:xx \
+	--dbchannelpoint xxxxxxx:xx \
+	--sweepaddr bc1qxxxxxxxxx \
+	--feerate 10
+
+chantools rescuefunding \
+	--confirmedchannelpoint xxxxxxx:xx \
+	--localkeyindex x \
+	--remotepubkey 0xxxxxxxxxxxxxxxx \
 	--sweepaddr bc1qxxxxxxxxx \
 	--feerate 10`,
 		RunE: cc.Execute,
@@ -74,7 +89,7 @@ partner (remote node operator).`,
 			"channel specified with --channelpoint",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.ChannelPoint, "channelpoint", "", "funding transaction "+
+		&cc.DBChannelPoint, "dbchannelpoint", "", "funding transaction "+
 			"outpoint of the channel to rescue (<txid>:<txindex>) "+
 			"as it is recorded in the DB",
 	)
@@ -82,8 +97,20 @@ partner (remote node operator).`,
 		&cc.ConfirmedOutPoint, "confirmedchannelpoint", "", "channel "+
 			"outpoint that got confirmed on chain "+
 			"(<txid>:<txindex>); normally this is the same as the "+
-			"--channelpoint so it will be set to that value if"+
+			"--dbchannelpoint so it will be set to that value if"+
 			"this is left empty",
+	)
+	cc.cmd.Flags().Uint32Var(
+		&cc.LocalKeyIndex, "localkeyindex", 0, "in case a channel DB "+
+			"is not available (but perhaps a channel backup "+
+			"file), the derivation index of the local multisig "+
+			"public key can be specified manually",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.RemotePubKey, "remotepubkey", "", "in case a channel DB "+
+			"is not available (but perhaps a channel backup "+
+			"file), the remote multisig public key can be "+
+			"specified manually",
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
@@ -91,6 +118,10 @@ partner (remote node operator).`,
 	cc.cmd.Flags().Uint16Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
+			"be esplora compatible)",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
@@ -100,7 +131,10 @@ partner (remote node operator).`,
 
 func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	var (
-		chainOp *wire.OutPoint
+		chainOp      *wire.OutPoint
+		databaseOp   *wire.OutPoint
+		localKeyDesc *keychain.KeyDescriptor
+		remotePubKey *btcec.PublicKey
 	)
 
 	extendedKey, err := c.rootKey.read()
@@ -113,25 +147,78 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		ChainParams: chainParams,
 	}
 
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
-	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
-	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
-	}
+	// Check that we have a channel DB or manual keys.
+	switch {
+	case (c.ChannelDB == "" || c.DBChannelPoint == "") &&
+		c.RemotePubKey == "":
 
-	// Parse channel point of channel to rescue as known to the DB.
-	dbOp, err := lnd.ParseOutpoint(c.ChannelPoint)
-	if err != nil {
-		return fmt.Errorf("error parsing channel point: %v", err)
+		return fmt.Errorf("need to specify either channel DB and " +
+			"channel point or both local and remote pubkey")
+
+	case c.ChannelDB != "" && c.DBChannelPoint != "":
+		db, err := lnd.OpenDB(c.ChannelDB, true)
+		if err != nil {
+			return fmt.Errorf("error opening rescue DB: %v", err)
+		}
+
+		// Parse channel point of channel to rescue as known to the DB.
+		databaseOp, err = lnd.ParseOutpoint(c.DBChannelPoint)
+		if err != nil {
+			return fmt.Errorf("error parsing channel point: %v",
+				err)
+		}
+
+		// First, make sure the channel can be found in the DB.
+		pendingChan, err := db.FetchChannel(*databaseOp)
+		if err != nil {
+			return fmt.Errorf("error loading pending channel %s "+
+				"from DB: %v", databaseOp, err)
+		}
+
+		if pendingChan.LocalChanCfg.MultiSigKey.PubKey == nil {
+			return fmt.Errorf("invalid channel data in DB, local " +
+				"multisig pubkey is nil")
+		}
+		if pendingChan.LocalChanCfg.MultiSigKey.PubKey == nil {
+			return fmt.Errorf("invalid channel data in DB, remote " +
+				"multisig pubkey is nil")
+		}
+
+		localKeyDesc = &pendingChan.LocalChanCfg.MultiSigKey
+		remotePubKey = pendingChan.LocalChanCfg.MultiSigKey.PubKey
+
+	case c.RemotePubKey != "":
+		remoteKeyBytes, err := hex.DecodeString(c.RemotePubKey)
+		if err != nil {
+			return fmt.Errorf("error hex decoding remote pubkey: "+
+				"%v", err)
+		}
+
+		remotePubKey, err = btcec.ParsePubKey(
+			remoteKeyBytes, btcec.S256(),
+		)
+		if err != nil {
+			return fmt.Errorf("error parsing remote pubkey: %v",
+				err)
+		}
+
+		localKeyDesc = &keychain.KeyDescriptor{
+			KeyLocator: keychain.KeyLocator{
+				Family: keychain.KeyFamilyMultiSig,
+				Index:  c.LocalKeyIndex,
+			},
+		}
+		privKey, err := signer.FetchPrivKey(localKeyDesc)
+		if err != nil {
+			return fmt.Errorf("error deriving local key: %v", err)
+		}
+		localKeyDesc.PubKey = privKey.PubKey()
 	}
 
 	// Parse channel point of channel to rescue as confirmed on chain (if
 	// different).
 	if len(c.ConfirmedOutPoint) == 0 {
-		chainOp = dbOp
+		chainOp = databaseOp
 	} else {
 		chainOp, err = lnd.ParseOutpoint(c.ConfirmedOutPoint)
 		if err != nil {
@@ -148,21 +235,15 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	return rescueFunding(
-		db, signer, dbOp, chainOp, sweepScript,
-		btcutil.Amount(c.FeeRate),
+		localKeyDesc, remotePubKey, signer, chainOp,
+		sweepScript, btcutil.Amount(c.FeeRate), c.APIURL,
 	)
 }
 
-func rescueFunding(db *channeldb.DB, signer *lnd.Signer, dbFundingPoint,
-	chainPoint *wire.OutPoint, sweepPKScript []byte,
-	feeRate btcutil.Amount) error {
-
-	// First of all make sure the channel can be found in the DB.
-	pendingChan, err := db.FetchChannel(*dbFundingPoint)
-	if err != nil {
-		return fmt.Errorf("error loading pending channel %s from DB: "+
-			"%v", dbFundingPoint, err)
-	}
+func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
+	remoteKey *btcec.PublicKey, signer *lnd.Signer,
+	chainPoint *wire.OutPoint, sweepPKScript []byte, feeRate btcutil.Amount,
+	apiURL string) error {
 
 	// Prepare the wire part of the PSBT.
 	txIn := &wire.TxIn{
@@ -174,15 +255,29 @@ func rescueFunding(db *channeldb.DB, signer *lnd.Signer, dbFundingPoint,
 	}
 
 	// Locate the output in the funding TX.
-	utxo := pendingChan.FundingTxn.TxOut[dbFundingPoint.Index]
+	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	tx, err := api.Transaction(chainPoint.Hash.String())
+	if err != nil {
+		return fmt.Errorf("error fetching UTXO info for outpoint %s: "+
+			"%v", chainPoint.String(), err)
+	}
+	apiUtxo := tx.Vout[chainPoint.Index]
+
+	pkScript, err := hex.DecodeString(apiUtxo.ScriptPubkey)
+	if err != nil {
+		return fmt.Errorf("error decoding pk script %s: %v",
+			apiUtxo.ScriptPubkey, err)
+	}
+	utxo := &wire.TxOut{
+		Value:    int64(apiUtxo.Value),
+		PkScript: pkScript,
+	}
 
 	// We should also be able to create the funding script from the two
 	// multisig keys.
-	localKey := pendingChan.LocalChanCfg.MultiSigKey.PubKey
-	remoteKey := pendingChan.RemoteChanCfg.MultiSigKey.PubKey
 	witnessScript, fundingTxOut, err := input.GenFundingPkScript(
-		localKey.SerializeCompressed(), remoteKey.SerializeCompressed(),
-		utxo.Value,
+		localKeyDesc.PubKey.SerializeCompressed(),
+		remoteKey.SerializeCompressed(), utxo.Value,
 	)
 	if err != nil {
 		return fmt.Errorf("could not derive funding script: %v", err)
@@ -228,8 +323,7 @@ func rescueFunding(db *channeldb.DB, signer *lnd.Signer, dbFundingPoint,
 
 	// Now we add our partial signature.
 	err = signer.AddPartialSignature(
-		packet, pendingChan.LocalChanCfg.MultiSigKey, utxo,
-		witnessScript, 0,
+		packet, *localKeyDesc, utxo, witnessScript, 0,
 	)
 	if err != nil {
 		return fmt.Errorf("error adding partial signature: %v", err)
