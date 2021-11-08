@@ -185,7 +185,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		localKeyDesc = &pendingChan.LocalChanCfg.MultiSigKey
-		remotePubKey = pendingChan.LocalChanCfg.MultiSigKey.PubKey
+		remotePubKey = pendingChan.RemoteChanCfg.MultiSigKey.PubKey
 
 	case c.RemotePubKey != "":
 		remoteKeyBytes, err := hex.DecodeString(c.RemotePubKey)
