@@ -121,19 +121,36 @@ func PrivKeyFromPath(extendedKey *hdkeychain.ExtendedKey,
 	return privKey, nil
 }
 
-func ShaChainFromPath(extendedKey *hdkeychain.ExtendedKey,
-	path []uint32) (*shachain.RevocationProducer, error) {
+func ShaChainFromPath(extendedKey *hdkeychain.ExtendedKey, path []uint32,
+	multiSigPubKey *btcec.PublicKey) (*shachain.RevocationProducer, error) {
 
 	privKey, err := PrivKeyFromPath(extendedKey, path)
 	if err != nil {
 		return nil, err
 	}
-	revRoot, err := chainhash.NewHash(privKey.Serialize())
-	if err != nil {
-		return nil, fmt.Errorf("could not create revocation root "+
-			"hash: %v", err)
+
+	// This is the legacy way where we just used the private key as the
+	// revocation root directly.
+	if multiSigPubKey == nil {
+		revRoot, err := chainhash.NewHash(privKey.Serialize())
+		if err != nil {
+			return nil, fmt.Errorf("could not create revocation "+
+				"root hash: %v", err)
+		}
+		return shachain.NewRevocationProducer(*revRoot), nil
 	}
-	return shachain.NewRevocationProducer(*revRoot), nil
+
+	// Perform an ECDH operation between the private key described in
+	// nextRevocationKeyDesc and our public multisig key. The result will be
+	// used to seed the revocation producer.
+	revRoot, err := ECDH(privKey, multiSigPubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	// Once we have the root, we can then generate our shachain producer
+	// and from that generate the per-commitment point.
+	return shachain.NewRevocationProducer(revRoot), nil
 }
 
 func IdentityPath(params *chaincfg.Params) string {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-
 	"github.com/btcsuite/btcd/btcec"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
@@ -165,51 +164,17 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		commitPoint *btcec.PublicKey
 	)
 	for i := uint32(0); i < maxKeys; i++ {
-		// The easy part first, let's derive the delay base point.
-		delayPath := []uint32{
-			lnd.HardenedKey(uint32(keychain.KeyFamilyDelayBase)), 0,
-			i,
-		}
-		delayPrivKey, err := lnd.PrivKeyFromPath(baseKey, delayPath)
-		if err != nil {
-			return err
-		}
-
-		// Get the revocation base point first so we can calculate our
-		// commit point.
-		revPath := []uint32{
-			lnd.HardenedKey(uint32(
-				keychain.KeyFamilyRevocationRoot,
-			)), 0, i,
-		}
-		revRoot, err := lnd.ShaChainFromPath(baseKey, revPath)
-		if err != nil {
-			return err
-		}
-
-		// We now have everything to brute force the lock script. This
-		// will take a long while as we both have to go through commit
-		// points and CSV values.
-		csvTimeout, script, scriptHash, commitPoint, err =
-			bruteForceDelayPoint(
-				delayPrivKey.PubKey(), remoteRevPoint, revRoot,
-				lockScript, maxCsvTimeout,
-			)
+		csvTimeout, script, scriptHash, commitPoint, delayDesc, err = tryKey(
+			baseKey, remoteRevPoint, maxCsvTimeout, lockScript, i,
+		)
 
 		if err == nil {
-			delayDesc = &keychain.KeyDescriptor{
-				PubKey: delayPrivKey.PubKey(),
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyDelayBase,
-					Index:  i,
-				},
-			}
+			log.Infof("Found keys at index %d with CSV timeout %d",
+				i, csvTimeout)
 			break
 		}
 
-		if i != 0 && i%20 == 0 {
-			fmt.Printf("Tried %d of %d keys.", i, maxKeys)
-		}
+		log.Infof("Tried %d of %d keys.", i+1, maxKeys)
 	}
 
 	// Did we find what we looked for or did we just exhaust all
@@ -316,6 +281,115 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	log.Infof("Transaction: %x", buf.Bytes())
 	return nil
 
+}
+
+func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
+	maxCsvTimeout uint16, lockScript []byte, idx uint32) (int32, []byte,
+	[]byte, *btcec.PublicKey, *keychain.KeyDescriptor, error) {
+
+	// The easy part first, let's derive the delay base point.
+	delayPath := []uint32{
+		lnd.HardenedKey(uint32(keychain.KeyFamilyDelayBase)),
+		0, idx,
+	}
+	delayPrivKey, err := lnd.PrivKeyFromPath(baseKey, delayPath)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
+
+	// Get the revocation base point first, so we can calculate our
+	// commit point. We start with the old way where the revocation index
+	// was the same as the other indices.
+	revPath := []uint32{
+		lnd.HardenedKey(uint32(
+			keychain.KeyFamilyRevocationRoot,
+		)), 0, idx,
+	}
+	revRoot, err := lnd.ShaChainFromPath(baseKey, revPath, nil)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
+
+	// We now have everything to brute force the lock script. This
+	// will take a long while as we both have to go through commit
+	// points and CSV values.
+	csvTimeout, script, scriptHash, commitPoint, err := bruteForceDelayPoint(
+		delayPrivKey.PubKey(), remoteRevPoint, revRoot, lockScript,
+		maxCsvTimeout,
+	)
+	if err == nil {
+		return csvTimeout, script, scriptHash, commitPoint,
+			&keychain.KeyDescriptor{
+				PubKey: delayPrivKey.PubKey(),
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyDelayBase,
+					Index:  idx,
+				},
+			}, nil
+	}
+
+	// Now let's try with the new format where the index is one larger than
+	// the other indices.
+	revPath = []uint32{
+		lnd.HardenedKey(uint32(
+			keychain.KeyFamilyRevocationRoot,
+		)), 0, idx + 1,
+	}
+	revRoot2, err := lnd.ShaChainFromPath(baseKey, revPath, nil)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
+
+	// We now have everything to brute force the lock script. This
+	// will take a long while as we both have to go through commit
+	// points and CSV values.
+	csvTimeout, script, scriptHash, commitPoint, err = bruteForceDelayPoint(
+		delayPrivKey.PubKey(), remoteRevPoint, revRoot2, lockScript,
+		maxCsvTimeout,
+	)
+	if err == nil {
+		return csvTimeout, script, scriptHash, commitPoint,
+			&keychain.KeyDescriptor{
+				PubKey: delayPrivKey.PubKey(),
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyDelayBase,
+					Index:  idx,
+				},
+			}, nil
+	}
+
+	// Now we try the same with the new revocation producer format.
+	multiSigPath := []uint32{
+		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
+		0, idx,
+	}
+	multiSigPrivKey, err := lnd.PrivKeyFromPath(
+		baseKey, multiSigPath,
+	)
+
+	revRoot3, err := lnd.ShaChainFromPath(
+		baseKey, revPath, multiSigPrivKey.PubKey(),
+	)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
+
+	csvTimeout, script, scriptHash, commitPoint, err = bruteForceDelayPoint(
+		delayPrivKey.PubKey(), remoteRevPoint, revRoot3, lockScript,
+		maxCsvTimeout,
+	)
+	if err == nil {
+		return csvTimeout, script, scriptHash, commitPoint,
+			&keychain.KeyDescriptor{
+				PubKey: delayPrivKey.PubKey(),
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyDelayBase,
+					Index:  idx,
+				},
+			}, nil
+	}
+
+	return 0, nil, nil, nil, nil, fmt.Errorf("target script not derived")
 }
 
 func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,

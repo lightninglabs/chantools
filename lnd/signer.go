@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"crypto/sha256"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec"
@@ -114,4 +115,22 @@ func maybeTweakPrivKey(signDesc *input.SignDescriptor,
 		return input.TweakPrivKey(privKey, signDesc.SingleTweak)
 	}
 	return privKey
+}
+
+// ECDH performs a scalar multiplication (ECDH-like operation) between the
+// target private key and remote public key. The output returned will be
+// the sha256 of the resulting shared point serialized in compressed format. If
+// k is our private key, and P is the public key, we perform the following
+// operation:
+//
+//  sx := k*P s := sha256(sx.SerializeCompressed())
+func ECDH(privKey *btcec.PrivateKey, pub *btcec.PublicKey) ([32]byte, error) {
+	s := &btcec.PublicKey{}
+	x, y := btcec.S256().ScalarMult(pub.X, pub.Y, privKey.D.Bytes())
+	s.X = x
+	s.Y = y
+
+	h := sha256.Sum256(s.SerializeCompressed())
+
+	return h, nil
 }
