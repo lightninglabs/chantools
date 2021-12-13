@@ -8,6 +8,7 @@ import (
 
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/kvdb"
 	"go.etcd.io/bbolt"
 )
 
@@ -27,7 +28,8 @@ func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
 	}
 
 	return channeldb.CreateWithBackend(
-		backend, channeldb.OptionReadOnly(readonly),
+		backend, channeldb.OptionSetUseGraphCache(false),
+		channeldb.OptionReadOnly(readonly),
 	)
 }
 
@@ -329,58 +331,139 @@ func (c *cursor) Seek(seek []byte) (key, value []byte) {
 	return (*bbolt.Cursor)(c).Seek(seek)
 }
 
-// db represents a collection of namespaces which are persisted and implements
-// the walletdb.Db interface.  All database access is performed through
-// transactions which are obtained through the specific Namespace.
-type db bbolt.DB
+// backend represents a collection of namespaces which are persisted and
+// implements the kvdb.Backend interface. All database access is performed
+// through transactions which are obtained through the specific Namespace.
+type backend struct {
+	db *bbolt.DB
+}
 
-// Enforce db implements the walletdb.Db interface.
-var _ walletdb.DB = (*db)(nil)
+// Enforce db implements the kvdb.Backend interface.
+var _ kvdb.Backend = (*backend)(nil)
 
-func (db *db) beginTx(writable bool) (*transaction, error) {
-	boltTx, err := (*bbolt.DB)(db).Begin(writable)
+func (b *backend) beginTx(writable bool) (*transaction, error) {
+	boltTx, err := b.db.Begin(writable)
 	if err != nil {
 		return nil, convertErr(err)
 	}
 	return &transaction{boltTx: boltTx}, nil
 }
 
-func (db *db) BeginReadTx() (walletdb.ReadTx, error) {
-	return db.beginTx(false)
+func (b *backend) BeginReadTx() (walletdb.ReadTx, error) {
+	return b.beginTx(false)
 }
 
-func (db *db) BeginReadWriteTx() (walletdb.ReadWriteTx, error) {
-	return db.beginTx(true)
+func (b *backend) BeginReadWriteTx() (walletdb.ReadWriteTx, error) {
+	return b.beginTx(true)
 }
 
 // Copy writes a copy of the database to the provided writer.  This call will
 // start a read-only transaction to perform all operations.
 //
-// This function is part of the walletdb.Db interface implementation.
-func (db *db) Copy(w io.Writer) error {
-	return convertErr((*bbolt.DB)(db).View(func(tx *bbolt.Tx) error {
+// This function is part of the kvdb.Backend interface implementation.
+func (b *backend) Copy(w io.Writer) error {
+	return convertErr(b.db.View(func(tx *bbolt.Tx) error {
 		return tx.Copy(w)
 	}))
 }
 
 // Close cleanly shuts down the database and syncs all data.
 //
-// This function is part of the walletdb.Db interface implementation.
-func (db *db) Close() error {
-	return convertErr((*bbolt.DB)(db).Close())
+// This function is part of the kvdb.Backend interface implementation.
+func (b *backend) Close() error {
+	return convertErr(b.db.Close())
 }
 
 // Batch is similar to the package-level Update method, but it will attempt to
-// optismitcally combine the invocation of several transaction functions into a
+// optimistically combine the invocation of several transaction functions into a
 // single db write transaction.
 //
 // This function is part of the walletdb.Db interface implementation.
-func (db *db) Batch(f func(tx walletdb.ReadWriteTx) error) error {
-	return (*bbolt.DB)(db).Batch(func(btx *bbolt.Tx) error {
+func (b *backend) Batch(f func(tx walletdb.ReadWriteTx) error) error {
+	return b.db.Batch(func(btx *bbolt.Tx) error {
 		interfaceTx := transaction{btx}
 
 		return f(&interfaceTx)
 	})
+}
+
+// View opens a database read transaction and executes the function f with the
+// transaction passed as a parameter. After f exits, the transaction is rolled
+// back. If f errors, its error is returned, not a rollback error (if any
+// occur). The passed reset function is called before the start of the
+// transaction and can be used to reset intermediate state. As callers may
+// expect retries of the f closure (depending on the database backend used), the
+// reset function will be called before each retry respectively.
+func (b *backend) View(f func(tx walletdb.ReadTx) error, reset func()) error {
+	// We don't do any retries with bolt so we just initially call the reset
+	// function once.
+	reset()
+
+	tx, err := b.BeginReadTx()
+	if err != nil {
+		return err
+	}
+
+	// Make sure the transaction rolls back in the event of a panic.
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	err = f(tx)
+	rollbackErr := tx.Rollback()
+	if err != nil {
+		return err
+	}
+
+	if rollbackErr != nil {
+		return rollbackErr
+	}
+	return nil
+}
+
+// Update opens a database read/write transaction and executes the function f
+// with the transaction passed as a parameter. After f exits, if f did not
+// error, the transaction is committed. Otherwise, if f did error, the
+// transaction is rolled back. If the rollback fails, the original error
+// returned by f is still returned. If the commit fails, the commit error is
+// returned. As callers may expect retries of the f closure (depending on the
+// database backend used), the reset function will be called before each retry
+// respectively.
+func (b *backend) Update(f func(tx walletdb.ReadWriteTx) error,
+	reset func()) error {
+
+	// We don't do any retries with bolt so we just initially call the reset
+	// function once.
+	reset()
+
+	tx, err := b.BeginReadWriteTx()
+	if err != nil {
+		return err
+	}
+
+	// Make sure the transaction rolls back in the event of a panic.
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	err = f(tx)
+	if err != nil {
+		// Want to return the original error, not a rollback error if
+		// any occur.
+		_ = tx.Rollback()
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// PrintStats returns all collected stats pretty printed into a string.
+func (b *backend) PrintStats() string {
+	return "n/a"
 }
 
 // filesExists reports whether the named file or directory exists.
@@ -393,10 +476,10 @@ func fileExists(name string) bool {
 	return true
 }
 
-// openDB opens the database at the provided path.  walletdb.ErrDbDoesNotExist
+// openDB opens the database at the provided path. walletdb.ErrDbDoesNotExist
 // is returned if the database doesn't exist and the create flag is not set.
 func openDB(dbPath string, noFreelistSync bool,
-	readonly bool, timeout time.Duration) (walletdb.DB, error) {
+	readonly bool, timeout time.Duration) (kvdb.Backend, error) {
 
 	if !fileExists(dbPath) {
 		return nil, walletdb.ErrDbDoesNotExist
@@ -412,5 +495,5 @@ func openDB(dbPath string, noFreelistSync bool,
 	}
 
 	boltDB, err := bbolt.Open(dbPath, 0600, options)
-	return (*db)(boltDB), convertErr(err)
+	return &backend{db: boltDB}, convertErr(err)
 }

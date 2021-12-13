@@ -126,7 +126,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			return err
 		}
 
-		commitPoints, err := commitPointsFromDB(db)
+		commitPoints, err := commitPointsFromDB(db.ChannelStateDB())
 		if err != nil {
 			return fmt.Errorf("error reading commit points from "+
 				"db: %v", err)
@@ -176,7 +176,9 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 }
 
-func commitPointsFromDB(chanDb *channeldb.DB) ([]*btcec.PublicKey, error) {
+func commitPointsFromDB(chanDb *channeldb.ChannelStateDB) ([]*btcec.PublicKey,
+	error) {
+
 	var result []*btcec.PublicKey
 
 	channels, err := chanDb.FetchAllChannels()

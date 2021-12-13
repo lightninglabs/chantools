@@ -31,7 +31,7 @@ channel was never confirmed on chain!
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.13.1-beta or later after using this command!`,
+run lnd v0.14.1-beta or later after using this command!`,
 		Example: `chantools removechannel \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--channel 3149764effbe82718b280de425277e5e7b245a4573aa4a0203ac12cee1c37816:0`,
@@ -78,14 +78,16 @@ func (c *removeChannelCommand) Execute(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	return removeChannel(db, &wire.OutPoint{
+	return removeChannel(db.ChannelStateDB(), &wire.OutPoint{
 		Hash:  *hash,
 		Index: uint32(index),
 	})
 }
 
-func removeChannel(db *channeldb.DB, chanPoint *wire.OutPoint) error {
-	dbChan, err := db.FetchChannel(*chanPoint)
+func removeChannel(db *channeldb.ChannelStateDB,
+	chanPoint *wire.OutPoint) error {
+
+	dbChan, err := db.FetchChannel(nil, *chanPoint)
 	if err != nil {
 		return err
 	}

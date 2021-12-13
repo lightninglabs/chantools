@@ -125,7 +125,7 @@ func (c *PendingChannelsChannel) AsSummaryEntry() *SummaryEntry {
 }
 
 type ChannelDBFile struct {
-	DB *channeldb.DB
+	DB *channeldb.ChannelStateDB
 }
 
 func (c *ChannelDBFile) AsSummaryEntries() ([]*SummaryEntry, error) {

@@ -169,7 +169,9 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		// First, make sure the channel can be found in the DB.
-		pendingChan, err := db.FetchChannel(*databaseOp)
+		pendingChan, err := db.ChannelStateDB().FetchChannel(
+			nil, *databaseOp,
+		)
 		if err != nil {
 			return fmt.Errorf("error loading pending channel %s "+
 				"from DB: %v", databaseOp, err)

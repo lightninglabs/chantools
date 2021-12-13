@@ -92,11 +92,13 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-	return forceCloseChannels(c.APIURL, extendedKey, entries, db, c.Publish)
+	return forceCloseChannels(
+		c.APIURL, extendedKey, entries, db.ChannelStateDB(), c.Publish,
+	)
 }
 
 func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
-	entries []*dataformat.SummaryEntry, chanDb *channeldb.DB,
+	entries []*dataformat.SummaryEntry, chanDb *channeldb.ChannelStateDB,
 	publish bool) error {
 
 	channels, err := chanDb.FetchAllChannels()

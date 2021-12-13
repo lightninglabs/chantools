@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.9.6"
+	version       = "0.10.0"
 	na            = "n/a"
 
 	Commit = ""
@@ -211,7 +211,7 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 			return nil, fmt.Errorf("error opening channel DB: %v",
 				err)
 		}
-		target = &dataformat.ChannelDBFile{DB: db}
+		target = &dataformat.ChannelDBFile{DB: db.ChannelStateDB()}
 		return target.AsSummaryEntries()
 
 	default:

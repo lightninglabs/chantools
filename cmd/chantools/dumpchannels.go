@@ -53,12 +53,12 @@ func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 	defer func() { _ = db.Close() }()
 
 	if c.Closed {
-		return dumpClosedChannelInfo(db)
+		return dumpClosedChannelInfo(db.ChannelStateDB())
 	}
-	return dumpOpenChannelInfo(db)
+	return dumpOpenChannelInfo(db.ChannelStateDB())
 }
 
-func dumpOpenChannelInfo(chanDb *channeldb.DB) error {
+func dumpOpenChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 	channels, err := chanDb.FetchAllChannels()
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func dumpOpenChannelInfo(chanDb *channeldb.DB) error {
 	return nil
 }
 
-func dumpClosedChannelInfo(chanDb *channeldb.DB) error {
+func dumpClosedChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 	channels, err := chanDb.FetchClosedChannels(false)
 	if err != nil {
 		return err

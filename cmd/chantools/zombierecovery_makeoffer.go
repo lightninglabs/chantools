@@ -15,10 +15,10 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil/psbt"
+	"github.com/btcsuite/btcwallet/wallet/txrules"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
-	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
@@ -330,11 +330,31 @@ channelLoop:
 		return fmt.Errorf("error distributing fees, unhandled case")
 	}
 
+	// Our output.
+	pkScript, err := lnd.GetP2WPKHScript(ourPayoutAddr, chainParams)
+	if err != nil {
+		return fmt.Errorf("error parsing our payout address: %v", err)
+	}
+	ourTxOut := &wire.TxOut{
+		PkScript: pkScript,
+		Value:    ourSum,
+	}
+
+	// Their output
+	pkScript, err = lnd.GetP2WPKHScript(theirPayoutAddr, chainParams)
+	if err != nil {
+		return fmt.Errorf("error parsing their payout address: %v", err)
+	}
+	theirTxOut := &wire.TxOut{
+		PkScript: pkScript,
+		Value:    theirSum,
+	}
+
 	// Don't create dust.
-	if ourSum <= int64(lnwallet.DefaultDustLimit()) {
+	if txrules.IsDustOutput(ourTxOut, txrules.DefaultRelayFeePerKb) {
 		ourSum = 0
 	}
-	if theirSum <= int64(lnwallet.DefaultDustLimit()) {
+	if txrules.IsDustOutput(theirTxOut, txrules.DefaultRelayFeePerKb) {
 		theirSum = 0
 	}
 
@@ -346,28 +366,10 @@ channelLoop:
 	// And now create the PSBT.
 	tx := wire.NewMsgTx(2)
 	if ourSum > 0 {
-		pkScript, err := lnd.GetP2WPKHScript(ourPayoutAddr, chainParams)
-		if err != nil {
-			return fmt.Errorf("error parsing our payout address: "+
-				"%v", err)
-		}
-		tx.TxOut = append(tx.TxOut, &wire.TxOut{
-			PkScript: pkScript,
-			Value:    ourSum,
-		})
+		tx.TxOut = append(tx.TxOut, ourTxOut)
 	}
 	if theirSum > 0 {
-		pkScript, err := lnd.GetP2WPKHScript(
-			theirPayoutAddr, chainParams,
-		)
-		if err != nil {
-			return fmt.Errorf("error parsing their payout "+
-				"address: %v", err)
-		}
-		tx.TxOut = append(tx.TxOut, &wire.TxOut{
-			PkScript: pkScript,
-			Value:    theirSum,
-		})
+		tx.TxOut = append(tx.TxOut, theirTxOut)
 	}
 	for _, txIn := range inputs {
 		tx.TxIn = append(tx.TxIn, &wire.TxIn{
