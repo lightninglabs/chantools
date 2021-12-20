@@ -32,7 +32,7 @@ func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 		err        error
 	)
 	for _, pathPart := range path {
-		currentKey, err = currentKey.Derive(pathPart)
+		currentKey, err = currentKey.DeriveNonStandard(pathPart)
 		if err != nil {
 			return nil, err
 		}

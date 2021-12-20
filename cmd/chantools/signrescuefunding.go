@@ -45,7 +45,7 @@ broadcast by any Bitcoin node.`,
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "deriving keys")
-	
+
 	return cc.cmd
 }
 
@@ -158,7 +158,7 @@ func findLocalMultisigKey(multisigBranch *hdkeychain.ExtendedKey,
 
 	// Loop through the local multisig keys to find the target key.
 	for index := uint32(0); index < MaxChannelLookup; index++ {
-		currentKey, err := multisigBranch.Derive(index)
+		currentKey, err := multisigBranch.DeriveNonStandard(index)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving child key: %v",
 				err)
