@@ -304,6 +304,7 @@ Detailed documentation for each sub command is available in the
 
 Quick access:
 + [chanbackup](doc/chantools_chanbackup.md)
++ [closepoolaccount](doc/chantools_closepoolaccount.md)
 + [compactdb](doc/chantools_compactdb.md)
 + [deletepayments](doc/chantools_deletepayments.md)
 + [derivekey](doc/chantools_derivekey.md)

@@ -26,7 +26,7 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.10.0"
+	version       = "0.10.1"
 	na            = "n/a"
 
 	Commit = ""
@@ -80,6 +80,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		newChanBackupCommand(),
+		newClosePoolAccountCommand(),
 		newCompactDBCommand(),
 		newDeletePaymentsCommand(),
 		newDeriveKeyCommand(),

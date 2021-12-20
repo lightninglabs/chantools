@@ -14,6 +14,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/frankban/quicktest v1.11.2 // indirect
 	github.com/gogo/protobuf v1.3.2
+	github.com/lightninglabs/pool v0.5.3-alpha
 	github.com/lightningnetwork/lnd v0.14.1-beta
 	github.com/lightningnetwork/lnd/kvdb v1.2.1
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect

@@ -19,6 +19,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 ### SEE ALSO
 
 * [chantools chanbackup](chantools_chanbackup.md)	 - Create a channel.backup file from a channel database
+* [chantools closepoolaccount](chantools_closepoolaccount.md)	 - Tries to close a Pool account that has expired
 * [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
 * [chantools deletepayments](chantools_deletepayments.md)	 - Remove all (failed) payments from a channel DB
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
