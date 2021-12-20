@@ -51,7 +51,8 @@ channels that have the default CSV limit of 1 day, you can set the --maxcsvlimit
 parameter to 144.`,
 		Example: `chantools sweeptimelock \
 	--fromsummary results/forceclose-xxxx-yyyy.json \
-	--sweepaddr bc1q.....
+	--sweepaddr bc1q..... \
+	--feerate 10 \
   	--publish`,
 		RunE: cc.Execute,
 	}

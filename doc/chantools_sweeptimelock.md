@@ -21,7 +21,8 @@ chantools sweeptimelock [flags]
 ```
 chantools sweeptimelock \
 	--fromsummary results/forceclose-xxxx-yyyy.json \
-	--sweepaddr bc1q.....
+	--sweepaddr bc1q..... \
+	--feerate 10 \
   	--publish
 ```
 
