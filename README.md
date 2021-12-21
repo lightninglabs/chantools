@@ -255,6 +255,12 @@ $ chantools showrootkey
 Your BIP32 HD root key is: xprv9s21ZrQH1...
 ```
 
+### Are my funds safe?
+Some commands require the seed. But your seed will never leave your computer.
+
+Most commands don't require an internet connection: you can and should
+run them on a computer with a firewall that blocks outgoing connections.
+
 ## Command overview
 
 ```text
