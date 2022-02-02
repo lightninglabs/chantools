@@ -211,7 +211,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		return fmt.Errorf("error brute forcing account script: %v", err)
 	}
 
-	log.Debugf("Found pool account with expiry %d!", acct.expiry)
+	log.Debugf("Found pool account %s", acct.String())
 
 	sweepTx := wire.NewMsgTx(2)
 	sweepTx.LockTime = acct.expiry
@@ -296,8 +296,17 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 type poolAccount struct {
 	keyIndex      uint32
 	expiry        uint32
+	sharedKey     [32]byte
+	batchKey      []byte
 	keyTweak      []byte
 	witnessScript []byte
+}
+
+func (a *poolAccount) String() string {
+	return fmt.Sprintf("key_index=%d, expiry=%d, shared_key=%x, "+
+		"batch_key=%x, key_tweak=%x, witness_script=%x",
+		a.keyIndex, a.expiry, a.sharedKey[:], a.batchKey, a.keyTweak,
+		a.witnessScript)
 }
 
 func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
@@ -353,9 +362,12 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 					accountPrivKey.PubKey(),
 				)
 
+				batchKey := currentBatchKey.SerializeCompressed()
 				return &poolAccount{
 					keyIndex:      i,
 					expiry:        block,
+					sharedKey:     sharedKey,
+					batchKey:      batchKey,
 					keyTweak:      traderKeyTweak,
 					witnessScript: witnessScript,
 				}, nil
