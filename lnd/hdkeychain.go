@@ -27,14 +27,33 @@ const (
 func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 	*hdkeychain.ExtendedKey, error) {
 
-	var (
-		currentKey = key
-		err        error
-	)
+	var currentKey = key
 	for _, pathPart := range path {
-		currentKey, err = currentKey.DeriveNonStandard(pathPart)
+		derivedKey, err := currentKey.DeriveNonStandard(pathPart)
 		if err != nil {
 			return nil, err
+		}
+
+		// There's this special case in lnd's wallet (btcwallet) where
+		// the coin type and account keys are always serialized as a
+		// string and encrypted, which actually fixes the key padding
+		// issue that makes the difference between DeriveNonStandard and
+		// Derive. To replicate lnd's behavior exactly, we need to
+		// serialize and de-serialize the extended key at the coin type
+		// and account level (depth = 2 or depth = 3). This does not
+		// apply to the default account (id = 0) because that is always
+		// derived directly.
+		depth := derivedKey.Depth()
+		keyID := pathPart - hdkeychain.HardenedKeyStart
+		if (depth == 3 && keyID != 0) || depth == 2 {
+			currentKey, err = hdkeychain.NewKeyFromString(
+				derivedKey.String(),
+			)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			currentKey = derivedKey
 		}
 	}
 	return currentKey, nil
