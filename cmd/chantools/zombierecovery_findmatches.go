@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -47,10 +48,22 @@ type match struct {
 	Channels []*channel `json:"channels"`
 }
 
+type donePair struct {
+	Node1 *nodeInfo `json:"node1"`
+	Node2 *nodeInfo `json:"node2"`
+	Msg   string    `json:"msg"`
+}
+
+func (p *donePair) matches(node1, node2 string) bool {
+	return (p.Node1.PubKey == node1 && p.Node2.PubKey == node2) ||
+		(p.Node1.PubKey == node2 && p.Node2.PubKey == node1)
+}
+
 type zombieRecoveryFindMatchesCommand struct {
 	APIURL        string
 	Registrations string
 	ChannelGraph  string
+	PairsDone     string
 
 	cmd *cobra.Command
 }
@@ -69,7 +82,8 @@ This command will be run by guggero and the result will be sent to the
 registered nodes.`,
 		Example: `chantools zombierecovery findmatches \
 	--registrations data.txt \
-	--channel_graph lncli_describegraph.json`,
+	--channel_graph lncli_describegraph.json \
+	--pairs_done pairs-done.json`,
 		RunE: cc.Execute,
 	}
 
@@ -85,6 +99,11 @@ registered nodes.`,
 		&cc.ChannelGraph, "channel_graph", "", "the full LN channel "+
 			"graph in the JSON format that the "+
 			"'lncli describegraph' returns",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.PairsDone, "pairs_done", "", "an optional file containing "+
+			"all pairs that have already been contacted and "+
+			"shouldn't be matched again",
 	)
 
 	return cc.cmd
@@ -124,6 +143,21 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	err = jsonpb.UnmarshalString(string(graphBytes), graph)
 	if err != nil {
 		return fmt.Errorf("error parsing graph JSON: %v", err)
+	}
+
+	var donePairs []*donePair
+	if c.PairsDone != "" {
+		donePairsBytes, err := readInput(c.PairsDone)
+		if err != nil {
+			return fmt.Errorf("error reading pairs JSON %s: %v",
+				c.PairsDone, err)
+		}
+		decoder := json.NewDecoder(bytes.NewReader(donePairsBytes))
+		err = decoder.Decode(&donePairs)
+		if err != nil {
+			return fmt.Errorf("error parsing pairs JSON %s: %v",
+				c.PairsDone, err)
+		}
 	}
 
 	// Loop through all nodes now.
@@ -176,7 +210,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	// Write the matches to files.
 	for node1, node1map := range matches {
 		for node2, match := range node1map {
-			if match == nil {
+			if match == nil || isPairDone(donePairs, node1, node2) {
 				continue
 			}
 
@@ -197,4 +231,14 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	}
 
 	return nil
+}
+
+func isPairDone(donePairs []*donePair, node1, node2 string) bool {
+	for _, donePair := range donePairs {
+		if donePair.matches(node1, node2) {
+			return true
+		}
+	}
+
+	return false
 }
