@@ -45,7 +45,7 @@ func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 		// derived directly.
 		depth := derivedKey.Depth()
 		keyID := pathPart - hdkeychain.HardenedKeyStart
-		if (depth == 3 && keyID != 0) || depth == 2 {
+		if (depth == 3 && keyID != 0) || (depth == 2 && keyID != 0) {
 			currentKey, err = hdkeychain.NewKeyFromString(
 				derivedKey.String(),
 			)
