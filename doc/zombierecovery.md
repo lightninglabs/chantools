@@ -1,6 +1,10 @@
 # Zombie Channel Recovery
 
-1. Register at [node-recovery.com](https://node-recovery.com)
+* Got a request from a counterparty to prepare keys? Skip to step 4
+* Do you have contact with a peer you can skip to step 3.
+
+## Recovery steps
+1. _(Optional -- only needed if you have no contact with the remote party)_ Register at [node-recovery.com](https://node-recovery.com).
 2. Got a message about a match? Congrats! You might be able to fix something together.
 3. Send the JSON file(s) to your node. If you open the JSON file(s), you will see your own node ID (and contact info) and the peers'. [Download or install chantools](https://github.com/guggero/chantools#installation).
 4. Prepare the keys. Both parties will need to do this.
@@ -22,4 +26,27 @@ chantools zombierecovery signoffer \
 ```
 9. After signing, the transaction can be broadcast.
 
+## File format
+```json
+{
+    "node1": {
+        "identity_pubkey": "03xxxxxx",
+        "contact": "contact information for node 1, not needed by chantools itself"
+    },
+    "node2": {
+        "identity_pubkey": "03yyyyyy",
+        "contact": "contact information for node 2, not needed by chantools itself"
+    },
+    "channels": [
+        {
+            "short_channel_id": "61xxxxxxxxxxxxx (numerical channel ID, can be found on 1ml.com)",
+            "chan_point": "<txid>:<output_index> (also called channel point on 1ml.com)",
+            "address": "bc1q...... (the channel's output address on chain, find out by looking up the channel point on a block explorer)",
+            "capacity": 123456
+        }
+    ]
+}
+```
+
+## More info
 _More info at the help output of `chantools zombierecovery --help` or the generated [documentation for the zombierecovery command](chantools_zombierecovery.md)._
