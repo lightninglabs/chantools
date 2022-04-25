@@ -5,7 +5,7 @@
 
 ## Recovery steps
 1. _(Optional -- only needed if you have no contact with the remote party)_ Register at [node-recovery.com](https://node-recovery.com).
-2. Got a message about a match? Congrats! You might be able to fix something together.
+2. Got a message about a match? Congrats! You might be able to fix something together. Have a look in the recovery file, and look up the mentioned channel(s). If the channel is active, you do not need to do this recovery at all! If you do not see it on your (recovered) node, continue:
 3. Send the JSON file(s) to your node. If you open the JSON file(s), you will see your own node ID (and contact info) and the peers'. [Download or install chantools](https://github.com/guggero/chantools#installation).
 4. Prepare the keys. Both parties will need to do this.
 ```
