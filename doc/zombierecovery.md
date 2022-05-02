@@ -37,6 +37,13 @@ chantools zombierecovery signoffer \
 9. After signing, the transaction can be broadcast. From the PSBT (_partially signed_ bitcoin transaction), by signing, you have now (together) created a proper bitcoin transaction. An offer has been made, you have agreed on what split ("piece of the pie") goes to whom, created a transaction, signed it. This completed transaction can now be sent, for example using `bitcoin-cli sendrawtransaction`.
 
 ## File format
+For reference, the file format is below. If you get a match from node-recovery, the file looks like below example. It's human readable JSON, and you need to open the file to see the contact details.
+
+Components:
+* node1 and node2 are the peers of the channel, with contact details. This is not needed by chantools, you will use it to contact your peer
+* Then there is a list of channels, often just one though. It has meta data as seen by the network.
+* As you are taking the steps above, the file format will be appended. For example, after step 4 (preparing keys), the file will have a list of `multisig_keys` for the node who prepared the keys.
+
 ```json
 {
     "node1": {
@@ -57,6 +64,8 @@ chantools zombierecovery signoffer \
     ]
 }
 ```
+
+It's encouraged to look at the file, and what the files look like after doing the steps. 
 
 ## More info
 _More info at the help output of `chantools zombierecovery --help` or the generated [documentation for the zombierecovery command](chantools_zombierecovery.md)._
