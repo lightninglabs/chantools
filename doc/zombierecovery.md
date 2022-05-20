@@ -27,6 +27,9 @@ Preparation:
   file (see ["File format" section](#file-format)) and skip to step 3 below.
 
 Steps:
+
+![Zombierecovery Flow](zombierecovery-flow.svg)
+
 1. _(Optional -- only needed if you have no contact with the remote party)_
    Register at [node-recovery.com](https://node-recovery.com). This website
    helps you connect to peers, for recovery. You enter your public key and some
@@ -79,7 +82,7 @@ chantools zombierecovery makeoffer \
 chantools zombierecovery signoffer \
 	--psbt <offered_psbt_base64>
 ```
-9. After signing, the transaction can be broadcast. From the PSBT (_partially
+8. After signing, the transaction can be broadcast. From the PSBT (_partially
    signed_ bitcoin transaction), by signing, you have now (together) created a
    proper bitcoin transaction. An offer has been made, you have agreed on what
    split ("piece of the pie") goes to whom, created a transaction, signed it.
