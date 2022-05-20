@@ -28,6 +28,7 @@ Preparation:
 
 Steps:
 
+Below image is a simplified version of the steps described below the image.
 ![Zombierecovery Flow](zombierecovery-flow.svg)
 
 1. _(Optional -- only needed if you have no contact with the remote party)_
