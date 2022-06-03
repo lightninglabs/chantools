@@ -157,10 +157,12 @@ func insertOwnNodeAndChannels(idKey *btcec.PublicKey, db *channeldb.DB) error {
 		}
 
 		if err := graph.AddChannelEdge(edge); err != nil {
-			return fmt.Errorf("error adding channel edge: %v", err)
+			log.Warnf("Not adding channel edge %v because of "+
+				"error: %v", edge.ChannelPoint, err)
 		}
 		if err := graph.UpdateEdgePolicy(update); err != nil {
-			return fmt.Errorf("error updating edge policy: %v", err)
+			log.Warnf("Not updating edge policy %v because of "+
+				"error: %v", update.ChannelID, err)
 		}
 	}
 
