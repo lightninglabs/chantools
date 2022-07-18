@@ -29,7 +29,7 @@ func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
 
 	return channeldb.CreateWithBackend(
 		backend, channeldb.OptionSetUseGraphCache(false),
-		channeldb.OptionReadOnly(readonly),
+		channeldb.OptionNoMigration(readonly),
 	)
 }
 

@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/btcsuite/btcd/txscript"
 	"os"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/btcsuite/btcutil/psbt"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcutil/psbt"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"
@@ -135,7 +135,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 				"key %x, expected %x", unknown.Key,
 				PsbtKeyTypeOutputMissingSigPubkey)
 		}
-		targetKey, err := btcec.ParsePubKey(unknown.Value, btcec.S256())
+		targetKey, err := btcec.ParsePubKey(unknown.Value)
 		if err != nil {
 			return fmt.Errorf("invalid PSBT, proprietary key has "+
 				"invalid pubkey: %v", err)

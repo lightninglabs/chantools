@@ -5,10 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightninglabs/pool/poolscript"
@@ -30,9 +30,7 @@ var (
 		"02824d0cbac65e01712124c50ff2cc74ce22851d7b444c1bf2ae66afefb8" +
 			"eaf27f",
 	)
-	initialBatchKey, _ = btcec.ParsePubKey(
-		initialBatchKeyBytes, btcec.S256(),
-	)
+	initialBatchKey, _ = btcec.ParsePubKey(initialBatchKeyBytes)
 
 	mainnetAuctioneerKeyHex = "028e87bdd134238f8347f845d9ecc827b843d0d1e2" +
 		"7cdcb46da704d916613f4fce"
@@ -142,9 +140,7 @@ func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error decoding auctioneer key: %v", err)
 	}
 
-	auctioneerKey, err := btcec.ParsePubKey(
-		auctioneerKeyBytes, btcec.S256(),
-	)
+	auctioneerKey, err := btcec.ParsePubKey(auctioneerKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error parsing auctioneer key: %v", err)
 	}
@@ -244,7 +240,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		totalFee, sweepValue, estimator.Weight())
 
 	// Create the sign descriptor for the input then sign the transaction.
-	sigHashes := txscript.NewTxSigHashes(sweepTx)
+	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
 	signDesc := &input.SignDescriptor{
 		KeyDesc: keychain.KeyDescriptor{
 			KeyLocator: keychain.KeyLocator{

@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/guggero/chantools/btc"
-	"github.com/lightningnetwork/lnd/keychain"
 
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/psbt"
+	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
+	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
@@ -196,9 +196,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 				"%v", err)
 		}
 
-		remotePubKey, err = btcec.ParsePubKey(
-			remoteKeyBytes, btcec.S256(),
-		)
+		remotePubKey, err = btcec.ParsePubKey(remoteKeyBytes)
 		if err != nil {
 			return fmt.Errorf("error parsing remote pubkey: %v",
 				err)

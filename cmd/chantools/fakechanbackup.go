@@ -10,9 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
@@ -163,7 +163,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return fmt.Errorf("could not parse pubkey hex string: %s", err)
 	}
-	nodePubkey, err := btcec.ParsePubKey(pubKeyBytes, btcec.S256())
+	nodePubkey, err := btcec.ParsePubKey(pubKeyBytes)
 	if err != nil {
 		return fmt.Errorf("could not parse pubkey: %s", err)
 	}
@@ -256,9 +256,7 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 		if err != nil {
 			return fmt.Errorf("error parsing hex: %v", err)
 		}
-		peerPubKey, err := btcec.ParsePubKey(
-			peerPubKeyBytes, btcec.S256(),
-		)
+		peerPubKey, err := btcec.ParsePubKey(peerPubKeyBytes)
 		if err != nil {
 			return fmt.Errorf("error parsing pubkey: %v", err)
 		}

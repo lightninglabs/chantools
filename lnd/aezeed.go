@@ -9,8 +9,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"golang.org/x/crypto/ssh/terminal"
 )

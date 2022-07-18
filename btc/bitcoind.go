@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 )
 
@@ -245,7 +245,7 @@ func (p *Electrum) Format(hdKey *hdkeychain.ExtendedKey,
 	if strings.HasPrefix(path, lnd.WalletBIP49DerivationPath) {
 		prefix = "p2wpkh-p2sh"
 	}
-	
+
 	return fmt.Sprintf("%s:%s", prefix, wif.String()), nil
 }
 

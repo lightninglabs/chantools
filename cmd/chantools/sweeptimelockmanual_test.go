@@ -4,9 +4,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 )
 
@@ -53,7 +53,7 @@ func TestSweepTimeLockManual(t *testing.T) {
 		}
 
 		revPubKeyBytes, _ := hex.DecodeString(tc.remoteRevPubKey)
-		revPubKey, _ := btcec.ParsePubKey(revPubKeyBytes, btcec.S256())
+		revPubKey, _ := btcec.ParsePubKey(revPubKeyBytes)
 
 		_, _, _, _, _, err = tryKey(
 			baseKey, revPubKey, defaultCsvLimit, lockScript,

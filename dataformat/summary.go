@@ -3,7 +3,8 @@ package dataformat
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
@@ -29,7 +30,7 @@ func (b *BasePoint) Desc() (*keychain.KeyDescriptor, error) {
 		return nil, fmt.Errorf("error decoding base point pubkey: %v",
 			err)
 	}
-	pubKey, err := btcec.ParsePubKey(pubKeyHex, btcec.S256())
+	pubKey, err := btcec.ParsePubKey(pubKeyHex)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing base point pubkey: %v",
 			err)

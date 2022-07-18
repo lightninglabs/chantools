@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -57,16 +57,14 @@ func (lc *LightningChannel) SignedCommitTx() (*wire.MsgTx, error) {
 	// for the transaction.
 	localCommit := lc.ChannelState.LocalCommitment
 	commitTx := localCommit.CommitTx.Copy()
-	theirSig, err := btcec.ParseDERSignature(
-		localCommit.CommitSig, btcec.S256(),
-	)
+	theirSig, err := ecdsa.ParseDERSignature(localCommit.CommitSig)
 	if err != nil {
 		return nil, err
 	}
 
 	// With this, we then generate the full witness so the caller can
 	// broadcast a fully signed transaction.
-	lc.SignDesc.SigHashes = txscript.NewTxSigHashes(commitTx)
+	lc.SignDesc.SigHashes = input.NewTxSigHashesV0Only(commitTx)
 	ourSig, err := lc.TXSigner.SignOutputRaw(commitTx, lc.SignDesc)
 	if err != nil {
 		return nil, err

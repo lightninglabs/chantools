@@ -9,8 +9,8 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"

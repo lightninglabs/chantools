@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
 	"github.com/spf13/cobra"
 )

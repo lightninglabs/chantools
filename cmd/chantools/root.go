@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"

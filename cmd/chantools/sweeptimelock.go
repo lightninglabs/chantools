@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"
@@ -297,7 +297,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}}
 
 	// Sign the transaction now.
-	sigHashes := txscript.NewTxSigHashes(sweepTx)
+	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes
 		desc.InputIndex = idx
@@ -335,7 +335,7 @@ func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error hex decoding pub key: %v", err)
 	}
-	return btcec.ParsePubKey(pointBytes, btcec.S256())
+	return btcec.ParsePubKey(pointBytes)
 }
 
 func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,

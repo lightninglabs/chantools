@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
@@ -239,7 +240,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		totalFee, sweepValue, estimator.Weight())
 
 	// Create the sign descriptor for the input then sign the transaction.
-	sigHashes := txscript.NewTxSigHashes(sweepTx)
+	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
 	signDesc := &input.SignDescriptor{
 		KeyDesc: *delayDesc,
 		SingleTweak: input.SingleTweakBytes(

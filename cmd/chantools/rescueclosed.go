@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
-	"github.com/btcsuite/btcutil"
-	"github.com/btcsuite/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/guggero/chantools/dataformat"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -146,9 +146,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error decoding commit point: %v",
 				err)
 		}
-		commitPoint, err := btcec.ParsePubKey(
-			commitPointRaw, btcec.S256(),
-		)
+		commitPoint, err := btcec.ParsePubKey(commitPointRaw)
 		if err != nil {
 			return fmt.Errorf("error parsing commit point: %v", err)
 		}
@@ -218,9 +216,7 @@ func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
 				"hex: %v", err)
 		}
 
-		commitPoint, err := btcec.ParsePubKey(
-			commitPointBytes, btcec.S256(),
-		)
+		commitPoint, err := btcec.ParsePubKey(commitPointBytes)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing commit point: %v",
 				err)

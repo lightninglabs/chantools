@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chainreg"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -97,7 +97,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error hex decoding node identity key: %v",
 			err)
 	}
-	idKey, err := btcec.ParsePubKey(idKeyBytes, btcec.S256())
+	idKey, err := btcec.ParsePubKey(idKeyBytes)
 	if err != nil {
 		return fmt.Errorf("error parsing node identity key: %v", err)
 	}

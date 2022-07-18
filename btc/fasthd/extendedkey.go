@@ -11,7 +11,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg"
 )
 
@@ -34,8 +34,7 @@ type FastDerivation struct {
 }
 
 func (k *FastDerivation) PubKeyBytes() []byte {
-	pkx, pky := btcec.S256().ScalarBaseMult(k.key)
-	pubKey := btcec.PublicKey{Curve: btcec.S256(), X: pkx, Y: pky}
+	_, pubKey := btcec.PrivKeyFromBytes(k.key)
 	return pubKey.SerializeCompressed()
 }
 

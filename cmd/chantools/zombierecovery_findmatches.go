@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"

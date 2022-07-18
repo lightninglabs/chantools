@@ -4,17 +4,20 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcec"
+	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcutil/hdkeychain"
-	"github.com/btcsuite/btcutil/psbt"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
 type Signer struct {
+	input.MockSigner
+
 	ExtendedKey *hdkeychain.ExtendedKey
 	ChainParams *chaincfg.Params
 }
@@ -41,7 +44,7 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	}
 
 	// Chop off the sighash flag at the end of the signature.
-	return btcec.ParseDERSignature(sig[:len(sig)-1], btcec.S256())
+	return ecdsa.ParseDERSignature(sig[:len(sig)-1])
 }
 
 func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
@@ -77,7 +80,7 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 		Output:        utxo,
 		InputIndex:    inputIndex,
 		HashType:      txscript.SigHashAll,
-		SigHashes:     txscript.NewTxSigHashes(packet.UnsignedTx),
+		SigHashes:     input.NewTxSigHashesV0Only(packet.UnsignedTx),
 	}
 	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
 	if err != nil {
@@ -125,12 +128,14 @@ func maybeTweakPrivKey(signDesc *input.SignDescriptor,
 //
 //  sx := k*P s := sha256(sx.SerializeCompressed())
 func ECDH(privKey *btcec.PrivateKey, pub *btcec.PublicKey) ([32]byte, error) {
-	s := &btcec.PublicKey{}
-	x, y := btcec.S256().ScalarMult(pub.X, pub.Y, privKey.D.Bytes())
-	s.X = x
-	s.Y = y
+	var (
+		pubJacobian btcec.JacobianPoint
+		s           btcec.JacobianPoint
+	)
+	pub.AsJacobian(&pubJacobian)
 
-	h := sha256.Sum256(s.SerializeCompressed())
-
-	return h, nil
+	btcec.ScalarMultNonConst(&privKey.Key, &pubJacobian, &s)
+	s.ToAffine()
+	sPubKey := btcec.NewPublicKey(&s.X, &s.Y)
+	return sha256.Sum256(sPubKey.SerializeCompressed()), nil
 }
