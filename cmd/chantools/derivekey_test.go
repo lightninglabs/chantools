@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/guggero/chantools/btc"
@@ -39,12 +38,10 @@ func TestDeriveKeyAezeedNoPassphrase(t *testing.T) {
 		rootKey: &rootKey{},
 	}
 
-	err := os.Setenv(lnd.MnemonicEnvName, seedAezeedNoPassphrase)
-	require.NoError(t, err)
-	err = os.Setenv(lnd.PassphraseEnvName, "-")
-	require.NoError(t, err)
+	t.Setenv(lnd.MnemonicEnvName, seedAezeedNoPassphrase)
+	t.Setenv(lnd.PassphraseEnvName, "-")
 
-	err = derive.Execute(nil, nil)
+	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(keyContent)
@@ -59,12 +56,10 @@ func TestDeriveKeyAezeedWithPassphrase(t *testing.T) {
 		rootKey: &rootKey{},
 	}
 
-	err := os.Setenv(lnd.MnemonicEnvName, seedAezeedWithPassphrase)
-	require.NoError(t, err)
-	err = os.Setenv(lnd.PassphraseEnvName, testPassPhrase)
-	require.NoError(t, err)
+	t.Setenv(lnd.MnemonicEnvName, seedAezeedWithPassphrase)
+	t.Setenv(lnd.PassphraseEnvName, testPassPhrase)
 
-	err = derive.Execute(nil, nil)
+	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(keyContent)
@@ -79,12 +74,10 @@ func TestDeriveKeySeedBip39(t *testing.T) {
 		rootKey: &rootKey{BIP39: true},
 	}
 
-	err := os.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
-	require.NoError(t, err)
-	err = os.Setenv(btc.BIP39PassphraseEnvName, "-")
-	require.NoError(t, err)
+	t.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
+	t.Setenv(btc.BIP39PassphraseEnvName, "-")
 
-	err = derive.Execute(nil, nil)
+	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(keyContentBIP39)

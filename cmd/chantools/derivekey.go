@@ -63,7 +63,7 @@ chantools derivekey --identity`,
 func (c *deriveKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	if c.Identity {
@@ -79,24 +79,24 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 
 	child, pubKey, wif, err := lnd.DeriveKey(extendedKey, path, chainParams)
 	if err != nil {
-		return fmt.Errorf("could not derive keys: %v", err)
+		return fmt.Errorf("could not derive keys: %w", err)
 	}
 	neutered, err := child.Neuter()
 	if err != nil {
-		return fmt.Errorf("could not neuter child key: %v", err)
+		return fmt.Errorf("could not neuter child key: %w", err)
 	}
 
 	// Print the address too.
 	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
 	addrP2PKH, err := btcutil.NewAddressPubKeyHash(hash160, chainParams)
 	if err != nil {
-		return fmt.Errorf("could not create address: %v", err)
+		return fmt.Errorf("could not create address: %w", err)
 	}
 	addrP2WKH, err := btcutil.NewAddressWitnessPubKeyHash(
 		hash160, chainParams,
 	)
 	if err != nil {
-		return fmt.Errorf("could not create address: %v", err)
+		return fmt.Errorf("could not create address: %w", err)
 	}
 
 	privKey, xPriv := na, na

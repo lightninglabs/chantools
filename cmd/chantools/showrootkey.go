@@ -36,7 +36,7 @@ commands of this tool.`,
 func (c *showRootKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	result := fmt.Sprintf(showRootKeyFormat, extendedKey)

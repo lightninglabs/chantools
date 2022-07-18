@@ -59,7 +59,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	_, err = lnd.GetP2WPKHScript(c.PayoutAddr, chainParams)
@@ -69,14 +69,14 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 
 	matchFileBytes, err := ioutil.ReadFile(c.MatchFile)
 	if err != nil {
-		return fmt.Errorf("error reading match file %s: %v",
+		return fmt.Errorf("error reading match file %s: %w",
 			c.MatchFile, err)
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(matchFileBytes))
 	match := &match{}
 	if err := decoder.Decode(&match); err != nil {
-		return fmt.Errorf("error decoding match file %s: %v",
+		return fmt.Errorf("error decoding match file %s: %w",
 			c.MatchFile, err)
 	}
 
@@ -89,7 +89,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 		extendedKey, lnd.IdentityPath(chainParams), chainParams,
 	)
 	if err != nil {
-		return fmt.Errorf("error deriving identity pubkey: %v", err)
+		return fmt.Errorf("error deriving identity pubkey: %w", err)
 	}
 
 	pubKeyStr := hex.EncodeToString(pubKey.SerializeCompressed())
@@ -114,7 +114,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 			chainParams,
 		)
 		if err != nil {
-			return fmt.Errorf("error deriving multisig pubkey: %v",
+			return fmt.Errorf("error deriving multisig pubkey: %w",
 				err)
 		}
 

@@ -90,7 +90,7 @@ Supported remote force-closed channel types are:
 func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Make sure sweep addr is set.
@@ -135,21 +135,20 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			index)
 		parsedPath, err := lnd.ParsePath(path)
 		if err != nil {
-			return fmt.Errorf("error parsing path: %v", err)
+			return fmt.Errorf("error parsing path: %w", err)
 		}
 
 		hdKey, err := lnd.DeriveChildren(
 			extendedKey, parsedPath,
 		)
 		if err != nil {
-			return fmt.Errorf("eror deriving children: %v",
-				err)
+			return fmt.Errorf("eror deriving children: %w", err)
 		}
 
 		privKey, err := hdKey.ECPrivKey()
 		if err != nil {
 			return fmt.Errorf("could not derive private "+
-				"key: %v", err)
+				"key: %w", err)
 		}
 
 		foundTargets, err := queryAddressBalances(
@@ -163,7 +162,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		)
 		if err != nil {
 			return fmt.Errorf("could not query API for "+
-				"addresses with funds: %v", err)
+				"addresses with funds: %w", err)
 		}
 		targets = append(targets, foundTargets...)
 	}
@@ -185,14 +184,14 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				vout.Outspend.Txid,
 			)
 			if err != nil {
-				return fmt.Errorf("error parsing tx hash: %v",
+				return fmt.Errorf("error parsing tx hash: %w",
 					err)
 			}
 			pkScript, err := lnd.GetWitnessAddrScript(
 				target.addr, chainParams,
 			)
 			if err != nil {
-				return fmt.Errorf("error getting pk script: %v",
+				return fmt.Errorf("error getting pk script: %w",
 					err)
 			}
 
@@ -319,7 +318,7 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 	queryAddr := func(address btcutil.Address, script []byte) error {
 		unspent, err := api.Unspent(address.EncodeAddress())
 		if err != nil {
-			return fmt.Errorf("could not query unspent: %v", err)
+			return fmt.Errorf("could not query unspent: %w", err)
 		}
 
 		if len(unspent) > 0 {

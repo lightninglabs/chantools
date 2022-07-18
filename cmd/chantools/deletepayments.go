@@ -49,7 +49,7 @@ func (c *deletePaymentsCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 

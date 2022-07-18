@@ -85,7 +85,7 @@ parameter to 144.`,
 func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Make sure sweep addr is set.
@@ -136,6 +136,7 @@ func sweepTimeLockFromSummary(extendedKey *hdkeychain.ExtendedKey, apiURL string
 
 			log.Infof("Not sweeping %s, info missing or all spent",
 				entry.ChannelPoint)
+
 			continue
 		}
 
@@ -167,29 +168,29 @@ func sweepTimeLockFromSummary(extendedKey *hdkeychain.ExtendedKey, apiURL string
 		// Prepare sweep script parameters.
 		commitPoint, err := pubKeyFromHex(fc.CommitPoint)
 		if err != nil {
-			return fmt.Errorf("error parsing commit point: %v", err)
+			return fmt.Errorf("error parsing commit point: %w", err)
 		}
 		revBase, err := pubKeyFromHex(fc.RevocationBasePoint.PubKey)
 		if err != nil {
 			return fmt.Errorf("error parsing revocation base "+
-				"point: %v", err)
+				"point: %w", err)
 		}
 		delayDesc, err := fc.DelayBasePoint.Desc()
 		if err != nil {
-			return fmt.Errorf("error parsing delay base point: %v",
+			return fmt.Errorf("error parsing delay base point: %w",
 				err)
 		}
 
 		lockScript, err := hex.DecodeString(fc.Outs[txindex].Script)
 		if err != nil {
-			return fmt.Errorf("error parsing target script: %v",
+			return fmt.Errorf("error parsing target script: %w",
 				err)
 		}
 
 		// Create the transaction input.
 		txHash, err := chainhash.NewHashFromStr(fc.TXID)
 		if err != nil {
-			return fmt.Errorf("error parsing tx hash: %v", err)
+			return fmt.Errorf("error parsing tx hash: %w", err)
 		}
 
 		targets = append(targets, &sweepTarget{
@@ -240,7 +241,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		)
 		if err != nil {
 			log.Errorf("Could not create matching script for %s "+
-				"or csv too high: %v", target.channelPoint, err)
+				"or csv too high: %w", target.channelPoint, err)
 			continue
 		}
 
@@ -333,7 +334,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 	pointBytes, err := hex.DecodeString(pubKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("error hex decoding pub key: %v", err)
+		return nil, fmt.Errorf("error hex decoding pub key: %w", err)
 	}
 	return btcec.ParsePubKey(pointBytes)
 }
@@ -352,12 +353,12 @@ func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
 		)
 		if err != nil {
 			return 0, nil, nil, fmt.Errorf("error creating "+
-				"script: %v", err)
+				"script: %w", err)
 		}
 		sh, err := input.WitnessScriptHash(s)
 		if err != nil {
 			return 0, nil, nil, fmt.Errorf("error hashing script: "+
-				"%v", err)
+				"%w", err)
 		}
 		if bytes.Equal(targetScript[0:8], sh[0:8]) {
 			return int32(i), s, sh, nil

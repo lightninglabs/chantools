@@ -116,7 +116,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 
 	logFileBytes, err := ioutil.ReadFile(c.Registrations)
 	if err != nil {
-		return fmt.Errorf("error reading registrations file %s: %v",
+		return fmt.Errorf("error reading registrations file %s: %w",
 			c.Registrations, err)
 	}
 
@@ -126,7 +126,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	registrations := make(map[string]string, len(allMatches))
 	for _, groups := range allMatches {
 		if _, err := pubKeyFromHex(groups[1]); err != nil {
-			return fmt.Errorf("error parsing node ID: %v", err)
+			return fmt.Errorf("error parsing node ID: %w", err)
 		}
 
 		registrations[groups[1]] = groups[2]
@@ -142,20 +142,20 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	graph := &lnrpc.ChannelGraph{}
 	err = jsonpb.UnmarshalString(string(graphBytes), graph)
 	if err != nil {
-		return fmt.Errorf("error parsing graph JSON: %v", err)
+		return fmt.Errorf("error parsing graph JSON: %w", err)
 	}
 
 	var donePairs []*donePair
 	if c.PairsDone != "" {
 		donePairsBytes, err := readInput(c.PairsDone)
 		if err != nil {
-			return fmt.Errorf("error reading pairs JSON %s: %v",
+			return fmt.Errorf("error reading pairs JSON %s: %w",
 				c.PairsDone, err)
 		}
 		decoder := json.NewDecoder(bytes.NewReader(donePairsBytes))
 		err = decoder.Decode(&donePairs)
 		if err != nil {
-			return fmt.Errorf("error parsing pairs JSON %s: %v",
+			return fmt.Errorf("error parsing pairs JSON %s: %w",
 				c.PairsDone, err)
 		}
 	}

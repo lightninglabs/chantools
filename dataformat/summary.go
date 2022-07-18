@@ -27,12 +27,12 @@ type BasePoint struct {
 func (b *BasePoint) Desc() (*keychain.KeyDescriptor, error) {
 	pubKeyHex, err := hex.DecodeString(b.PubKey)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding base point pubkey: %v",
+		return nil, fmt.Errorf("error decoding base point pubkey: %w",
 			err)
 	}
 	pubKey, err := btcec.ParsePubKey(pubKeyHex)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing base point pubkey: %v",
+		return nil, fmt.Errorf("error parsing base point pubkey: %w",
 			err)
 	}
 

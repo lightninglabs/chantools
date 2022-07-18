@@ -55,7 +55,7 @@ func summarizeChannels(apiURL string,
 
 	summaryFile, err := btc.SummarizeChannels(apiURL, channels, log)
 	if err != nil {
-		return fmt.Errorf("error running summary: %v", err)
+		return fmt.Errorf("error running summary: %w", err)
 	}
 
 	log.Info("Finished scanning.")

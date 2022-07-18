@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -10,18 +11,13 @@ import (
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/btcsuite/btcwallet/walletdb"
+	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
 	"github.com/guggero/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/spf13/cobra"
 	"go.etcd.io/bbolt"
-
-	// This is required to register bdb as a valid walletdb driver. In the
-	// init function of the package, it registers itself. The import is used
-	// to activate the side effects w/o actually binding the package name to
-	// a file-level variable.
-	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
 )
 
 const (
@@ -42,10 +38,10 @@ Scope:	m/%d'/%d'
 )
 
 var (
-	// Namespace from github.com/btcsuite/btcwallet/wallet/wallet.go
+	// Namespace from github.com/btcsuite/btcwallet/wallet/wallet.go.
 	waddrmgrNamespaceKey = []byte("waddrmgr")
 
-	// Bucket names from github.com/btcsuite/btcwallet/waddrmgr/db.go
+	// Bucket names from github.com/btcsuite/btcwallet/waddrmgr/db.go.
 	mainBucketName    = []byte("main")
 	masterPrivKeyName = []byte("mpriv")
 	cryptoPrivKeyName = []byte("cpriv")
@@ -141,13 +137,13 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 		"bdb", lncfg.CleanAndExpandPath(c.WalletDB), false,
 		lnd.DefaultOpenTimeout,
 	)
-	if err == bbolt.ErrTimeout {
+	if errors.Is(err, bbolt.ErrTimeout) {
 		return fmt.Errorf("error opening wallet database, make sure " +
 			"lnd is not running and holding the exclusive lock " +
 			"on the wallet")
 	}
 	if err != nil {
-		return fmt.Errorf("error opening wallet database: %v", err)
+		return fmt.Errorf("error opening wallet database: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -233,7 +229,7 @@ func printScopeInfo(name string, w *wallet.Wallet,
 		props, err := w.AccountProperties(scope, defaultAccount)
 		if err != nil {
 			return "", fmt.Errorf("error fetching account "+
-				"properties: %v", err)
+				"properties: %w", err)
 		}
 		scopeInfo += fmt.Sprintf(
 			keyScopeformat, scope.Purpose, scope.Coin, name,

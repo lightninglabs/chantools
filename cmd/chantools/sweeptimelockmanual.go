@@ -102,7 +102,7 @@ address is always the one that's longer (because it's P2WSH and not P2PKH).`,
 func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Make sure the sweep and time lock addrs are set.
@@ -117,7 +117,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 	// point.
 	remoteRevPoint, err := pubKeyFromHex(c.RemoteRevocationBasePoint)
 	if err != nil {
-		return fmt.Errorf("invalid remote revocation base point: %v",
+		return fmt.Errorf("invalid remote revocation base point: %w",
 			err)
 	}
 
@@ -136,7 +136,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// continue anyway.
 	lockScript, err := lnd.GetP2WSHScript(timeLockAddr, chainParams)
 	if err != nil {
-		return fmt.Errorf("invalid time lock addr: %v", err)
+		return fmt.Errorf("invalid time lock addr: %w", err)
 	}
 
 	// We need to go through a lot of our keys so it makes sense to
@@ -145,11 +145,11 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		keyBasePath, chainParams.HDCoinType,
 	))
 	if err != nil {
-		return fmt.Errorf("could not derive base path: %v", err)
+		return fmt.Errorf("could not derive base path: %w", err)
 	}
 	baseKey, err := lnd.DeriveChildren(extendedKey, basePath)
 	if err != nil {
-		return fmt.Errorf("could not derive base key: %v", err)
+		return fmt.Errorf("could not derive base key: %w", err)
 	}
 
 	// Go through all our keys now and try to find the ones that can derive
@@ -172,6 +172,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		if err == nil {
 			log.Infof("Found keys at index %d with CSV timeout %d",
 				i, csvTimeout)
+
 			break
 		}
 
@@ -206,7 +207,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// Create the transaction input.
 	txHash, err := chainhash.NewHashFromStr(tx.TXID)
 	if err != nil {
-		return fmt.Errorf("error parsing tx hash: %v", err)
+		return fmt.Errorf("error parsing tx hash: %w", err)
 	}
 	sweepTx.TxIn = []*wire.TxIn{{
 		PreviousOutPoint: wire.OutPoint{
@@ -281,7 +282,6 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	log.Infof("Transaction: %x", buf.Bytes())
 	return nil
-
 }
 
 func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
@@ -364,9 +364,10 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
 		0, idx,
 	}
-	multiSigPrivKey, err := lnd.PrivKeyFromPath(
-		baseKey, multiSigPath,
-	)
+	multiSigPrivKey, err := lnd.PrivKeyFromPath(baseKey, multiSigPath)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
 
 	revRoot3, err := lnd.ShaChainFromPath(
 		baseKey, revPath, multiSigPrivKey.PubKey(),

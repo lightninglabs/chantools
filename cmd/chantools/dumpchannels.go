@@ -48,7 +48,7 @@ func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -66,7 +66,7 @@ func dumpOpenChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 
 	dumpChannels, err := dump.OpenChannelDump(channels, chainParams)
 	if err != nil {
-		return fmt.Errorf("error converting to dump format: %v", err)
+		return fmt.Errorf("error converting to dump format: %w", err)
 	}
 
 	spew.Dump(dumpChannels)
@@ -85,7 +85,7 @@ func dumpClosedChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 
 	dumpChannels, err := dump.ClosedChannelDump(channels, chainParams)
 	if err != nil {
-		return fmt.Errorf("error converting to dump format: %v", err)
+		return fmt.Errorf("error converting to dump format: %w", err)
 	}
 
 	spew.Dump(dumpChannels)

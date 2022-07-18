@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,7 @@ const (
 
 func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
 	backend, err := openDB(dbPath, false, readonly, DefaultOpenTimeout)
-	if err == bbolt.ErrTimeout {
+	if errors.Is(err, bbolt.ErrTimeout) {
 		return nil, fmt.Errorf("error opening %s: make sure lnd is "+
 			"not running, database is locked by another process",
 			dbPath)
@@ -35,33 +36,33 @@ func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
 
 // convertErr converts some bolt errors to the equivalent walletdb error.
 func convertErr(err error) error {
-	switch err {
+	switch {
 	// Database open/create errors.
-	case bbolt.ErrDatabaseNotOpen:
+	case errors.Is(err, bbolt.ErrDatabaseNotOpen):
 		return walletdb.ErrDbNotOpen
-	case bbolt.ErrInvalid:
+	case errors.Is(err, bbolt.ErrInvalid):
 		return walletdb.ErrInvalid
 
 	// Transaction errors.
-	case bbolt.ErrTxNotWritable:
+	case errors.Is(err, bbolt.ErrTxNotWritable):
 		return walletdb.ErrTxNotWritable
-	case bbolt.ErrTxClosed:
+	case errors.Is(err, bbolt.ErrTxClosed):
 		return walletdb.ErrTxClosed
 
 	// Value/bucket errors.
-	case bbolt.ErrBucketNotFound:
+	case errors.Is(err, bbolt.ErrBucketNotFound):
 		return walletdb.ErrBucketNotFound
-	case bbolt.ErrBucketExists:
+	case errors.Is(err, bbolt.ErrBucketExists):
 		return walletdb.ErrBucketExists
-	case bbolt.ErrBucketNameRequired:
+	case errors.Is(err, bbolt.ErrBucketNameRequired):
 		return walletdb.ErrBucketNameRequired
-	case bbolt.ErrKeyRequired:
+	case errors.Is(err, bbolt.ErrKeyRequired):
 		return walletdb.ErrKeyRequired
-	case bbolt.ErrKeyTooLarge:
+	case errors.Is(err, bbolt.ErrKeyTooLarge):
 		return walletdb.ErrKeyTooLarge
-	case bbolt.ErrValueTooLarge:
+	case errors.Is(err, bbolt.ErrValueTooLarge):
 		return walletdb.ErrValueTooLarge
-	case bbolt.ErrIncompatibleValue:
+	case errors.Is(err, bbolt.ErrIncompatibleValue):
 		return walletdb.ErrIncompatibleValue
 	}
 
@@ -298,28 +299,28 @@ func (c *cursor) Delete() error {
 // First positions the cursor at the first key/value pair and returns the pair.
 //
 // This function is part of the walletdb.ReadCursor interface implementation.
-func (c *cursor) First() (key, value []byte) {
+func (c *cursor) First() ([]byte, []byte) {
 	return (*bbolt.Cursor)(c).First()
 }
 
 // Last positions the cursor at the last key/value pair and returns the pair.
 //
 // This function is part of the walletdb.ReadCursor interface implementation.
-func (c *cursor) Last() (key, value []byte) {
+func (c *cursor) Last() ([]byte, []byte) {
 	return (*bbolt.Cursor)(c).Last()
 }
 
 // Next moves the cursor one key/value pair forward and returns the new pair.
 //
 // This function is part of the walletdb.ReadCursor interface implementation.
-func (c *cursor) Next() (key, value []byte) {
+func (c *cursor) Next() ([]byte, []byte) {
 	return (*bbolt.Cursor)(c).Next()
 }
 
 // Prev moves the cursor one key/value pair backward and returns the new pair.
 //
 // This function is part of the walletdb.ReadCursor interface implementation.
-func (c *cursor) Prev() (key, value []byte) {
+func (c *cursor) Prev() ([]byte, []byte) {
 	return (*bbolt.Cursor)(c).Prev()
 }
 
@@ -327,7 +328,7 @@ func (c *cursor) Prev() (key, value []byte) {
 // the cursor is moved to the next key after seek. Returns the new pair.
 //
 // This function is part of the walletdb.ReadCursor interface implementation.
-func (c *cursor) Seek(seek []byte) (key, value []byte) {
+func (c *cursor) Seek(seek []byte) ([]byte, []byte) {
 	return (*bbolt.Cursor)(c).Seek(seek)
 }
 

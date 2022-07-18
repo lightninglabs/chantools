@@ -16,6 +16,9 @@ linters-settings:
     case:
       rules:
         json: snake
+  staticcheck:
+    go: "1.18"
+    checks: ["-SA1019"]
 
 linters:
   enable-all: true
@@ -30,6 +33,20 @@ linters:
     - gomnd
     - goerr113
     - exhaustruct
+    - forbidigo
+    - gocognit
+    - nestif
+    - ifshort
+    - wsl
+    - cyclop
+    - gocyclo
+    - nlreturn
+    - stylecheck
+    - paralleltest
+    - ireturn
+    - maintidx
+    - noctx
+    - gofumpt
     
     # deprecated
     - interfacer

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -21,10 +20,9 @@ func TestWalletInfo(t *testing.T) {
 		WithRootKey: true,
 	}
 
-	err := os.Setenv(passwordEnvName, testPassPhrase)
-	require.NoError(t, err)
+	t.Setenv(passwordEnvName, testPassPhrase)
 
-	err = info.Execute(nil, nil)
+	err := info.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(walletContent)

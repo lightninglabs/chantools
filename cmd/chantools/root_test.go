@@ -48,6 +48,8 @@ type harness struct {
 }
 
 func newHarness(t *testing.T) *harness {
+	t.Helper()
+
 	buf := &bytes.Buffer{}
 	logBackend := btclog.NewBackend(buf)
 	tempDir, err := ioutil.TempDir("", "chantools")

@@ -34,7 +34,7 @@ func ReadMnemonicFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 
 	if mnemonicStr == "" {
 		// If there's no value in the environment, we'll now prompt the
-		//user to enter in their 12 to 24 word mnemonic.
+		// user to enter in their 12 to 24 word mnemonic.
 		fmt.Printf("Input your 12 to 24 word mnemonic separated by " +
 			"spaces: ")
 		mnemonicStr, err = reader.ReadString('\n')
@@ -146,7 +146,7 @@ func ReadMnemonicFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 	rootKey, err := hdkeychain.NewMaster(seed, params)
 	if err != nil {
 		return nil, fmt.Errorf("failed to derive master extended "+
-			"key: %v", err)
+			"key: %w", err)
 	}
 	return rootKey, nil
 }

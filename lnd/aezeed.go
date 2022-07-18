@@ -109,7 +109,7 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 	cipherSeed, err := mnemonic.ToCipherSeed(passphraseBytes)
 	if err != nil {
 		return nil, time.Unix(0, 0), fmt.Errorf("failed to decrypt "+
-			"seed with passphrase: %v", err)
+			"seed with passphrase: %w", err)
 	}
 	rootKey, err := hdkeychain.NewMaster(cipherSeed.Entropy[:], params)
 	if err != nil {

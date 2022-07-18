@@ -210,7 +210,8 @@ func ClosedChannelDump(channels []*channeldb.ChannelCloseSummary,
 }
 
 // BackupDump converts the given multi backup into a dumpable format.
-func BackupDump(multi *chanbackup.Multi, params *chaincfg.Params) []BackupSingle {
+func BackupDump(multi *chanbackup.Multi,
+	params *chaincfg.Params) []BackupSingle {
 
 	dumpSingles := make([]BackupSingle, len(multi.StaticBackups))
 	for idx, single := range multi.StaticBackups {

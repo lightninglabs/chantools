@@ -52,7 +52,7 @@ broadcast by any Bitcoin node.`,
 func (c *signRescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	signer := &lnd.Signer{
@@ -65,7 +65,7 @@ func (c *signRescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		bytes.NewReader([]byte(c.Psbt)), true,
 	)
 	if err != nil {
-		return fmt.Errorf("error decoding PSBT: %v", err)
+		return fmt.Errorf("error decoding PSBT: %w", err)
 	}
 
 	return signRescueFunding(extendedKey, packet, signer)
@@ -82,7 +82,7 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 		0,
 	})
 	if err != nil {
-		return fmt.Errorf("could not derive local multisig key: %v",
+		return fmt.Errorf("could not derive local multisig key: %w",
 			err)
 	}
 
@@ -105,14 +105,14 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 	targetKey, err := btcec.ParsePubKey(unknown.Value)
 	if err != nil {
 		return fmt.Errorf("invalid PSBT, proprietary key has invalid "+
-			"pubkey: %v", err)
+			"pubkey: %w", err)
 	}
 
 	// Now we can look up the local key and check the PSBT further, then
 	// add our signature.
 	localKeyDesc, err := findLocalMultisigKey(localMultisig, targetKey)
 	if err != nil {
-		return fmt.Errorf("could not find local multisig key: %v", err)
+		return fmt.Errorf("could not find local multisig key: %w", err)
 	}
 	if len(packet.Inputs[0].WitnessScript) == 0 {
 		return fmt.Errorf("invalid PSBT, missing witness script")
@@ -127,23 +127,23 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 		packet, *localKeyDesc, utxo, witnessScript, 0,
 	)
 	if err != nil {
-		return fmt.Errorf("error adding partial signature: %v", err)
+		return fmt.Errorf("error adding partial signature: %w", err)
 	}
 
 	// We're almost done. Now we just need to make sure we can finalize and
 	// extract the final TX.
 	err = psbt.MaybeFinalizeAll(packet)
 	if err != nil {
-		return fmt.Errorf("error finalizing PSBT: %v", err)
+		return fmt.Errorf("error finalizing PSBT: %w", err)
 	}
 	finalTx, err := psbt.Extract(packet)
 	if err != nil {
-		return fmt.Errorf("unable to extract final TX: %v", err)
+		return fmt.Errorf("unable to extract final TX: %w", err)
 	}
 	var buf bytes.Buffer
 	err = finalTx.Serialize(&buf)
 	if err != nil {
-		return fmt.Errorf("unable to serialize final TX: %v", err)
+		return fmt.Errorf("unable to serialize final TX: %w", err)
 	}
 
 	fmt.Printf("Success, we counter signed the PSBT and extracted the "+
@@ -160,13 +160,13 @@ func findLocalMultisigKey(multisigBranch *hdkeychain.ExtendedKey,
 	for index := uint32(0); index < MaxChannelLookup; index++ {
 		currentKey, err := multisigBranch.DeriveNonStandard(index)
 		if err != nil {
-			return nil, fmt.Errorf("error deriving child key: %v",
+			return nil, fmt.Errorf("error deriving child key: %w",
 				err)
 		}
 
 		currentPubkey, err := currentKey.ECPubKey()
 		if err != nil {
-			return nil, fmt.Errorf("error deriving public key: %v",
+			return nil, fmt.Errorf("error deriving public key: %w",
 				err)
 		}
 

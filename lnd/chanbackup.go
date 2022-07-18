@@ -18,7 +18,7 @@ func CreateChannelBackup(db *channeldb.DB, multiFile *chanbackup.MultiFile,
 		db.ChannelStateDB(), db,
 	)
 	if err != nil {
-		return fmt.Errorf("error extracting channel backup: %v", err)
+		return fmt.Errorf("error extracting channel backup: %w", err)
 	}
 	multi := &chanbackup.Multi{
 		Version:       chanbackup.DefaultMultiVersion,
@@ -27,11 +27,11 @@ func CreateChannelBackup(db *channeldb.DB, multiFile *chanbackup.MultiFile,
 	var b bytes.Buffer
 	err = multi.PackToWriter(&b, ring)
 	if err != nil {
-		return fmt.Errorf("unable to pack backup: %v", err)
+		return fmt.Errorf("unable to pack backup: %w", err)
 	}
 	err = multiFile.UpdateAndSwap(b.Bytes())
 	if err != nil {
-		return fmt.Errorf("unable to write backup file: %v", err)
+		return fmt.Errorf("unable to write backup file: %w", err)
 	}
 	return nil
 }

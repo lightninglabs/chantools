@@ -57,11 +57,11 @@ func (c *removeChannelCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
-		return fmt.Errorf("error opening channel DB: %v", err)
+		return fmt.Errorf("error opening channel DB: %w", err)
 	}
 	defer func() {
 		if err := db.Close(); err != nil {
-			log.Errorf("Error closing DB: %v", err)
+			log.Errorf("Error closing DB: %w", err)
 		}
 	}()
 

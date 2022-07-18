@@ -1,6 +1,8 @@
 package btc
 
 import (
+	"errors"
+
 	"github.com/btcsuite/btclog"
 	"github.com/guggero/chantools/dataformat"
 )
@@ -15,7 +17,7 @@ func SummarizeChannels(apiURL string, channels []*dataformat.SummaryEntry,
 
 	for idx, channel := range channels {
 		tx, err := api.Transaction(channel.FundingTXID)
-		if err == ErrTxNotFound {
+		if errors.Is(err, ErrTxNotFound) {
 			log.Errorf("Funding TX %s not found. Ignoring.",
 				channel.FundingTXID)
 			channel.ChanExists = false

@@ -67,7 +67,7 @@ phone]
 func (c *vanityGenCommand) Execute(_ *cobra.Command, _ []string) error {
 	prefixBytes, err := hex.DecodeString(c.Prefix)
 	if err != nil {
-		return fmt.Errorf("hex decoding of prefix failed: %v", err)
+		return fmt.Errorf("hex decoding of prefix failed: %w", err)
 	}
 
 	if len(prefixBytes) < 2 {
@@ -131,9 +131,7 @@ func (c *vanityGenCommand) Execute(_ *cobra.Command, _ []string) error {
 				}
 				pubKeyBytes := rootKey.PubKeyBytes()
 
-				if bytes.HasPrefix(
-					pubKeyBytes, prefixBytes,
-				) {
+				if bytes.HasPrefix(pubKeyBytes, prefixBytes) {
 					seed, err := aezeed.New(
 						aezeed.CipherSeedVersion,
 						&entropy, time.Now(),

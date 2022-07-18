@@ -75,7 +75,7 @@ blocks) transaction *or* they have a watch tower looking out for them.
 func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Check that we have a channel DB.
@@ -84,7 +84,7 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 
 	// Parse channel entries from any of the possible input files.
@@ -132,6 +132,7 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 		if localCommitTx == nil {
 			log.Errorf("Cannot force-close, no local commit TX "+
 				"for channel %s", channelEntry.ChannelPoint)
+
 			continue
 		}
 

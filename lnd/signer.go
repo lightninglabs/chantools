@@ -24,6 +24,7 @@ type Signer struct {
 
 func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor) (input.Signature, error) {
+
 	witnessScript := signDesc.WitnessScript
 
 	// First attempt to fetch the private key which corresponds to the
@@ -84,21 +85,21 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	}
 	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
 	if err != nil {
-		return fmt.Errorf("error signing with our key: %v", err)
+		return fmt.Errorf("error signing with our key: %w", err)
 	}
 	ourSig := append(ourSigRaw.Serialize(), byte(txscript.SigHashAll))
 
 	// Great, we were able to create our sig, let's add it to the PSBT.
 	updater, err := psbt.NewUpdater(packet)
 	if err != nil {
-		return fmt.Errorf("error creating PSBT updater: %v", err)
+		return fmt.Errorf("error creating PSBT updater: %w", err)
 	}
 	status, err := updater.Sign(
 		inputIndex, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
 		witnessScript,
 	)
 	if err != nil {
-		return fmt.Errorf("error adding signature to PSBT: %v", err)
+		return fmt.Errorf("error adding signature to PSBT: %w", err)
 	}
 	if status != 0 {
 		return fmt.Errorf("unexpected status for signature update, "+

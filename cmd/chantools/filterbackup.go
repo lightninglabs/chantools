@@ -51,7 +51,7 @@ channels (identified by their funding transaction outpoints).`,
 func (c *filterBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Parse discard filter.
@@ -74,7 +74,7 @@ func filterChannelBackup(multiFile *chanbackup.MultiFile, ring keychain.KeyRing,
 
 	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {
-		return fmt.Errorf("could not extract multi file: %v", err)
+		return fmt.Errorf("could not extract multi file: %w", err)
 	}
 
 	keep := make([]chanbackup.Single, 0, len(multi.StaticBackups))

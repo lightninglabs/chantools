@@ -103,27 +103,27 @@ func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	parsedPath, err := ParsePath(path)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not parse derivation "+
-			"path: %v", err)
+			"path: %w", err)
 	}
 	derivedKey, err := DeriveChildren(extendedKey, parsedPath)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not derive children: "+
-			"%v", err)
+			"%w", err)
 	}
 	pubKey, err := derivedKey.ECPubKey()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not derive public "+
-			"key: %v", err)
+			"key: %w", err)
 	}
 
 	privKey, err := derivedKey.ECPrivKey()
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not derive private "+
-			"key: %v", err)
+			"key: %w", err)
 	}
 	wif, err := btcutil.NewWIF(privKey, params, true)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not encode WIF: %v",
+		return nil, nil, nil, fmt.Errorf("could not encode WIF: %w",
 			err)
 	}
 
@@ -135,11 +135,11 @@ func PrivKeyFromPath(extendedKey *hdkeychain.ExtendedKey,
 
 	derivedKey, err := DeriveChildren(extendedKey, path)
 	if err != nil {
-		return nil, fmt.Errorf("could not derive children: %v", err)
+		return nil, fmt.Errorf("could not derive children: %w", err)
 	}
 	privKey, err := derivedKey.ECPrivKey()
 	if err != nil {
-		return nil, fmt.Errorf("could not derive private key: %v", err)
+		return nil, fmt.Errorf("could not derive private key: %w", err)
 	}
 	return privKey, nil
 }
@@ -158,7 +158,7 @@ func ShaChainFromPath(extendedKey *hdkeychain.ExtendedKey, path []uint32,
 		revRoot, err := chainhash.NewHash(privKey.Serialize())
 		if err != nil {
 			return nil, fmt.Errorf("could not create revocation "+
-				"root hash: %v", err)
+				"root hash: %w", err)
 		}
 		return shachain.NewRevocationProducer(*revRoot), nil
 	}
@@ -220,7 +220,7 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 	// First parse address to get targetHash from it later.
 	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to decode address %s: %v",
+		return nil, false, fmt.Errorf("unable to decode address %s: %w",
 			addr, err)
 	}
 
@@ -322,7 +322,7 @@ func P2PKHAddr(pubKey *btcec.PublicKey,
 	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
 	addrP2PKH, err := btcutil.NewAddressPubKeyHash(hash160, params)
 	if err != nil {
-		return nil, fmt.Errorf("could not create address: %v", err)
+		return nil, fmt.Errorf("could not create address: %w", err)
 	}
 
 	return addrP2PKH, nil
@@ -341,11 +341,11 @@ func NP2WKHAddr(pubKey *btcec.PublicKey,
 	hash160 := btcutil.Hash160(pubKey.SerializeCompressed())
 	addrP2WKH, err := btcutil.NewAddressWitnessPubKeyHash(hash160, params)
 	if err != nil {
-		return nil, fmt.Errorf("could not create address: %v", err)
+		return nil, fmt.Errorf("could not create address: %w", err)
 	}
 	script, err := txscript.PayToAddrScript(addrP2WKH)
 	if err != nil {
-		return nil, fmt.Errorf("could not create script: %v", err)
+		return nil, fmt.Errorf("could not create script: %w", err)
 	}
 	return btcutil.NewAddressScriptHash(script, params)
 }
@@ -356,7 +356,7 @@ func P2AnchorStaticRemote(pubKey *btcec.PublicKey,
 
 	commitScript, err := input.CommitScriptToRemoteConfirmed(pubKey)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create script: %v", err)
+		return nil, nil, fmt.Errorf("could not create script: %w", err)
 	}
 	scriptHash := sha256.Sum256(commitScript)
 	p2wsh, err := btcutil.NewAddressWitnessScriptHash(scriptHash[:], params)

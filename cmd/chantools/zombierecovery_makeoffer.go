@@ -70,12 +70,12 @@ a counter offer.`,
 	return cc.cmd
 }
 
-func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command, // nolint:gocyclo
+func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 	_ []string) error {
 
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	if c.FeeRate == 0 {
@@ -84,23 +84,23 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command, // nolint:goc
 
 	node1Bytes, err := ioutil.ReadFile(c.Node1)
 	if err != nil {
-		return fmt.Errorf("error reading node1 key file %s: %v",
+		return fmt.Errorf("error reading node1 key file %s: %w",
 			c.Node1, err)
 	}
 	node2Bytes, err := ioutil.ReadFile(c.Node2)
 	if err != nil {
-		return fmt.Errorf("error reading node2 key file %s: %v",
+		return fmt.Errorf("error reading node2 key file %s: %w",
 			c.Node2, err)
 	}
 	keys1, keys2 := &match{}, &match{}
 	decoder := json.NewDecoder(bytes.NewReader(node1Bytes))
 	if err := decoder.Decode(&keys1); err != nil {
-		return fmt.Errorf("error decoding node1 key file %s: %v",
+		return fmt.Errorf("error decoding node1 key file %s: %w",
 			c.Node1, err)
 	}
 	decoder = json.NewDecoder(bytes.NewReader(node2Bytes))
 	if err := decoder.Decode(&keys2); err != nil {
-		return fmt.Errorf("error decoding node2 key file %s: %v",
+		return fmt.Errorf("error decoding node2 key file %s: %w",
 			c.Node2, err)
 	}
 
@@ -158,7 +158,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command, // nolint:goc
 		extendedKey, lnd.IdentityPath(chainParams), chainParams,
 	)
 	if err != nil {
-		return fmt.Errorf("error deriving identity pubkey: %v", err)
+		return fmt.Errorf("error deriving identity pubkey: %w", err)
 	}
 
 	pubKeyStr := hex.EncodeToString(pubKey.SerializeCompressed())
@@ -211,13 +211,13 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command, // nolint:goc
 	for idx, pubKeyHex := range ourKeys {
 		ourPubKeys[idx], err = pubKeyFromHex(pubKeyHex)
 		if err != nil {
-			return fmt.Errorf("error parsing our pubKey: %v", err)
+			return fmt.Errorf("error parsing our pubKey: %w", err)
 		}
 	}
 	for idx, pubKeyHex := range theirKeys {
 		theirPubKeys[idx], err = pubKeyFromHex(pubKeyHex)
 		if err != nil {
-			return fmt.Errorf("error parsing their pubKey: %v", err)
+			return fmt.Errorf("error parsing their pubKey: %w", err)
 		}
 	}
 
@@ -233,7 +233,7 @@ channelLoop:
 				)
 				if err != nil {
 					return fmt.Errorf("error matching "+
-						"keys to script: %v", err)
+						"keys to script: %w", err)
 				}
 
 				if match {
@@ -264,7 +264,7 @@ channelLoop:
 	for idx, channel := range keys1.Channels {
 		op, err := lnd.ParseOutpoint(channel.ChanPoint)
 		if err != nil {
-			return fmt.Errorf("error parsing channel out point: %v",
+			return fmt.Errorf("error parsing channel out point: %w",
 				err)
 		}
 		channel.txid = op.Hash.String()
@@ -333,7 +333,7 @@ channelLoop:
 	// Our output.
 	pkScript, err := lnd.GetP2WPKHScript(ourPayoutAddr, chainParams)
 	if err != nil {
-		return fmt.Errorf("error parsing our payout address: %v", err)
+		return fmt.Errorf("error parsing our payout address: %w", err)
 	}
 	ourTxOut := &wire.TxOut{
 		PkScript: pkScript,
@@ -343,7 +343,7 @@ channelLoop:
 	// Their output
 	pkScript, err = lnd.GetP2WPKHScript(theirPayoutAddr, chainParams)
 	if err != nil {
-		return fmt.Errorf("error parsing their payout address: %v", err)
+		return fmt.Errorf("error parsing their payout address: %w", err)
 	}
 	theirTxOut := &wire.TxOut{
 		PkScript: pkScript,
@@ -378,7 +378,7 @@ channelLoop:
 	}
 	packet, err := psbt.NewFromUnsignedTx(tx)
 	if err != nil {
-		return fmt.Errorf("error creating PSBT from TX: %v", err)
+		return fmt.Errorf("error creating PSBT from TX: %w", err)
 	}
 
 	signer := &lnd.Signer{
@@ -426,7 +426,7 @@ channelLoop:
 			packet, keyDesc, utxo, txIn.SignatureScript, idx,
 		)
 		if err != nil {
-			return fmt.Errorf("error signing input %d: %v", idx,
+			return fmt.Errorf("error signing input %d: %w", idx,
 				err)
 		}
 	}
@@ -434,7 +434,7 @@ channelLoop:
 	// Looks like we're done!
 	base64, err := packet.B64Encode()
 	if err != nil {
-		return fmt.Errorf("error encoding PSBT: %v", err)
+		return fmt.Errorf("error encoding PSBT: %w", err)
 	}
 
 	fmt.Printf("Done creating offer, please send this PSBT string to \n"+

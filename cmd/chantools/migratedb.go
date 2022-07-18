@@ -45,7 +45,7 @@ func (c *migrateDBCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
-		return fmt.Errorf("error opening DB: %v", err)
+		return fmt.Errorf("error opening DB: %w", err)
 	}
 
 	return db.Close()

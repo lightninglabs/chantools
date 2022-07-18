@@ -45,7 +45,7 @@ channel.db file.`,
 func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Check that we have a backup file.
@@ -59,7 +59,7 @@ func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
 	keyRing := &lnd.HDKeyRing{

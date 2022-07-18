@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -47,7 +48,7 @@ derive private key</code>).`,
 func (c *fixOldBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Check that we have a backup file.
@@ -67,7 +68,7 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 
 	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {
-		return fmt.Errorf("could not extract multi file: %v", err)
+		return fmt.Errorf("could not extract multi file: %w", err)
 	}
 
 	log.Infof("Checking shachain root of %d channels, this might take a "+
@@ -75,11 +76,11 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 	fixedChannels := 0
 	for idx, single := range multi.StaticBackups {
 		err := ring.CheckDescriptor(single.ShaChainRootDesc)
-		switch err {
-		case nil:
+		switch {
+		case err == nil:
 			continue
 
-		case keychain.ErrCannotDerivePrivKey:
+		case errors.Is(err, keychain.ErrCannotDerivePrivKey):
 			// Fix the incorrect descriptor by deriving a default
 			// one and overwriting it in the backup.
 			log.Infof("The shachain root for channel %s could "+
@@ -97,7 +98,7 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 
 		default:
 			return fmt.Errorf("could not check shachain root "+
-				"descriptor: %v", err)
+				"descriptor: %w", err)
 		}
 	}
 	if fixedChannels == 0 {

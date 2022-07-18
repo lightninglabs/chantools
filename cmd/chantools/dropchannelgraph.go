@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"time"
+
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
@@ -13,7 +15,6 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 var (
@@ -84,7 +85,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %v", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 	defer func() { _ = db.Close() }()
 
@@ -94,12 +95,12 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	idKeyBytes, err := hex.DecodeString(c.NodeIdentityKey)
 	if err != nil {
-		return fmt.Errorf("error hex decoding node identity key: %v",
+		return fmt.Errorf("error hex decoding node identity key: %w",
 			err)
 	}
 	idKey, err := btcec.ParsePubKey(idKeyBytes)
 	if err != nil {
-		return fmt.Errorf("error parsing node identity key: %v", err)
+		return fmt.Errorf("error parsing node identity key: %w", err)
 	}
 
 	if c.SingleChannel != 0 {
@@ -138,7 +139,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 func insertOwnNodeAndChannels(idKey *btcec.PublicKey, db *channeldb.DB) error {
 	openChannels, err := db.ChannelStateDB().FetchAllOpenChannels()
 	if err != nil {
-		return fmt.Errorf("error fetching open channels: %v", err)
+		return fmt.Errorf("error fetching open channels: %w", err)
 	}
 
 	graph := db.ChannelGraph()
@@ -152,7 +153,7 @@ func insertOwnNodeAndChannels(idKey *btcec.PublicKey, db *channeldb.DB) error {
 			openChan.Capacity, openChan.FundingOutpoint,
 		)
 		if err != nil {
-			return fmt.Errorf("error creating announcement: %v",
+			return fmt.Errorf("error creating announcement: %w",
 				err)
 		}
 
@@ -221,7 +222,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 
 	var featureBuf bytes.Buffer
 	if err := chanAnn.Features.Encode(&featureBuf); err != nil {
-		log.Errorf("unable to encode features: %v", err)
+		log.Errorf("unable to encode features: %w", err)
 		return nil, nil, err
 	}
 

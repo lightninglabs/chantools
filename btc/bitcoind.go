@@ -134,11 +134,11 @@ func (c *Cli) Format(hdKey *hdkeychain.ExtendedKey, params *chaincfg.Params,
 
 	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
-		return "", fmt.Errorf("could not derive private key: %v", err)
+		return "", fmt.Errorf("could not derive private key: %w", err)
 	}
 	wif, err := btcutil.NewWIF(privKey, params, true)
 	if err != nil {
-		return "", fmt.Errorf("could not encode WIF: %v", err)
+		return "", fmt.Errorf("could not encode WIF: %w", err)
 	}
 	flags := ""
 	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
@@ -164,7 +164,7 @@ func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey,
 
 	pubKey, err := hdKey.ECPubKey()
 	if err != nil {
-		return "", fmt.Errorf("could not derive private key: %v", err)
+		return "", fmt.Errorf("could not derive private key: %w", err)
 	}
 	flags := ""
 	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
@@ -191,23 +191,23 @@ func (i *ImportWallet) Format(hdKey *hdkeychain.ExtendedKey,
 
 	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
-		return "", fmt.Errorf("could not derive private key: %v", err)
+		return "", fmt.Errorf("could not derive private key: %w", err)
 	}
 	wif, err := btcutil.NewWIF(privKey, params, true)
 	if err != nil {
-		return "", fmt.Errorf("could not encode WIF: %v", err)
+		return "", fmt.Errorf("could not encode WIF: %w", err)
 	}
 	addrP2PKH, err := lnd.P2PKHAddr(privKey.PubKey(), params)
 	if err != nil {
-		return "", fmt.Errorf("could not create address: %v", err)
+		return "", fmt.Errorf("could not create address: %w", err)
 	}
 	addrP2WKH, err := lnd.P2WKHAddr(privKey.PubKey(), params)
 	if err != nil {
-		return "", fmt.Errorf("could not create address: %v", err)
+		return "", fmt.Errorf("could not create address: %w", err)
 	}
 	addrNP2WKH, err := lnd.NP2WKHAddr(privKey.PubKey(), params)
 	if err != nil {
-		return "", fmt.Errorf("could not create address: %v", err)
+		return "", fmt.Errorf("could not create address: %w", err)
 	}
 
 	return fmt.Sprintf("%s 1970-01-01T00:00:01Z label=%s/%d/%d/ "+
@@ -234,11 +234,11 @@ func (p *Electrum) Format(hdKey *hdkeychain.ExtendedKey,
 
 	privKey, err := hdKey.ECPrivKey()
 	if err != nil {
-		return "", fmt.Errorf("could not derive private key: %v", err)
+		return "", fmt.Errorf("could not derive private key: %w", err)
 	}
 	wif, err := btcutil.NewWIF(privKey, params, true)
 	if err != nil {
-		return "", fmt.Errorf("could not encode WIF: %v", err)
+		return "", fmt.Errorf("could not encode WIF: %w", err)
 	}
 
 	prefix := "p2wpkh"

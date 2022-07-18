@@ -123,7 +123,7 @@ chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
 func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
@@ -141,7 +141,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 		graph := &lnrpc.ChannelGraph{}
 		err = jsonpb.UnmarshalString(string(graphBytes), graph)
 		if err != nil {
-			return fmt.Errorf("error parsing graph JSON: %v", err)
+			return fmt.Errorf("error parsing graph JSON: %w", err)
 		}
 
 		return backupFromGraph(graph, keyRing, multiFile)
@@ -150,7 +150,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Parse channel point of channel to fake.
 	chanOp, err := lnd.ParseOutpoint(c.ChannelPoint)
 	if err != nil {
-		return fmt.Errorf("error parsing channel point: %v", err)
+		return fmt.Errorf("error parsing channel point: %w", err)
 	}
 
 	// Now parse the remote node info.
@@ -161,23 +161,22 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	pubKeyBytes, err := hex.DecodeString(splitNodeInfo[0])
 	if err != nil {
-		return fmt.Errorf("could not parse pubkey hex string: %s", err)
+		return fmt.Errorf("could not parse pubkey hex string: %w", err)
 	}
 	nodePubkey, err := btcec.ParsePubKey(pubKeyBytes)
 	if err != nil {
-		return fmt.Errorf("could not parse pubkey: %s", err)
+		return fmt.Errorf("could not parse pubkey: %w", err)
 	}
 	host, portStr, err := net.SplitHostPort(splitNodeInfo[1])
 	if err != nil {
-		return fmt.Errorf("could not split host and port: %v",
-			err)
+		return fmt.Errorf("could not split host and port: %w", err)
 	}
 
 	var addr net.Addr
 	if tor.IsOnionHost(host) {
 		port, err := strconv.Atoi(portStr)
 		if err != nil {
-			return fmt.Errorf("could not parse port: %v", err)
+			return fmt.Errorf("could not parse port: %w", err)
 		}
 		addr = &tor.OnionAddr{
 			OnionService: host,
@@ -186,7 +185,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	} else {
 		addr, err = net.ResolveTCPAddr("tcp", splitNodeInfo[1])
 		if err != nil {
-			return fmt.Errorf("could not parse addr: %s", err)
+			return fmt.Errorf("could not parse addr: %w", err)
 		}
 	}
 
@@ -199,15 +198,15 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	blockHeight, err := strconv.ParseInt(splitChanID[0], 10, 32)
 	if err != nil {
-		return fmt.Errorf("could not parse block height: %s", err)
+		return fmt.Errorf("could not parse block height: %w", err)
 	}
 	txIndex, err := strconv.ParseInt(splitChanID[1], 10, 32)
 	if err != nil {
-		return fmt.Errorf("could not parse transaction index: %s", err)
+		return fmt.Errorf("could not parse transaction index: %w", err)
 	}
 	chanOutputIdx, err := strconv.ParseInt(splitChanID[2], 10, 32)
 	if err != nil {
-		return fmt.Errorf("could not parse output index: %s", err)
+		return fmt.Errorf("could not parse output index: %w", err)
 	}
 	shortChanID := lnwire.ShortChannelID{
 		BlockHeight: uint32(blockHeight),
@@ -235,7 +234,7 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 	// identity pubkey by just deriving it.
 	nodePubKey, err := keyRing.NodePubKey()
 	if err != nil {
-		return fmt.Errorf("error deriving node pubkey: %v", err)
+		return fmt.Errorf("error deriving node pubkey: %w", err)
 	}
 	nodePubKeyStr := hex.EncodeToString(nodePubKey.SerializeCompressed())
 
@@ -254,11 +253,11 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 
 		peerPubKeyBytes, err := hex.DecodeString(peerPubKeyStr)
 		if err != nil {
-			return fmt.Errorf("error parsing hex: %v", err)
+			return fmt.Errorf("error parsing hex: %w", err)
 		}
 		peerPubKey, err := btcec.ParsePubKey(peerPubKeyBytes)
 		if err != nil {
-			return fmt.Errorf("error parsing pubkey: %v", err)
+			return fmt.Errorf("error parsing pubkey: %w", err)
 		}
 
 		peer, err := lnd.FindNode(graph, peerPubKeyStr)
@@ -274,7 +273,7 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 				)
 				if err != nil {
 					return fmt.Errorf("error parsing "+
-						"tor address: %v", err)
+						"tor address: %w", err)
 				}
 
 				continue
@@ -283,7 +282,7 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 				"tcp", peerAddr.Addr,
 			)
 			if err != nil {
-				return fmt.Errorf("could not parse addr: %s",
+				return fmt.Errorf("could not parse addr: %w",
 					err)
 			}
 		}
@@ -291,7 +290,7 @@ func backupFromGraph(graph *lnrpc.ChannelGraph, keyRing *lnd.HDKeyRing,
 		shortChanID := lnwire.NewShortChanIDFromInt(channel.ChannelId)
 		chanOp, err := lnd.ParseOutpoint(channel.ChanPoint)
 		if err != nil {
-			return fmt.Errorf("error parsing channel point: %v",
+			return fmt.Errorf("error parsing channel point: %w",
 				err)
 		}
 
@@ -314,7 +313,7 @@ func writeBackups(singles []chanbackup.Single, keyRing keychain.KeyRing,
 	var packed bytes.Buffer
 	err := newMulti.PackToWriter(&packed, keyRing)
 	if err != nil {
-		return fmt.Errorf("unable to multi-pack backups: %v", err)
+		return fmt.Errorf("unable to multi-pack backups: %w", err)
 	}
 
 	return multiFile.UpdateAndSwap(packed.Bytes())

@@ -99,7 +99,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	extendedKey, birthday, err := c.rootKey.readWithBirthday()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// The btcwallet gives the birthday a slack of 48 hours, let's do the
@@ -127,7 +127,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 	case c.DerivationPath != "":
 		derivationPath, err := lnd.ParsePath(c.DerivationPath)
 		if err != nil {
-			return fmt.Errorf("error parsing path: %v", err)
+			return fmt.Errorf("error parsing path: %w", err)
 		}
 		strPaths = []string{c.DerivationPath}
 		paths = [][]uint32{derivationPath}
@@ -139,7 +139,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 	case c.LndPaths:
 		strPaths, paths, err = lnd.AllDerivationPaths(chainParams)
 		if err != nil {
-			return fmt.Errorf("error getting lnd paths: %v", err)
+			return fmt.Errorf("error getting lnd paths: %w", err)
 		}
 	}
 
@@ -153,7 +153,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		var err error
 		writer, err = os.Create(fileName)
 		if err != nil {
-			return fmt.Errorf("error creating result file %s: %v",
+			return fmt.Errorf("error creating result file %s: %w",
 				fileName, err)
 		}
 	}
@@ -164,7 +164,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		c.RescanFrom, exporter, writer,
 	)
 	if err != nil {
-		return fmt.Errorf("error exporting keys: %v", err)
+		return fmt.Errorf("error exporting keys: %w", err)
 	}
 
 	return nil

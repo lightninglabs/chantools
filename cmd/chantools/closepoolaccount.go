@@ -121,7 +121,7 @@ obtained by running 'pool accounts list' `,
 func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Make sure sweep addr is set.
@@ -132,17 +132,17 @@ func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Parse account outpoint and auctioneer key.
 	outpoint, err := lnd.ParseOutpoint(c.Outpoint)
 	if err != nil {
-		return fmt.Errorf("error parsing account outpoint: %v", err)
+		return fmt.Errorf("error parsing account outpoint: %w", err)
 	}
 
 	auctioneerKeyBytes, err := hex.DecodeString(c.AuctioneerKey)
 	if err != nil {
-		return fmt.Errorf("error decoding auctioneer key: %v", err)
+		return fmt.Errorf("error decoding auctioneer key: %w", err)
 	}
 
 	auctioneerKey, err := btcec.ParsePubKey(auctioneerKeyBytes)
 	if err != nil {
-		return fmt.Errorf("error parsing auctioneer key: %v", err)
+		return fmt.Errorf("error parsing auctioneer key: %w", err)
 	}
 
 	// Set default values.
@@ -169,7 +169,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	tx, err := api.Transaction(outpoint.Hash.String())
 	if err != nil {
-		return fmt.Errorf("error looking up TX %s: %v",
+		return fmt.Errorf("error looking up TX %s: %w",
 			outpoint.Hash.String(), err)
 	}
 
@@ -180,7 +180,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	pkScript, err := hex.DecodeString(txOut.ScriptPubkey)
 	if err != nil {
-		return fmt.Errorf("error decoding pk script %s: %v",
+		return fmt.Errorf("error decoding pk script %s: %w",
 			txOut.ScriptPubkey, err)
 	}
 	log.Debugf("Brute forcing pk script %x for outpoint %v", pkScript,
@@ -195,7 +195,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}
 	accountBaseKey, err := lnd.DeriveChildren(extendedKey, path)
 	if err != nil {
-		return fmt.Errorf("error deriving account base key: %v", err)
+		return fmt.Errorf("error deriving account base key: %w", err)
 	}
 
 	// Try our luck.
@@ -204,7 +204,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		maxNumAccounts, maxNumBatchKeys, pkScript,
 	)
 	if err != nil {
-		return fmt.Errorf("error brute forcing account script: %v", err)
+		return fmt.Errorf("error brute forcing account script: %w", err)
 	}
 
 	log.Debugf("Found pool account %s", acct.String())
@@ -260,7 +260,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}
 	sig, err := signer.SignOutputRaw(sweepTx, signDesc)
 	if err != nil {
-		return fmt.Errorf("error signing sweep tx: %v", err)
+		return fmt.Errorf("error signing sweep tx: %w", err)
 	}
 	ourSig := append(sig.Serialize(), byte(signDesc.HashType))
 	sweepTx.TxIn[0].Witness = poolscript.SpendExpiry(
@@ -314,13 +314,13 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 		accountExtendedKey, err := accountBaseKey.DeriveNonStandard(i)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving account key: "+
-				"%v", err)
+				"%w", err)
 		}
 
 		accountPrivKey, err := accountExtendedKey.ECPrivKey()
 		if err != nil {
 			return nil, fmt.Errorf("error deriving private key: "+
-				"%v", err)
+				"%w", err)
 		}
 		log.Debugf("Trying trader key %x...",
 			accountPrivKey.PubKey().SerializeCompressed())
@@ -328,7 +328,7 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 		sharedKey, err := lnd.ECDH(accountPrivKey, auctioneerKey)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving shared key: "+
-				"%v", err)
+				"%w", err)
 		}
 
 		// The next loop is over the batch keys.
@@ -350,7 +350,7 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 				)
 				if err != nil {
 					return nil, fmt.Errorf("error "+
-						"deriving script: %v", err)
+						"deriving script: %w", err)
 				}
 
 				traderKeyTweak := poolscript.TraderKeyTweak(
@@ -406,12 +406,12 @@ func fastScript(expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
 
 		currentScript, err := builder.Script()
 		if err != nil {
-			return 0, fmt.Errorf("error building script: %v", err)
+			return 0, fmt.Errorf("error building script: %w", err)
 		}
 
 		currentPkScript, err := input.WitnessScriptHash(currentScript)
 		if err != nil {
-			return 0, fmt.Errorf("error hashing script: %v", err)
+			return 0, fmt.Errorf("error hashing script: %w", err)
 		}
 		if bytes.Equal(currentPkScript, targetScript) {
 			return block, nil

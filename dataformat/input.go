@@ -131,7 +131,7 @@ type ChannelDBFile struct {
 func (c *ChannelDBFile) AsSummaryEntries() ([]*SummaryEntry, error) {
 	channels, err := c.DB.FetchAllChannels()
 	if err != nil {
-		return nil, fmt.Errorf("error fetching channels: %v", err)
+		return nil, fmt.Errorf("error fetching channels: %w", err)
 	}
 	result := make([]*SummaryEntry, len(channels))
 	for idx, channel := range channels {
@@ -180,7 +180,7 @@ func FundingTXIndex(chanPoint string) uint32 {
 func parseInt(str string) uint64 {
 	index, err := strconv.Atoi(str)
 	if err != nil {
-		panic(fmt.Errorf("error parsing '%s' as int: %v", str, err))
+		panic(fmt.Errorf("error parsing '%s' as int: %w", str, err))
 	}
 	return uint64(index)
 }

@@ -42,7 +42,7 @@ channel.backup file in a human readable format.`,
 func (c *dumpBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// Check that we have a backup file.
@@ -62,7 +62,7 @@ func dumpChannelBackup(multiFile *chanbackup.MultiFile,
 
 	multi, err := multiFile.ExtractMulti(ring)
 	if err != nil {
-		return fmt.Errorf("could not extract multi file: %v", err)
+		return fmt.Errorf("could not extract multi file: %w", err)
 	}
 	content := dump.BackupMulti{
 		Version:       multi.Version,

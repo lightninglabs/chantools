@@ -209,7 +209,7 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 	case f.FromChannelDB != "":
 		db, err := lnd.OpenDB(f.FromChannelDB, true)
 		if err != nil {
-			return nil, fmt.Errorf("error opening channel DB: %v",
+			return nil, fmt.Errorf("error opening channel DB: %w",
 				err)
 		}
 		target = &dataformat.ChannelDBFile{DB: db.ChannelStateDB()}

@@ -50,7 +50,7 @@ func (c *zombieRecoverySignOfferCommand) Execute(_ *cobra.Command,
 
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	signer := &lnd.Signer{
@@ -63,7 +63,7 @@ func (c *zombieRecoverySignOfferCommand) Execute(_ *cobra.Command,
 		bytes.NewReader([]byte(c.Psbt)), true,
 	)
 	if err != nil {
-		return fmt.Errorf("error decoding PSBT: %v", err)
+		return fmt.Errorf("error decoding PSBT: %w", err)
 	}
 
 	return signOffer(extendedKey, packet, signer)
@@ -80,7 +80,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 		0,
 	})
 	if err != nil {
-		return fmt.Errorf("could not derive local multisig key: %v",
+		return fmt.Errorf("could not derive local multisig key: %w",
 			err)
 	}
 
@@ -114,11 +114,11 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 		totalOutput += txOut.Value
 		pkScript, err := txscript.ParsePkScript(txOut.PkScript)
 		if err != nil {
-			return fmt.Errorf("error parsing pk script: %v", err)
+			return fmt.Errorf("error parsing pk script: %w", err)
 		}
 		addr, err := pkScript.Address(chainParams)
 		if err != nil {
-			return fmt.Errorf("error parsing address: %v", err)
+			return fmt.Errorf("error parsing address: %w", err)
 		}
 		fmt.Printf("\tSend %d sats to address %s\n", txOut.Value, addr)
 	}
@@ -138,7 +138,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 		targetKey, err := btcec.ParsePubKey(unknown.Value)
 		if err != nil {
 			return fmt.Errorf("invalid PSBT, proprietary key has "+
-				"invalid pubkey: %v", err)
+				"invalid pubkey: %w", err)
 		}
 
 		// Now we can look up the local key and check the PSBT further,
@@ -148,7 +148,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 		)
 		if err != nil {
 			return fmt.Errorf("could not find local multisig key: "+
-				"%v", err)
+				"%w", err)
 		}
 		if len(packet.Inputs[idx].WitnessScript) == 0 {
 			return fmt.Errorf("invalid PSBT, missing witness " +
@@ -164,7 +164,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 			packet, *localKeyDesc, utxo, witnessScript, idx,
 		)
 		if err != nil {
-			return fmt.Errorf("error adding partial signature: %v",
+			return fmt.Errorf("error adding partial signature: %w",
 				err)
 		}
 	}
@@ -173,16 +173,16 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 	// extract the final TX.
 	err = psbt.MaybeFinalizeAll(packet)
 	if err != nil {
-		return fmt.Errorf("error finalizing PSBT: %v", err)
+		return fmt.Errorf("error finalizing PSBT: %w", err)
 	}
 	finalTx, err := psbt.Extract(packet)
 	if err != nil {
-		return fmt.Errorf("unable to extract final TX: %v", err)
+		return fmt.Errorf("unable to extract final TX: %w", err)
 	}
 	var buf bytes.Buffer
 	err = finalTx.Serialize(&buf)
 	if err != nil {
-		return fmt.Errorf("unable to serialize final TX: %v", err)
+		return fmt.Errorf("unable to serialize final TX: %w", err)
 	}
 
 	fmt.Printf("Success, we counter signed the PSBT and extracted the "+

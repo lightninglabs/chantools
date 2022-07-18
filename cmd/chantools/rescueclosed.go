@@ -108,7 +108,7 @@ chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
 func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	// What way of recovery has the user chosen? From summary and DB or from
@@ -117,7 +117,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	case c.ChannelDB != "":
 		db, err := lnd.OpenDB(c.ChannelDB, true)
 		if err != nil {
-			return fmt.Errorf("error opening rescue DB: %v", err)
+			return fmt.Errorf("error opening rescue DB: %w", err)
 		}
 
 		// Parse channel entries from any of the possible input files.
@@ -129,7 +129,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		commitPoints, err := commitPointsFromDB(db.ChannelStateDB())
 		if err != nil {
 			return fmt.Errorf("error reading commit points from "+
-				"db: %v", err)
+				"db: %w", err)
 		}
 		return rescueClosedChannels(extendedKey, entries, commitPoints)
 
@@ -137,18 +137,18 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		// First parse address to get targetPubKeyHash from it later.
 		targetAddr, err := btcutil.DecodeAddress(c.Addr, chainParams)
 		if err != nil {
-			return fmt.Errorf("error parsing addr: %v", err)
+			return fmt.Errorf("error parsing addr: %w", err)
 		}
 
 		// Now parse the commit point.
 		commitPointRaw, err := hex.DecodeString(c.CommitPoint)
 		if err != nil {
-			return fmt.Errorf("error decoding commit point: %v",
+			return fmt.Errorf("error decoding commit point: %w",
 				err)
 		}
 		commitPoint, err := btcec.ParsePubKey(commitPointRaw)
 		if err != nil {
-			return fmt.Errorf("error parsing commit point: %v", err)
+			return fmt.Errorf("error parsing commit point: %w", err)
 		}
 
 		return rescueClosedChannel(extendedKey, targetAddr, commitPoint)
@@ -163,7 +163,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		commitPoints, err := commitPointsFromLogFile(c.LndLog)
 		if err != nil {
 			return fmt.Errorf("error parsing commit points from "+
-				"log file: %v", err)
+				"log file: %w", err)
 		}
 		return rescueClosedChannels(extendedKey, entries, commitPoints)
 
@@ -201,7 +201,7 @@ func commitPointsFromDB(chanDb *channeldb.ChannelStateDB) ([]*btcec.PublicKey,
 func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
 	logFileBytes, err := ioutil.ReadFile(lndLog)
 	if err != nil {
-		return nil, fmt.Errorf("error reading log file %s: %v", lndLog,
+		return nil, fmt.Errorf("error reading log file %s: %w", lndLog,
 			err)
 	}
 
@@ -213,12 +213,12 @@ func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
 		commitPointBytes, err := hex.DecodeString(groups[1])
 		if err != nil {
 			return nil, fmt.Errorf("error parsing commit point "+
-				"hex: %v", err)
+				"hex: %w", err)
 		}
 
 		commitPoint, err := btcec.ParsePubKey(commitPointBytes)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing commit point: %v",
+			return nil, fmt.Errorf("error parsing commit point: %w",
 				err)
 		}
 
@@ -282,7 +282,7 @@ outer:
 
 				continue outer
 
-			case err == errAddrNotFound:
+			case errors.Is(err, errAddrNotFound):
 
 			default:
 				return err
@@ -343,7 +343,7 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 
 		return nil
 
-	case err == errAddrNotFound:
+	case errors.Is(err, errAddrNotFound):
 		// Try again as a static_remote_key.
 
 	default:
@@ -358,7 +358,7 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 
 		return nil
 
-	case err == errAddrNotFound:
+	case errors.Is(err, errAddrNotFound):
 		return fmt.Errorf("did not find private key for address %v",
 			addr)
 
@@ -372,7 +372,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 		addr, chainParams,
 	)
 	if err != nil {
-		return "", fmt.Errorf("error parsing addr: %v", err)
+		return "", fmt.Errorf("error parsing addr: %w", err)
 	}
 	if scriptHash {
 		return "", fmt.Errorf("address must be a P2WPKH address")
@@ -473,7 +473,6 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 			fmt.Printf("Filled cache with %d of %d keys.\n",
 				i, cacheSize)
 		}
-
 	}
 	return nil
 }

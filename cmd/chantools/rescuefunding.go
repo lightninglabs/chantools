@@ -139,7 +139,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
-		return fmt.Errorf("error reading root key: %v", err)
+		return fmt.Errorf("error reading root key: %w", err)
 	}
 
 	signer := &lnd.Signer{
@@ -158,13 +158,13 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	case c.ChannelDB != "" && c.DBChannelPoint != "":
 		db, err := lnd.OpenDB(c.ChannelDB, true)
 		if err != nil {
-			return fmt.Errorf("error opening rescue DB: %v", err)
+			return fmt.Errorf("error opening rescue DB: %w", err)
 		}
 
 		// Parse channel point of channel to rescue as known to the DB.
 		databaseOp, err = lnd.ParseOutpoint(c.DBChannelPoint)
 		if err != nil {
-			return fmt.Errorf("error parsing channel point: %v",
+			return fmt.Errorf("error parsing channel point: %w",
 				err)
 		}
 
@@ -174,7 +174,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		)
 		if err != nil {
 			return fmt.Errorf("error loading pending channel %s "+
-				"from DB: %v", databaseOp, err)
+				"from DB: %w", databaseOp, err)
 		}
 
 		if pendingChan.LocalChanCfg.MultiSigKey.PubKey == nil {
@@ -193,12 +193,12 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		remoteKeyBytes, err := hex.DecodeString(c.RemotePubKey)
 		if err != nil {
 			return fmt.Errorf("error hex decoding remote pubkey: "+
-				"%v", err)
+				"%w", err)
 		}
 
 		remotePubKey, err = btcec.ParsePubKey(remoteKeyBytes)
 		if err != nil {
-			return fmt.Errorf("error parsing remote pubkey: %v",
+			return fmt.Errorf("error parsing remote pubkey: %w",
 				err)
 		}
 
@@ -210,7 +210,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 		privKey, err := signer.FetchPrivKey(localKeyDesc)
 		if err != nil {
-			return fmt.Errorf("error deriving local key: %v", err)
+			return fmt.Errorf("error deriving local key: %w", err)
 		}
 		localKeyDesc.PubKey = privKey.PubKey()
 	}
@@ -223,7 +223,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		chainOp, err = lnd.ParseOutpoint(c.ConfirmedOutPoint)
 		if err != nil {
 			return fmt.Errorf("error parsing confirmed channel "+
-				"point: %v", err)
+				"point: %w", err)
 		}
 	}
 
@@ -231,7 +231,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	// fee estimation.
 	sweepScript, err := lnd.GetP2WPKHScript(c.SweepAddr, chainParams)
 	if err != nil {
-		return fmt.Errorf("error parsing sweep addr: %v", err)
+		return fmt.Errorf("error parsing sweep addr: %w", err)
 	}
 
 	return rescueFunding(
@@ -265,7 +265,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 
 	pkScript, err := hex.DecodeString(apiUtxo.ScriptPubkey)
 	if err != nil {
-		return fmt.Errorf("error decoding pk script %s: %v",
+		return fmt.Errorf("error decoding pk script %s: %w",
 			apiUtxo.ScriptPubkey, err)
 	}
 	utxo := &wire.TxOut{
@@ -280,7 +280,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		remoteKey.SerializeCompressed(), utxo.Value,
 	)
 	if err != nil {
-		return fmt.Errorf("could not derive funding script: %v", err)
+		return fmt.Errorf("could not derive funding script: %w", err)
 	}
 
 	// Some last sanity check that we're working with the correct data.
@@ -317,7 +317,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 	}
 	packet, err := psbt.NewFromUnsignedTx(wireTx)
 	if err != nil {
-		return fmt.Errorf("error creating PSBT: %v", err)
+		return fmt.Errorf("error creating PSBT: %w", err)
 	}
 	packet.Inputs[0] = pIn
 
@@ -326,13 +326,13 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		packet, *localKeyDesc, utxo, witnessScript, 0,
 	)
 	if err != nil {
-		return fmt.Errorf("error adding partial signature: %v", err)
+		return fmt.Errorf("error adding partial signature: %w", err)
 	}
 
 	// We're done, we can now output the finished PSBT.
 	base64, err := packet.B64Encode()
 	if err != nil {
-		return fmt.Errorf("error encoding PSBT: %v", err)
+		return fmt.Errorf("error encoding PSBT: %w", err)
 	}
 
 	fmt.Printf("Partially signed transaction created. Send this to the "+

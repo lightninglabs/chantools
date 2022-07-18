@@ -1,7 +1,6 @@
 package main
 
 import (
-	"os"
 	"testing"
 
 	"github.com/guggero/chantools/btc"
@@ -17,12 +16,10 @@ func TestShowRootKey(t *testing.T) {
 		rootKey: &rootKey{},
 	}
 
-	err := os.Setenv(lnd.MnemonicEnvName, seedAezeedNoPassphrase)
-	require.NoError(t, err)
-	err = os.Setenv(lnd.PassphraseEnvName, "-")
-	require.NoError(t, err)
+	t.Setenv(lnd.MnemonicEnvName, seedAezeedNoPassphrase)
+	t.Setenv(lnd.PassphraseEnvName, "-")
 
-	err = show.Execute(nil, nil)
+	err := show.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(rootKeyAezeed)
@@ -36,18 +33,16 @@ func TestShowRootKeyBIP39(t *testing.T) {
 		rootKey: &rootKey{BIP39: true},
 	}
 
-	err := os.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
-	require.NoError(t, err)
-	err = os.Setenv(btc.BIP39PassphraseEnvName, "-")
-	require.NoError(t, err)
+	t.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
+	t.Setenv(btc.BIP39PassphraseEnvName, "-")
 
-	err = show.Execute(nil, nil)
+	err := show.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(rootKeyBip39)
 }
 
-func TestShowRootKeyBIP39WithPassphre(t *testing.T) {
+func TestShowRootKeyBIP39WithPassphrase(t *testing.T) {
 	h := newHarness(t)
 
 	// Derive the root key from the BIP39 seed.
@@ -55,12 +50,10 @@ func TestShowRootKeyBIP39WithPassphre(t *testing.T) {
 		rootKey: &rootKey{BIP39: true},
 	}
 
-	err := os.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
-	require.NoError(t, err)
-	err = os.Setenv(btc.BIP39PassphraseEnvName, testPassPhrase)
-	require.NoError(t, err)
+	t.Setenv(btc.BIP39MnemonicEnvName, seedBip39)
+	t.Setenv(btc.BIP39PassphraseEnvName, testPassPhrase)
 
-	err = show.Execute(nil, nil)
+	err := show.Execute(nil, nil)
 	require.NoError(t, err)
 
 	h.assertLogContains(rootKeyBip39Passphrase)

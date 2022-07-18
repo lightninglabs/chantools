@@ -8,6 +8,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/guggero/chantools/lnd"
+	"github.com/stretchr/testify/require"
 )
 
 var sweepTimeLockManualCases = []struct {
@@ -43,14 +44,10 @@ func TestSweepTimeLockManual(t *testing.T) {
 		lockScript, err := lnd.GetP2WSHScript(
 			tc.timeLockAddr, &chaincfg.RegressionNetParams,
 		)
-		if err != nil {
-			t.Fatalf("invalid time lock addr: %v", err)
-		}
+		require.NoError(t, err)
 
 		baseKey, err := hdkeychain.NewKeyFromString(tc.baseKey)
-		if err != nil {
-			t.Fatalf("couldn't derive base key: %v", err)
-		}
+		require.NoError(t, err)
 
 		revPubKeyBytes, _ := hex.DecodeString(tc.remoteRevPubKey)
 		revPubKey, _ := btcec.ParsePubKey(revPubKeyBytes)
@@ -59,8 +56,6 @@ func TestSweepTimeLockManual(t *testing.T) {
 			baseKey, revPubKey, defaultCsvLimit, lockScript,
 			tc.keyIndex,
 		)
-		if err != nil {
-			t.Fatalf("couldn't derive key: %v", err)
-		}
+		require.NoError(t, err)
 	}
 }
