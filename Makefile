@@ -1,4 +1,5 @@
 PKG := github.com/guggero/chantools
+TOOLS_DIR := tools
 
 GOTEST := GO111MODULE=on go test -v
 
@@ -7,15 +8,12 @@ GO_BIN := ${GOPATH}/bin
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 GOLIST := go list $(PKG)/... | grep -v '/vendor/'
 
-LINT_BIN := $(GO_BIN)/golangci-lint
-LINT_PKG := github.com/golangci/golangci-lint/cmd/golangci-lint
-LINT_COMMIT := v1.18.0
-LINT = $(LINT_BIN) run -v
+GOIMPORTS_BIN := $(GO_BIN)/gosimports
+GOIMPORTS_PKG := github.com/rinchsan/gosimports/cmd/gosimports
 
-DEPGET := cd /tmp && GO111MODULE=on go get -v
-GOBUILD := GO111MODULE=on go build -v
-GOINSTALL := GO111MODULE=on go install -v
-GOTEST := GO111MODULE=on go test -v
+GOBUILD := go build -v
+GOINSTALL := go install -v
+GOTEST := go test -v
 XARGS := xargs -L 1
 
 VERSION_TAG = $(shell git describe --tags)
@@ -38,6 +36,8 @@ ifneq ($(sys),)
 BUILD_SYSTEM = $(sys)
 endif
 
+DOCKER_TOOLS = docker run -v $$(pwd):/build chantools-tools
+
 TEST_FLAGS = -test.timeout=20m
 
 UNIT := $(GOLIST) | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
@@ -52,9 +52,9 @@ endef
 
 default: build
 
-$(LINT_BIN):
-	@$(call print, "Fetching linter")
-	$(DEPGET) $(LINT_PKG)@$(LINT_COMMIT)
+$(GOIMPORTS_BIN):
+	@$(call print, "Installing goimports.")
+	cd $(TOOLS_DIR); go install -trimpath $(GOIMPORTS_PKG)
 
 unit: 
 	@$(call print, "Running unit tests.")
@@ -73,13 +73,19 @@ release:
 	rm -rf chantools-v*
 	./release.sh build-release "$(VERSION_TAG)" "$(BUILD_SYSTEM)" "$(RELEASE_LDFLAGS)"
 
-fmt:
+docker-tools:
+	@$(call print, "Building tools docker image.")
+	docker build -q -t chantools-tools $(TOOLS_DIR)
+
+fmt: $(GOIMPORTS_BIN)
+	@$(call print, "Fixing imports.")
+	gosimports -w $(GOFILES_NOVENDOR)
 	@$(call print, "Formatting source.")
 	gofmt -l -w -s $(GOFILES_NOVENDOR)
 
-lint: $(LINT_BIN)
+lint: docker-tools
 	@$(call print, "Linting source.")
-	$(LINT)
+	$(DOCKER_TOOLS) golangci-lint run -v $(LINT_WORKERS)
 
 docs: install
 	@$(call print, "Rendering docs.")

@@ -9,6 +9,13 @@ linters-settings:
   gofmt:
     # simplify code: gofmt with `-s` option, true by default
     simplify: true
+  whitespace:
+    multi-func: true
+    multi-if: true
+  tagliatelle: 
+    case:
+      rules:
+        json: snake
 
 linters:
   enable-all: true
@@ -17,7 +24,18 @@ linters:
     - gosec
     - funlen
     - maligned
+    - varnamelen
+    - wrapcheck
+    - testpackage
+    - gomnd
+    - goerr113
+    - exhaustruct
+    
+    # deprecated
     - interfacer
+    - scopelint
+    - golint
+    - exhaustivestruct
 
 issues:
   exclude-rules:
