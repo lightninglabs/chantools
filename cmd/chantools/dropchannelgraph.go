@@ -46,7 +46,7 @@ without removing any other data.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.14.1-beta or later after using this command!'`,
+run lnd v0.15.1-beta or later after using this command!'`,
 		Example: `chantools dropchannelgraph \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--node_identity_key 03......
@@ -106,7 +106,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.SingleChannel != 0 {
 		log.Infof("Removing single channel %d", c.SingleChannel)
 		return db.ChannelGraph().DeleteChannelEdges(
-			true, c.SingleChannel,
+			true, false, c.SingleChannel,
 		)
 	}
 

@@ -24,6 +24,8 @@ chantools dumpchannels \
       --channeldb string   lnd channel.db file to dump channels from
       --closed             dump closed channels instead of open
   -h, --help               help for dumpchannels
+      --pending            dump pending channels instead of open
+      --waiting_close      dump waiting close channels instead of open
 ```
 
 ### Options inherited from parent commands

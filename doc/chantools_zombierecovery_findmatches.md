@@ -20,7 +20,8 @@ chantools zombierecovery findmatches [flags]
 ```
 chantools zombierecovery findmatches \
 	--registrations data.txt \
-	--channel_graph lncli_describegraph.json
+	--channel_graph lncli_describegraph.json \
+	--pairs_done pairs-done.json
 ```
 
 ### Options
@@ -29,6 +30,7 @@ chantools zombierecovery findmatches \
       --apiurl string          API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --channel_graph string   the full LN channel graph in the JSON format that the 'lncli describegraph' returns
   -h, --help                   help for findmatches
+      --pairs_done string      an optional file containing all pairs that have already been contacted and shouldn't be matched again
       --registrations string   the raw data.txt where the registrations are stored in
 ```
 

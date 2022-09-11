@@ -12,7 +12,7 @@ without removing any other data.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.14.1-beta or later after using this command!'
+run lnd v0.15.1-beta or later after using this command!'
 
 ```
 chantools dropchannelgraph [flags]
@@ -22,19 +22,23 @@ chantools dropchannelgraph [flags]
 
 ```
 chantools dropchannelgraph \
-	--channeldb ~/.lnd/data/graph/mainnet/channel.db
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
+	--node_identity_key 03......
 
 chantools dropchannelgraph \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--single_channel 726607861215512345
+	--node_identity_key 03......
 ```
 
 ### Options
 
 ```
-      --channeldb string      lnd channel.db file to dump channels from
-  -h, --help                  help for dropchannelgraph
-      --single_channel uint   the single channel identified by its short channel ID (CID) to remove from the graph
+      --channeldb string           lnd channel.db file to dump channels from
+      --fix_only                   fix an already empty graph by re-adding the own node's channels
+  -h, --help                       help for dropchannelgraph
+      --node_identity_key string   your node's identity public key
+      --single_channel uint        the single channel identified by its short channel ID (CID) to remove from the graph
 ```
 
 ### Options inherited from parent commands
