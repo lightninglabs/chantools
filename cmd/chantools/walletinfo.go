@@ -56,6 +56,7 @@ var (
 type walletInfoCommand struct {
 	WalletDB    string
 	WithRootKey bool
+	DumpAddrs   bool
 
 	cmd *cobra.Command
 }
@@ -84,6 +85,10 @@ in the wallet.db.`,
 	cc.cmd.Flags().BoolVar(
 		&cc.WithRootKey, "withrootkey", false, "print BIP32 HD root "+
 			"key of wallet to standard out",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.DumpAddrs, "dumpaddrs", false, "print all addresses, "+
+			"including private keys",
 	)
 
 	return cc.cmd
@@ -161,7 +166,7 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print the wallet info and if requested the root key.
-	identityKey, scopeInfo, err := walletInfo(w)
+	identityKey, scopeInfo, err := walletInfo(w, c.DumpAddrs)
 	if err != nil {
 		return err
 	}
@@ -187,7 +192,9 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func walletInfo(w *wallet.Wallet) (*btcec.PublicKey, string, error) {
+func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
+	error) {
+
 	keyRing := keychain.NewBtcWalletKeyRing(w, chainParams.HDCoinType)
 	idPrivKey, err := keyRing.DerivePrivKey(keychain.KeyDescriptor{
 		KeyLocator: keychain.KeyLocator{
@@ -218,7 +225,38 @@ func walletInfo(w *wallet.Wallet) (*btcec.PublicKey, string, error) {
 		return nil, "", err
 	}
 
-	return idPrivKey.PubKey(), scopeNp2wkh + scopeP2wkh, nil
+	scopeAddrs := "\n"
+	if dumpAddrs {
+		printAddr := func(a waddrmgr.ManagedAddress) error {
+			pka := a.(waddrmgr.ManagedPubKeyAddress)
+			scope, path, _ := pka.DerivationInfo()
+			scopeAddrs += fmt.Sprintf(
+				"path=m/%d'/%d'/%d'/%d/%d, pubkey=%x, "+
+					"addr=%s, hash160=%x\n",
+				scope.Purpose, scope.Coin, path.InternalAccount,
+				path.Branch, path.Index,
+				pka.PubKey().SerializeCompressed(),
+				pka.Address().String(), a.AddrHash(),
+			)
+			return nil
+		}
+		for _, mgr := range w.Manager.ActiveScopedKeyManagers() {
+			err = walletdb.View(
+				w.Database(), func(tx walletdb.ReadTx) error {
+
+					waddrmgrNs := tx.ReadBucket(
+						waddrmgrNamespaceKey,
+					)
+
+					return mgr.ForEachAccountAddress(
+						waddrmgrNs, 0, printAddr,
+					)
+				},
+			)
+		}
+	}
+
+	return idPrivKey.PubKey(), scopeNp2wkh + scopeP2wkh + scopeAddrs, nil
 }
 
 func printScopeInfo(name string, w *wallet.Wallet,
