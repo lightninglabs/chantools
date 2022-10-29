@@ -228,7 +228,10 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 	scopeAddrs := "\n"
 	if dumpAddrs {
 		printAddr := func(a waddrmgr.ManagedAddress) error {
-			pka := a.(waddrmgr.ManagedPubKeyAddress)
+			pka, ok := a.(waddrmgr.ManagedPubKeyAddress)
+			if !ok {
+				return fmt.Errorf("key is not a managed pubkey")
+			}
 			scope, path, _ := pka.DerivationInfo()
 			scopeAddrs += fmt.Sprintf(
 				"path=m/%d'/%d'/%d'/%d/%d, pubkey=%x, "+
@@ -243,7 +246,6 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 		for _, mgr := range w.Manager.ActiveScopedKeyManagers() {
 			err = walletdb.View(
 				w.Database(), func(tx walletdb.ReadTx) error {
-
 					waddrmgrNs := tx.ReadBucket(
 						waddrmgrNamespaceKey,
 					)
@@ -253,6 +255,9 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 					)
 				},
 			)
+			if err != nil {
+				return nil, "", err
+			}
 		}
 	}
 
