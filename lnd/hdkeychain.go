@@ -3,6 +3,7 @@ package lnd
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,7 @@ const (
 	HardenedKeyStart            = uint32(hdkeychain.HardenedKeyStart)
 	WalletDefaultDerivationPath = "m/84'/0'/0'"
 	WalletBIP49DerivationPath   = "m/49'/0'/0'"
+	WalletBIP86DerivationPath   = "m/86'/0'/0'"
 	LndDerivationPath           = "m/1017'/%d'/%d'"
 )
 
@@ -199,6 +201,7 @@ func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 	pathStrings := []string{
 		WalletBIP49DerivationPath,
 		WalletDefaultDerivationPath,
+		WalletBIP86DerivationPath,
 		mkPath(keychain.KeyFamilyPaymentBase),
 	}
 	paths := make([][]uint32, len(pathStrings))
@@ -348,6 +351,15 @@ func NP2WKHAddr(pubKey *btcec.PublicKey,
 		return nil, fmt.Errorf("could not create script: %w", err)
 	}
 	return btcutil.NewAddressScriptHash(script, params)
+}
+
+func P2TRAddr(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressTaproot, error) {
+
+	taprootKey := txscript.ComputeTaprootKeyNoScript(pubKey)
+	return btcutil.NewAddressTaproot(
+		schnorr.SerializePubKey(taprootKey), params,
+	)
 }
 
 func P2AnchorStaticRemote(pubKey *btcec.PublicKey,

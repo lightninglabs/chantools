@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/guggero/chantools/lnd"
@@ -16,6 +15,7 @@ Public key: 			%x
 Extended public key (xpub): 	%v
 Address: 			%v
 Legacy address: 		%v
+Taproot address:                %v
 Private key (WIF): 		%s
 Extended private key (xprv):	%s
 `
@@ -99,6 +99,11 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 		return fmt.Errorf("could not create address: %w", err)
 	}
 
+	addrP2TR, err := lnd.P2TRAddr(pubKey, chainParams)
+	if err != nil {
+		return fmt.Errorf("could not create address: %w", err)
+	}
+
 	privKey, xPriv := na, na
 	if !neuter {
 		privKey, xPriv = wif.String(), child.String()
@@ -107,7 +112,7 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	result := fmt.Sprintf(
 		deriveKeyFormat, path, chainParams.Name,
 		pubKey.SerializeCompressed(), neutered, addrP2WKH, addrP2PKH,
-		privKey, xPriv,
+		addrP2TR, privKey, xPriv,
 	)
 	fmt.Println(result)
 

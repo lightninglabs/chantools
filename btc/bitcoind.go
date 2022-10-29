@@ -209,11 +209,15 @@ func (i *ImportWallet) Format(hdKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return "", fmt.Errorf("could not create address: %w", err)
 	}
+	addrP2TR, err := lnd.P2TRAddr(privKey.PubKey(), params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
 
 	return fmt.Sprintf("%s 1970-01-01T00:00:01Z label=%s/%d/%d/ "+
-		"# addr=%s,%s,%s", wif.String(), path, branch, index,
+		"# addr=%s,%s,%s,%s", wif.String(), path, branch, index,
 		addrP2PKH.EncodeAddress(), addrNP2WKH.EncodeAddress(),
-		addrP2WKH.EncodeAddress(),
+		addrP2WKH.EncodeAddress(), addrP2TR.EncodeAddress(),
 	), nil
 }
 
