@@ -232,18 +232,27 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 			if !ok {
 				return fmt.Errorf("key is not a managed pubkey")
 			}
+
+			privKey, err := pka.PrivKey()
+			if err != nil {
+				return fmt.Errorf("error deriving priv key: %v",
+					err)
+			}
+
 			scope, path, _ := pka.DerivationInfo()
 			scopeAddrs += fmt.Sprintf(
 				"path=m/%d'/%d'/%d'/%d/%d, pubkey=%x, "+
-					"addr=%s, hash160=%x\n",
+					"addr=%s, hash160=%x, priv=%x\n",
 				scope.Purpose, scope.Coin, path.InternalAccount,
 				path.Branch, path.Index,
 				pka.PubKey().SerializeCompressed(),
 				pka.Address().String(), a.AddrHash(),
+				privKey.Serialize(),
 			)
 			return nil
 		}
 		for _, mgr := range w.Manager.ActiveScopedKeyManagers() {
+			var addrs []waddrmgr.ManagedAddress
 			err = walletdb.View(
 				w.Database(), func(tx walletdb.ReadTx) error {
 					waddrmgrNs := tx.ReadBucket(
@@ -251,12 +260,22 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 					)
 
 					return mgr.ForEachAccountAddress(
-						waddrmgrNs, 0, printAddr,
+						waddrmgrNs, 0,
+						func(a waddrmgr.ManagedAddress) error {
+							addrs = append(addrs, a)
+							return nil
+						},
 					)
 				},
 			)
 			if err != nil {
 				return nil, "", err
+			}
+
+			for _, addr := range addrs {
+				if err := printAddr(addr); err != nil {
+					return nil, "", err
+				}
 			}
 		}
 	}
