@@ -29,22 +29,22 @@ type KeyExporter interface {
 
 // ParseFormat parses the given format name and returns its associated print
 // function.
-func ParseFormat(format string) KeyExporter {
+func ParseFormat(format string) (KeyExporter, error) {
 	switch format {
-	default:
-		fallthrough
-
 	case FormatCli:
-		return &Cli{}
+		return &Cli{}, nil
 
 	case FormatCliWatchOnly:
-		return &CliWatchOnly{}
+		return &CliWatchOnly{}, nil
 
 	case FormatImportwallet:
-		return &ImportWallet{}
+		return &ImportWallet{}, nil
 
 	case FormatElectrum:
-		return &Electrum{}
+		return &Electrum{}, nil
+
+	default:
+		return nil, fmt.Errorf("invalid format: %s", format)
 	}
 }
 
@@ -166,12 +166,32 @@ func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return "", fmt.Errorf("could not derive private key: %w", err)
 	}
+
+	addrP2PKH, err := lnd.P2PKHAddr(pubKey, params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+	addrP2WKH, err := lnd.P2WKHAddr(pubKey, params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+	addrNP2WKH, err := lnd.NP2WKHAddr(pubKey, params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+	addrP2TR, err := lnd.P2TRAddr(pubKey, params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+
 	flags := ""
 	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
 		flags = " -testnet"
 	}
-	return fmt.Sprintf("bitcoin-cli%s importpubkey %x \"%s/%d/%d/\" false",
-		flags, pubKey.SerializeCompressed(), path, branch, index), nil
+	return fmt.Sprintf("bitcoin-cli%s importpubkey %x \"%s/%d/%d/\" "+
+		"false # addr=%s,%s,%s,%s", flags, pubKey.SerializeCompressed(),
+		path, branch, index, addrP2PKH, addrP2WKH, addrNP2WKH,
+		addrP2TR), nil
 }
 
 func (c *CliWatchOnly) Trailer(birthdayBlock uint32) string {

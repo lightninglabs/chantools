@@ -124,6 +124,10 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		c.DerivationPath = lnd.WalletDefaultDerivationPath
 		fallthrough
 
+	case c.DerivationPath == "-":
+		strPaths = []string{""}
+		paths = [][]uint32{{}}
+
 	case c.DerivationPath != "":
 		derivationPath, err := lnd.ParsePath(c.DerivationPath)
 		if err != nil {
@@ -158,7 +162,11 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	exporter := btc.ParseFormat(c.Format)
+	exporter, err := btc.ParseFormat(c.Format)
+	if err != nil {
+		return fmt.Errorf("error parsing format: %w", err)
+	}
+
 	err = btc.ExportKeys(
 		extendedKey, strPaths, paths, chainParams, c.RecoveryWindow,
 		c.RescanFrom, exporter, writer,
