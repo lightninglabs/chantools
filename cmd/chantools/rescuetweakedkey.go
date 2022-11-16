@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	AddrNotFoundErr = fmt.Errorf("address not found")
+	ErrAddrNotFound = fmt.Errorf("address not found")
 )
 
 type rescueTweakedKeyCommand struct {
@@ -153,7 +153,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 	}
 
 	return fmt.Errorf("%w: key for address %v not found after %d attempts",
-		AddrNotFoundErr, targetAddr.String(), max)
+		ErrAddrNotFound, targetAddr.String(), max)
 }
 
 func pubKeyMatchesAddr(pubKey *btcec.PublicKey, addr btcutil.Address) (bool,

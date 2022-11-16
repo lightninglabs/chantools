@@ -235,7 +235,7 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 
 			privKey, err := pka.PrivKey()
 			if err != nil {
-				return fmt.Errorf("error deriving priv key: %v",
+				return fmt.Errorf("error deriving priv key: %w",
 					err)
 			}
 
