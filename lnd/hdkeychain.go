@@ -220,20 +220,9 @@ func AllDerivationPaths(params *chaincfg.Params) ([]string, [][]uint32, error) {
 func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 	error) {
 
-	// First parse address to get targetHash from it later.
-	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
+	targetAddr, err := ParseAddress(addr, chainParams)
 	if err != nil {
-		return nil, false, fmt.Errorf("unable to decode address %s: %w",
-			addr, err)
-	}
-
-	// Make the check on the decoded address according to the active
-	// network (testnet or mainnet only).
-	if !targetAddr.IsForNet(chainParams) {
-		return nil, false, fmt.Errorf(
-			"address: %v is not valid for this network: %v",
-			targetAddr.String(), chainParams.Name,
-		)
+		return nil, false, err
 	}
 
 	// Must be a bech32 native SegWit address.
@@ -254,6 +243,29 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 			"P2WPKH or P2WSH address")
 	}
 	return targetHash, isScriptHash, nil
+}
+
+// ParseAddress attempts to parse the given address string into a native address
+// for the given network.
+func ParseAddress(addr string, chainParams *chaincfg.Params) (btcutil.Address,
+	error) {
+
+	// First parse address to get targetHash from it later.
+	targetAddr, err := btcutil.DecodeAddress(addr, chainParams)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode address %s: %w", addr,
+			err)
+	}
+
+	// Make the check on the decoded address according to the active
+	// network (testnet or mainnet only).
+	if !targetAddr.IsForNet(chainParams) {
+		return nil, fmt.Errorf("address: %v is not valid for this "+
+			"network: %v", targetAddr.String(), chainParams.Name,
+		)
+	}
+
+	return targetAddr, nil
 }
 
 func GetWitnessAddrScript(addr btcutil.Address,
