@@ -97,6 +97,7 @@ func main() {
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
 		newRescueFundingCommand(),
+		newRescueTweakedKeyCommand(),
 		newShowRootKeyCommand(),
 		newSignRescueFundingCommand(),
 		newSummaryCommand(),

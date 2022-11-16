@@ -26,6 +26,7 @@ chantools walletinfo --withrootkey \
 ### Options
 
 ```
+      --dumpaddrs         print all addresses, including private keys
   -h, --help              help for walletinfo
       --walletdb string   lnd wallet.db file to dump the contents from
       --withrootkey       print BIP32 HD root key of wallet to standard out
