@@ -118,7 +118,7 @@ Components:
     },
     "channels": [
         {
-            "short_channel_id": "61xxxxxxxxxxxxx (numerical channel ID, can be found on 1ml.com)",
+            "short_channel_id": "61xxxxxxxxxxxxx (optional, numerical channel ID, can be found on 1ml.com)",
             "chan_point": "<txid>:<output_index> (also called channel point on 1ml.com)",
             "address": "bc1q...... (the channel's output address on chain, find out by looking up the channel point on a block explorer)",
             "capacity": 123456
