@@ -83,7 +83,7 @@ func ReadMnemonicFromTerminal(params *chaincfg.Params) (*hdkeychain.ExtendedKey,
 		fmt.Printf("Input your cipher seed passphrase (press enter " +
 			"if your seed doesn't have a passphrase): ")
 		passphraseBytes, err = terminal.ReadPassword(
-			int(syscall.Stdin), // nolint
+			int(syscall.Stdin), //nolint
 		)
 		if err != nil {
 			return nil, err

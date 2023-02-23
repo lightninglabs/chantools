@@ -53,6 +53,10 @@ linters:
     - scopelint
     - golint
     - exhaustivestruct
+    - nosnakecase
+    - deadcode
+    - structcheck
+    - varcheck
 
 issues:
   exclude-rules:

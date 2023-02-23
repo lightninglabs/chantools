@@ -89,7 +89,7 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 			"if your seed doesn't have a passphrase): ")
 		var err error
 		passphraseBytes, err = terminal.ReadPassword(
-			int(syscall.Stdin), // nolint
+			int(syscall.Stdin), //nolint
 		)
 		if err != nil {
 			return nil, time.Unix(0, 0), err

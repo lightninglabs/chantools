@@ -9,7 +9,7 @@ import (
 func AllNodeChannels(graph *lnrpc.ChannelGraph,
 	nodePubKey string) []*lnrpc.ChannelEdge {
 
-	var result []*lnrpc.ChannelEdge // nolint:prealloc
+	var result []*lnrpc.ChannelEdge //nolint:prealloc
 	for _, edge := range graph.Edges {
 		if edge.Node1Pub != nodePubKey && edge.Node2Pub != nodePubKey {
 			continue
@@ -24,7 +24,7 @@ func AllNodeChannels(graph *lnrpc.ChannelGraph,
 func FindCommonEdges(graph *lnrpc.ChannelGraph, node1,
 	node2 string) []*lnrpc.ChannelEdge {
 
-	var result []*lnrpc.ChannelEdge // nolint:prealloc
+	var result []*lnrpc.ChannelEdge //nolint:prealloc
 	for _, edge := range graph.Edges {
 		if edge.Node1Pub != node1 && edge.Node2Pub != node1 {
 			continue

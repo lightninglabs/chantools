@@ -240,9 +240,9 @@ func readInput(input string) ([]byte, error) {
 
 func passwordFromConsole(userQuery string) ([]byte, error) {
 	// Read from terminal (if there is one).
-	if terminal.IsTerminal(int(syscall.Stdin)) { // nolint
+	if terminal.IsTerminal(int(syscall.Stdin)) { //nolint
 		fmt.Print(userQuery)
-		pw, err := terminal.ReadPassword(int(syscall.Stdin)) // nolint
+		pw, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint
 		if err != nil {
 			return nil, err
 		}

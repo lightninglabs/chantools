@@ -127,7 +127,7 @@ func maybeTweakPrivKey(signDesc *input.SignDescriptor,
 // k is our private key, and P is the public key, we perform the following
 // operation:
 //
-//  sx := k*P s := sha256(sx.SerializeCompressed())
+//	sx := k*P s := sha256(sx.SerializeCompressed())
 func ECDH(privKey *btcec.PrivateKey, pub *btcec.PublicKey) ([32]byte, error) {
 	var (
 		pubJacobian btcec.JacobianPoint
