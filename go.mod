@@ -1,5 +1,7 @@
 module github.com/guggero/chantools
 
+go 1.18
+
 require (
 	github.com/btcsuite/btcd v0.23.4
 	github.com/btcsuite/btcd/btcec/v2 v2.3.1
@@ -155,5 +157,3 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
-
-go 1.17

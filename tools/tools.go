@@ -1,5 +1,5 @@
-//go:build tools
-// +build tools
+//go:build buildtools
+// +build buildtools
 
 package lnd
 
