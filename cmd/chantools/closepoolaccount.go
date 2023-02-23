@@ -6,11 +6,13 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/guggero/chantools/btc"
 	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/pool/account"
 	"github.com/lightninglabs/pool/poolscript"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -23,14 +25,12 @@ const (
 	defaultMaxNumBlocks        = 200000
 	defaultMaxNumAccounts      = 20
 	defaultMaxNumBatchKeys     = 500
+	oddByte                    = input.PubKeyFormatCompressedOdd
 )
 
 var (
-	initialBatchKeyBytes, _ = hex.DecodeString(
-		"02824d0cbac65e01712124c50ff2cc74ce22851d7b444c1bf2ae66afefb8" +
-			"eaf27f",
-	)
-	initialBatchKey, _ = btcec.ParsePubKey(initialBatchKeyBytes)
+	initialBatchKeyBytes, _ = hex.DecodeString(account.InitialBatchKey)
+	initialBatchKey, _      = btcec.ParsePubKey(initialBatchKeyBytes)
 
 	mainnetAuctioneerKeyHex = "028e87bdd134238f8347f845d9ecc827b843d0d1e2" +
 		"7cdcb46da704d916613f4fce"
@@ -186,6 +186,11 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	log.Debugf("Brute forcing pk script %x for outpoint %v", pkScript,
 		outpoint)
 
+	script, err := txscript.ParsePkScript(pkScript)
+	if err != nil {
+		return fmt.Errorf("error parsing pk script: %w", err)
+	}
+
 	// Let's derive the account key family's extended key first.
 	path := []uint32{
 		lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
@@ -199,7 +204,22 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}
 
 	// Try our luck.
-	acct, err := bruteForceAccountScript(
+	var (
+		acct           *poolAccount
+		accountVersion account.Version
+	)
+	switch script.Class() {
+	case txscript.WitnessV0ScriptHashTy:
+		accountVersion = account.VersionInitialNoVersion
+
+	case txscript.WitnessV1TaprootTy:
+		accountVersion = account.VersionTaprootEnabled
+
+	default:
+		return fmt.Errorf("unsupported script class %v", script.Class())
+	}
+
+	acct, err = bruteForceAccountScript(
 		accountBaseKey, auctioneerKey, minExpiry, maxNumBlocks,
 		maxNumAccounts, maxNumBatchKeys, pkScript,
 	)
@@ -220,8 +240,40 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
-	var estimator input.TxWeightEstimator
-	estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
+	var (
+		estimator input.TxWeightEstimator
+		signDesc  = &input.SignDescriptor{
+			KeyDesc: keychain.KeyDescriptor{
+				KeyLocator: keychain.KeyLocator{
+					Family: poolscript.AccountKeyFamily,
+					Index:  acct.keyIndex,
+				},
+			},
+			SingleTweak:   acct.keyTweak,
+			WitnessScript: acct.witnessScript,
+			Output: &wire.TxOut{
+				PkScript: pkScript,
+				Value:    sweepValue,
+			},
+			InputIndex: 0,
+			PrevOutputFetcher: txscript.NewCannedPrevOutputFetcher(
+				pkScript, sweepValue,
+			),
+		}
+	)
+
+	switch accountVersion {
+	case account.VersionInitialNoVersion:
+		estimator.AddWitnessInput(poolscript.ExpiryWitnessSize)
+		signDesc.HashType = txscript.SigHashAll
+		signDesc.SignMethod = input.WitnessV0SignMethod
+		signDesc.SigHashes = input.NewTxSigHashesV0Only(sweepTx)
+
+	case account.VersionTaprootEnabled:
+		estimator.AddWitnessInput(poolscript.TaprootExpiryWitnessSize)
+		signDesc.HashType = txscript.SigHashDefault
+		signDesc.SignMethod = input.TaprootScriptSpendSignMethod
+	}
 	estimator.AddP2WKHOutput()
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
 	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
@@ -240,32 +292,23 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		totalFee, sweepValue, estimator.Weight())
 
 	// Create the sign descriptor for the input then sign the transaction.
-	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
-	signDesc := &input.SignDescriptor{
-		KeyDesc: keychain.KeyDescriptor{
-			KeyLocator: keychain.KeyLocator{
-				Family: poolscript.AccountKeyFamily,
-				Index:  acct.keyIndex,
-			},
-		},
-		SingleTweak:   acct.keyTweak,
-		WitnessScript: acct.witnessScript,
-		Output: &wire.TxOut{
-			PkScript: pkScript,
-			Value:    sweepValue,
-		},
-		InputIndex: 0,
-		SigHashes:  sigHashes,
-		HashType:   txscript.SigHashAll,
-	}
 	sig, err := signer.SignOutputRaw(sweepTx, signDesc)
 	if err != nil {
 		return fmt.Errorf("error signing sweep tx: %w", err)
 	}
-	ourSig := append(sig.Serialize(), byte(signDesc.HashType))
-	sweepTx.TxIn[0].Witness = poolscript.SpendExpiry(
-		acct.witnessScript, ourSig,
-	)
+
+	switch accountVersion {
+	case account.VersionInitialNoVersion:
+		ourSig := append(sig.Serialize(), byte(signDesc.HashType))
+		sweepTx.TxIn[0].Witness = poolscript.SpendExpiry(
+			acct.witnessScript, ourSig,
+		)
+
+	case account.VersionTaprootEnabled:
+		sweepTx.TxIn[0].Witness = poolscript.SpendExpiryTaproot(
+			acct.witnessScript, sig.Serialize(), acct.controlBlock,
+		)
+	}
 
 	var buf bytes.Buffer
 	err = sweepTx.Serialize(&buf)
@@ -296,20 +339,22 @@ type poolAccount struct {
 	batchKey      []byte
 	keyTweak      []byte
 	witnessScript []byte
+	controlBlock  []byte
+	version       poolscript.Version
 }
 
 func (a *poolAccount) String() string {
 	return fmt.Sprintf("key_index=%d, expiry=%d, shared_key=%x, "+
-		"batch_key=%x, key_tweak=%x, witness_script=%x",
+		"batch_key=%x, key_tweak=%x, witness_script=%x, version=%d",
 		a.keyIndex, a.expiry, a.sharedKey[:], a.batchKey, a.keyTweak,
-		a.witnessScript)
+		a.witnessScript, a.version)
 }
 
 func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
-	auctioneerKey *btcec.PublicKey, minExpiry, maxNumBlocks, maxNumAccounts,
+	auctioneerKey *btcec.PublicKey, minExpiry, maxExpiry, maxNumAccounts,
 	maxNumBatchKeys uint32, targetScript []byte) (*poolAccount, error) {
 
-	// The outer-most loop is over the possible accounts.
+	// The outermost loop is over the possible accounts.
 	for i := uint32(0); i < maxNumAccounts; i++ {
 		accountExtendedKey, err := accountBaseKey.DeriveNonStandard(i)
 		if err != nil {
@@ -337,36 +382,31 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 		for batchKeyIndex < maxNumBatchKeys {
 			// And then finally the loop over the actual account
 			// expiry in blocks.
-			block, err := fastScript(
-				minExpiry, maxNumBlocks,
+			acct, err := fastScript(
+				i, minExpiry, maxExpiry,
 				accountPrivKey.PubKey(), auctioneerKey,
 				currentBatchKey, sharedKey, targetScript,
 			)
 			if err == nil {
-				witnessScript, err := poolscript.AccountWitnessScript(
-					block, accountPrivKey.PubKey(),
-					auctioneerKey, currentBatchKey,
-					sharedKey,
-				)
-				if err != nil {
-					return nil, fmt.Errorf("error "+
-						"deriving script: %w", err)
-				}
-
-				traderKeyTweak := poolscript.TraderKeyTweak(
-					currentBatchKey, sharedKey,
-					accountPrivKey.PubKey(),
-				)
-
-				batchKey := currentBatchKey.SerializeCompressed()
-				return &poolAccount{
-					keyIndex:      i,
-					expiry:        block,
-					sharedKey:     sharedKey,
-					batchKey:      batchKey,
-					keyTweak:      traderKeyTweak,
-					witnessScript: witnessScript,
-				}, nil
+				return acct, nil
+			}
+			acct, err = fastScriptTaproot(
+				poolscript.VersionTaprootMuSig2, i, minExpiry,
+				maxExpiry, accountPrivKey.PubKey(),
+				auctioneerKey, currentBatchKey, sharedKey,
+				targetScript,
+			)
+			if err == nil {
+				return acct, nil
+			}
+			acct, err = fastScriptTaproot(
+				poolscript.VersionTaprootMuSig2V100RC2, i,
+				minExpiry, maxExpiry,
+				accountPrivKey.PubKey(), auctioneerKey,
+				currentBatchKey, sharedKey, targetScript,
+			)
+			if err == nil {
+				return acct, nil
 			}
 
 			currentBatchKey = poolscript.IncrementKey(
@@ -381,13 +421,25 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 	return nil, fmt.Errorf("account script not derived")
 }
 
-func fastScript(expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
+func fastScript(keyIndex, expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
 	batchKey *btcec.PublicKey, secret [32]byte,
-	targetScript []byte) (uint32, error) {
+	targetScript []byte) (*poolAccount, error) {
+
+	script, err := txscript.ParsePkScript(targetScript)
+	if err != nil {
+		return nil, err
+	}
+	if script.Class() != txscript.WitnessV0ScriptHashTy {
+		return nil, fmt.Errorf("incompatible script class")
+	}
 
 	traderKeyTweak := poolscript.TraderKeyTweak(batchKey, secret, traderKey)
-	tweakedTraderKey := input.TweakPubKeyWithTweak(traderKey, traderKeyTweak)
-	tweakedAuctioneerKey := input.TweakPubKey(auctioneerKey, tweakedTraderKey)
+	tweakedTraderKey := input.TweakPubKeyWithTweak(
+		traderKey, traderKeyTweak,
+	)
+	tweakedAuctioneerKey := input.TweakPubKey(
+		auctioneerKey, tweakedTraderKey,
+	)
 
 	for block := expiryFrom; block <= expiryTo; block++ {
 		builder := txscript.NewScriptBuilder()
@@ -406,17 +458,136 @@ func fastScript(expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
 
 		currentScript, err := builder.Script()
 		if err != nil {
-			return 0, fmt.Errorf("error building script: %w", err)
+			return nil, fmt.Errorf("error building script: %w", err)
 		}
 
 		currentPkScript, err := input.WitnessScriptHash(currentScript)
 		if err != nil {
-			return 0, fmt.Errorf("error hashing script: %w", err)
+			return nil, fmt.Errorf("error hashing script: %w", err)
 		}
-		if bytes.Equal(currentPkScript, targetScript) {
-			return block, nil
+		if !bytes.Equal(currentPkScript, targetScript) {
+			continue
 		}
+
+		return &poolAccount{
+			keyIndex:      keyIndex,
+			expiry:        block,
+			sharedKey:     secret,
+			batchKey:      batchKey.SerializeCompressed(),
+			keyTweak:      traderKeyTweak,
+			witnessScript: currentScript,
+			version:       poolscript.VersionWitnessScript,
+		}, nil
 	}
 
-	return 0, fmt.Errorf("account script not derived")
+	return nil, fmt.Errorf("account script not derived")
+}
+
+func fastScriptTaproot(scriptVersion poolscript.Version, keyIndex, expiryFrom,
+	expiryTo uint32, traderKey, auctioneerKey, batchKey *btcec.PublicKey,
+	secret [32]byte, targetScript []byte) (*poolAccount, error) {
+
+	parsedScript, err := txscript.ParsePkScript(targetScript)
+	if err != nil {
+		return nil, err
+	}
+	if parsedScript.Class() != txscript.WitnessV1TaprootTy {
+		return nil, fmt.Errorf("incompatible script class")
+	}
+
+	traderKeyTweak := poolscript.TraderKeyTweak(batchKey, secret, traderKey)
+	tweakedTraderKey := input.TweakPubKeyWithTweak(
+		traderKey, traderKeyTweak,
+	)
+
+	var muSig2Version input.MuSig2Version
+	switch scriptVersion {
+	// The v0.4.0 MuSig2 implementation requires the keys to be serialized
+	// using the Schnorr (32-byte x-only) serialization format.
+	case poolscript.VersionTaprootMuSig2:
+		muSig2Version = input.MuSig2Version040
+
+		var err error
+		auctioneerKey, err = schnorr.ParsePubKey(
+			schnorr.SerializePubKey(auctioneerKey),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing auctioneer key: "+
+				"%w", err)
+		}
+
+		traderKey, err = schnorr.ParsePubKey(
+			schnorr.SerializePubKey(traderKey),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing trader key: %w",
+				err)
+		}
+
+	// The v1.0.0-rc2 MuSig2 implementation works with the regular, 33-byte
+	// compressed keys, so we can just pass them in as they are.
+	case poolscript.VersionTaprootMuSig2V100RC2:
+		muSig2Version = input.MuSig2Version100RC2
+
+	default:
+		return nil, fmt.Errorf("invalid account version <%d>",
+			scriptVersion)
+	}
+
+	for block := expiryFrom; block <= expiryTo; block++ {
+		builder := txscript.NewScriptBuilder()
+
+		builder.AddData(schnorr.SerializePubKey(tweakedTraderKey))
+		builder.AddOp(txscript.OP_CHECKSIGVERIFY)
+
+		builder.AddInt64(int64(block))
+		builder.AddOp(txscript.OP_CHECKLOCKTIMEVERIFY)
+
+		script, err := builder.Script()
+		if err != nil {
+			return nil, err
+		}
+
+		rootHash := txscript.NewBaseTapLeaf(script).TapHash()
+		aggregateKey, err := input.MuSig2CombineKeys(
+			muSig2Version, []*btcec.PublicKey{
+				auctioneerKey, traderKey,
+			}, true, &input.MuSig2Tweaks{
+				TaprootTweak: rootHash[:],
+			},
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error combining keys: %w", err)
+		}
+
+		currentKey := schnorr.SerializePubKey(aggregateKey.FinalKey)
+		if !bytes.Equal(currentKey, targetScript[2:]) {
+			continue
+		}
+
+		odd := aggregateKey.FinalKey.SerializeCompressed()[0] == oddByte
+		controlBlock := txscript.ControlBlock{
+			InternalKey:     aggregateKey.PreTweakedKey,
+			LeafVersion:     txscript.BaseLeafVersion,
+			OutputKeyYIsOdd: odd,
+		}
+		blockBytes, err := controlBlock.ToBytes()
+		if err != nil {
+			return nil, fmt.Errorf("error serializing control "+
+				"block: %w", err)
+		}
+
+		return &poolAccount{
+			keyIndex:      keyIndex,
+			expiry:        block,
+			sharedKey:     secret,
+			batchKey:      batchKey.SerializeCompressed(),
+			keyTweak:      traderKeyTweak,
+			witnessScript: script,
+			controlBlock:  blockBytes,
+			version:       scriptVersion,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("account script not derived")
 }
