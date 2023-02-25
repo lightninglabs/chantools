@@ -89,7 +89,9 @@ func (a *ExplorerAPI) Transaction(txid string) (*TX, error) {
 
 func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
 	var txs []*TX
-	err := fetchJSON(fmt.Sprintf("%s/address/%s/txs", a.BaseURL, addr), &txs)
+	err := fetchJSON(
+		fmt.Sprintf("%s/address/%s/txs", a.BaseURL, addr), &txs,
+	)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -102,6 +104,28 @@ func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
 	}
 
 	return nil, 0, fmt.Errorf("no tx found")
+}
+
+func (a *ExplorerAPI) Spends(addr string) ([]*TX, error) {
+	var txs []*TX
+	err := fetchJSON(
+		fmt.Sprintf("%s/address/%s/txs", a.BaseURL, addr), &txs,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var spends []*TX
+	for txIndex := range txs {
+		tx := txs[txIndex]
+		for _, vin := range tx.Vin {
+			if vin.Prevout.ScriptPubkeyAddr == addr {
+				spends = append(spends, tx)
+			}
+		}
+	}
+
+	return spends, nil
 }
 
 func (a *ExplorerAPI) Unspent(addr string) ([]*Vout, error) {

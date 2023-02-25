@@ -20,13 +20,14 @@ import (
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/peer"
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.10.6"
+	version       = "0.10.7"
 	na            = "n/a"
 
 	Commit = ""
@@ -104,6 +105,7 @@ func main() {
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
 		newSweepRemoteClosedCommand(),
+		newTriggerForceCloseCommand(),
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
 		newZombieRecoveryCommand(),
@@ -263,6 +265,7 @@ func setupLogging() {
 	setSubLogger("CHAN", log)
 	addSubLogger("CHDB", channeldb.UseLogger)
 	addSubLogger("BCKP", chanbackup.UseLogger)
+	addSubLogger("PEER", peer.UseLogger)
 	err := logWriter.InitLogRotator("./results/chantools.log", 10, 3)
 	if err != nil {
 		panic(err)

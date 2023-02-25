@@ -277,27 +277,34 @@ Usage:
 
 Available Commands:
   chanbackup          Create a channel.backup file from a channel database
+  closepoolaccount    Tries to close a Pool account that has expired
   compactdb           Create a copy of a channel.db file in safe/read-only mode
+  deletepayments      Remove all (failed) payments from a channel DB
   derivekey           Derive a key with a specific derivation path
   dropchannelgraph    Remove all graph related data from a channel DB
   dumpbackup          Dump the content of a channel.backup file
   dumpchannels        Dump all channel information from an lnd channel database
+  fakechanbackup      Fake a channel backup file to attempt fund recovery
   filterbackup        Filter an lnd channel.backup file and remove certain channels
   fixoldbackup        Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
   forceclose          Force-close the last state that is in the channel.db provided
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
-  help                Help about any command
   migratedb           Apply all recent lnd channel database migrations
   removechannel       Remove a single channel from the given channel DB
   rescueclosed        Try finding the private keys for funds that are in outputs of remotely force-closed channels
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
+  rescuetweakedkey    Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
   showrootkey         Extract and show the BIP32 HD root key from the 24 word lnd aezeed
   signrescuefunding   Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
   summary             Compile a summary about the current state of channels
   sweeptimelock       Sweep the force-closed state after the time lock has expired
   sweeptimelockmanual Sweep the force-closed state of a single channel manually if only a channel backup file is available
+  sweepremoteclosed   Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
+  triggerforceclose   Connect to a peer and send a custom message to trigger a force close of the specified channel
   vanitygen           Generate a seed with a custom lnd node identity public key that starts with the given prefix
   walletinfo          Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
+  zombierecovery      Try rescuing funds stuck in channels with zombie nodes
+  help                Help about any command
 
 Flags:
   -h, --help      help for chantools
@@ -336,6 +343,7 @@ Quick access:
 + [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)
 + [sweeptimelock](doc/chantools_sweeptimelock.md)
 + [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md)
++ [triggerforceclose](doc/chantools_triggerforceclose.md)
 + [vanitygen](doc/chantools_vanitygen.md)
 + [walletinfo](doc/chantools_walletinfo.md)
 + [zombierecovery](doc/chantools_zombierecovery.md)
