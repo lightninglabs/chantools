@@ -19,6 +19,8 @@ require (
 	github.com/lightninglabs/pool v0.5.7-alpha.0.20220715160511-f7c1ef26af2b
 	github.com/lightningnetwork/lnd v0.16.0-beta.rc1
 	github.com/lightningnetwork/lnd/kvdb v1.4.1
+	github.com/lightningnetwork/lnd/queue v1.1.0
+	github.com/lightningnetwork/lnd/ticker v1.1.0
 	github.com/lightningnetwork/lnd/tor v1.1.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.8.1
@@ -93,8 +95,6 @@ require (
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20221202012345-ca23184850a1 // indirect
 	github.com/lightningnetwork/lnd/clock v1.1.0 // indirect
 	github.com/lightningnetwork/lnd/healthcheck v1.2.2 // indirect
-	github.com/lightningnetwork/lnd/queue v1.1.0 // indirect
-	github.com/lightningnetwork/lnd/ticker v1.1.0 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.1.0 // indirect
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
@@ -143,11 +143,11 @@ require (
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/exp v0.0.0-20221111094246-ab4555d3164f // indirect
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20210220033141-f8bda1e9f3ba // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20210617175327-b9e0b3197ced // indirect
