@@ -90,10 +90,10 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	)
 
 	if err := writePool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start write pool: %v", err)
+		return nil, fmt.Errorf("unable to start write pool: %w", err)
 	}
 	if err := readPool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start read pool: %v", err)
+		return nil, fmt.Errorf("unable to start read pool: %w", err)
 	}
 
 	channelDB, err := channeldb.Open(os.TempDir())
@@ -108,24 +108,26 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 			return nil
 		},
-		NotifyWhenOnline: func(peerPubKey [33]byte,
-			peerChan chan<- lnpeer.Peer) {
-
+		NotifyWhenOnline: func([33]byte, chan<- lnpeer.Peer) {
 		},
 		NotifyWhenOffline: func(peerPubKey [33]byte) <-chan struct{} {
 			return make(chan struct{})
 		},
-		SelfNodeAnnouncement: func(
-			refresh bool) (lnwire.NodeAnnouncement, error) {
+		SelfNodeAnnouncement: func(bool) (lnwire.NodeAnnouncement,
+			error) {
 
 			return lnwire.NodeAnnouncement{}, nil
 		},
-		ProofMatureDelta:        0,
-		TrickleDelay:            time.Millisecond * 50,
-		RetransmitTicker:        ticker.New(time.Minute * 30),
-		RebroadcastInterval:     time.Hour * 24,
-		RotateTicker:            ticker.New(discovery.DefaultSyncerRotationInterval),
-		HistoricalSyncTicker:    ticker.New(discovery.DefaultHistoricalSyncInterval),
+		ProofMatureDelta:    0,
+		TrickleDelay:        time.Millisecond * 50,
+		RetransmitTicker:    ticker.New(time.Minute * 30),
+		RebroadcastInterval: time.Hour * 24,
+		RotateTicker: ticker.New(
+			discovery.DefaultSyncerRotationInterval,
+		),
+		HistoricalSyncTicker: ticker.New(
+			discovery.DefaultHistoricalSyncInterval,
+		),
 		NumActiveSyncers:        0,
 		MinimumBatchSize:        10,
 		SubBatchDelay:           discovery.DefaultSubBatchDelay,
@@ -134,17 +136,25 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		MaxChannelUpdateBurst:   discovery.DefaultMaxChannelUpdateBurst,
 		ChannelUpdateInterval:   discovery.DefaultChannelUpdateInterval,
 		IsAlias:                 aliasmgr.IsAlias,
-		SignAliasUpdate: func(u *lnwire.ChannelUpdate) (*ecdsa.Signature, error) {
+		SignAliasUpdate: func(
+			*lnwire.ChannelUpdate) (*ecdsa.Signature, error) {
+
 			return nil, fmt.Errorf("unimplemented")
 		},
-		FindBaseByAlias: func(alias lnwire.ShortChannelID) (lnwire.ShortChannelID, error) {
-			return lnwire.ShortChannelID{}, fmt.Errorf("unimplemented")
+		FindBaseByAlias: func(
+			lnwire.ShortChannelID) (lnwire.ShortChannelID, error) {
+
+			return lnwire.ShortChannelID{},
+				fmt.Errorf("unimplemented")
 		},
-		GetAlias: func(id lnwire.ChannelID) (lnwire.ShortChannelID, error) {
-			return lnwire.ShortChannelID{}, fmt.Errorf("unimplemented")
+		GetAlias: func(id lnwire.ChannelID) (lnwire.ShortChannelID,
+			error) {
+
+			return lnwire.ShortChannelID{},
+				fmt.Errorf("unimplemented")
 		},
-		FindChannel: func(node *btcec.PublicKey,
-			chanID lnwire.ChannelID) (*channeldb.OpenChannel, error) {
+		FindChannel: func(*btcec.PublicKey,
+			lnwire.ChannelID) (*channeldb.OpenChannel, error) {
 
 			return nil, fmt.Errorf("unimplemented")
 		},
