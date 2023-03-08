@@ -22,7 +22,7 @@ var (
 		"(?m)(?s)ID: ([0-9a-f]{66})\nContact: (.*?)\nTime: ",
 	)
 
-	ambossQueryDelay = 7 * time.Second
+	ambossQueryDelay = 4 * time.Second
 
 	initialTemplate = `SEND TO: {{.Contact}}
 
@@ -134,8 +134,7 @@ This command will be run by guggero and the result will be sent to the
 registered nodes.`,
 		Example: `chantools zombierecovery findmatches \
 	--registrations data.txt \
-	--channel_graph lncli_describegraph.json \
-	--pairs_done pairs-done.json`,
+	--ambosskey <API key>`,
 		RunE: cc.Execute,
 	}
 
@@ -332,10 +331,12 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 	error) {
 
+	offset := 0.0
+	limit := 50.0
 	variables := map[string]interface{}{
 		"pubkey": pubkey,
 		"limit":  50.0,
-		"offset": 0.0,
+		"offset": offset,
 	}
 
 	var channels []*gqChannel
@@ -346,16 +347,15 @@ func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 			return nil, err
 		}
 
-		if len(query.GetNode.GraphInfo.Channels.ChannelList.List) == 0 {
+		channelList := query.GetNode.GraphInfo.Channels.ChannelList
+		channels = append(channels, channelList.List...)
+
+		if len(channelList.List) < int(limit) {
 			break
 		}
 
-		channels = append(
-			channels,
-			query.GetNode.GraphInfo.Channels.ChannelList.List...,
-		)
-
-		variables["offset"] = variables["offset"].(float64) + 50.0
+		offset += 50.0
+		variables["offset"] = offset
 	}
 
 	return channels, nil
