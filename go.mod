@@ -18,7 +18,7 @@ require (
 	github.com/gogo/protobuf v1.3.2
 	github.com/hasura/go-graphql-client v0.9.1
 	github.com/lightninglabs/pool v0.5.7-alpha.0.20220715160511-f7c1ef26af2b
-	github.com/lightningnetwork/lnd v0.16.0-beta.rc1
+	github.com/lightningnetwork/lnd v0.16.0-beta.rc2
 	github.com/lightningnetwork/lnd/kvdb v1.4.1
 	github.com/lightningnetwork/lnd/queue v1.1.0
 	github.com/lightningnetwork/lnd/ticker v1.1.0
@@ -95,7 +95,7 @@ require (
 	github.com/lib/pq v1.10.3 // indirect
 	github.com/lightninglabs/gozmq v0.0.0-20191113021534-d20a764486bf // indirect
 	github.com/lightninglabs/neutrino v0.15.0 // indirect
-	github.com/lightninglabs/neutrino/cache v1.1.0 // indirect
+	github.com/lightninglabs/neutrino/cache v1.1.1 // indirect
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20221202012345-ca23184850a1 // indirect
 	github.com/lightningnetwork/lnd/clock v1.1.0 // indirect
 	github.com/lightningnetwork/lnd/healthcheck v1.2.2 // indirect
