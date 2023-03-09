@@ -22,7 +22,7 @@ var (
 		"(?m)(?s)ID: ([0-9a-f]{66})\nContact: (.*?)\nTime: ",
 	)
 
-	ambossQueryDelay = 4 * time.Second
+	defaultAmbossQueryDelay = 4 * time.Second
 
 	initialTemplate = `SEND TO: {{.Contact}}
 
@@ -116,6 +116,7 @@ type zombieRecoveryFindMatchesCommand struct {
 	APIURL        string
 	Registrations string
 	AmbossKey     string
+	AmbossDelay   time.Duration
 
 	cmd *cobra.Command
 }
@@ -149,6 +150,10 @@ registered nodes.`,
 	cc.cmd.Flags().StringVar(
 		&cc.AmbossKey, "ambosskey", "", "the API key for the Amboss "+
 			"GraphQL API",
+	)
+	cc.cmd.Flags().DurationVar(
+		&cc.AmbossDelay, "ambossdelay", defaultAmbossQueryDelay,
+		"the delay between each query to the Amboss GraphQL API",
 	)
 
 	return cc.cmd
@@ -194,7 +199,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 	for node1, contact1 := range registrations {
 		matches[node1] = make(map[string]*match)
 
-		time.Sleep(ambossQueryDelay)
+		time.Sleep(c.AmbossDelay)
 		log.Debugf("Fetching channels for node %d of %d", idx,
 			len(registrations))
 		idx++
