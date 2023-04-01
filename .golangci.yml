@@ -47,6 +47,7 @@ linters:
     - maintidx
     - noctx
     - gofumpt
+    - exhaustive
     
     # deprecated
     - interfacer
