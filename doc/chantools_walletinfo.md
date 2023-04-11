@@ -11,6 +11,9 @@ latter can be useful to recover funds from a wallet if the wallet password is
 still known but the seed was lost. **The 24 word seed phrase itself cannot be
 extracted** because it is hashed into the extended HD root key before storing it
 in the wallet.db.
+In case lnd was started with "--noseedbackup=true" your wallet has the default
+password. To unlock the wallet set the environment variable WALLET_PASSWORD="-"
+or simply press <enter> without entering a password when being prompted.
 
 ```
 chantools walletinfo [flags]
