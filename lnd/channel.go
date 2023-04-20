@@ -45,6 +45,9 @@ func (lc *LightningChannel) CreateSignDesc() error {
 		},
 		HashType:   txscript.SigHashAll,
 		InputIndex: 0,
+		PrevOutputFetcher: txscript.NewCannedPrevOutputFetcher(
+			fundingPkScript, int64(lc.ChannelState.Capacity),
+		),
 	}
 
 	return nil
