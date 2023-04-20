@@ -317,7 +317,8 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 
 	// Get the revocation base point first, so we can calculate our
 	// commit point. We start with the old way where the revocation index
-	// was the same as the other indices.
+	// was the same as the other indices. This applies to all channels
+	// opened with versions prior to and including lnd v0.12.0-beta.
 	revPath := []uint32{
 		lnd.HardenedKey(uint32(
 			keychain.KeyFamilyRevocationRoot,
@@ -346,21 +347,56 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 			}, nil
 	}
 
-	// Now let's try with the new format where the index is one larger than
-	// the other indices.
-	revPath = []uint32{
+	// We could not derive the secrets to sweep the to_local output using
+	// the old shachain root creation. Starting with lnd release
+	// v0.13.0-beta the index for the revocation path creating the shachain
+	// root changed. Now the shachain root is created using ECDH
+	// with the local multisig public key
+	// (for mainnet: m/1017'/0'/1'/0/idx). But we need to account for a
+	// special case here. If the node was started with a version prior to
+	// and including v0.12.0-beta the idx for the new shachain root
+	// revocation is not one larger because idx 0 was already used for the
+	// old creation scheme hence we need to replicate this behaviour here.
+	// First trying the shachain root creation with the same index and if
+	// this does not derive the secrets we increase the index of the
+	// revocation key path by one (for mainnet: m/1017'/0'/5'/0/idx+1).
+	// The exact path which was used for the shachain root can be seen
+	// in the channel.backup file for every specific channel. The old
+	// scheme has always a public key specified.The new one uses a key
+	// locator and does not have a public key specified (nil).
+	// Example
+	//     ShaChainRootDesc: (dump.KeyDescriptor) {
+	// 	Path: (string) (len=17) "m/1017'/1'/5'/0/1",
+	// 	PubKey: (string) (len=5) "<nil>"
+	//
+	// For more details:
+	// https://github.com/lightningnetwork/lnd/commit/bb84f0ebc88620050dec7cf4be6283f5cba8b920
+	//
+	// Now the new shachain root revocation scheme is tried with
+	// two different indicies as described above.
+	revPath2 := []uint32{
 		lnd.HardenedKey(uint32(
 			keychain.KeyFamilyRevocationRoot,
-		)), 0, idx + 1,
+		)), 0, idx,
 	}
-	revRoot2, err := lnd.ShaChainFromPath(baseKey, revPath, nil)
+
+	// Now we try the same with the new revocation producer format.
+	multiSigPath := []uint32{
+		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
+		0, idx,
+	}
+	multiSigPrivKey, err := lnd.PrivKeyFromPath(baseKey, multiSigPath)
 	if err != nil {
 		return 0, nil, nil, nil, nil, err
 	}
 
-	// We now have everything to brute force the lock script. This
-	// will take a long while as we both have to go through commit
-	// points and CSV values.
+	revRoot2, err := lnd.ShaChainFromPath(
+		baseKey, revPath2, multiSigPrivKey.PubKey(),
+	)
+	if err != nil {
+		return 0, nil, nil, nil, nil, err
+	}
+
 	csvTimeout, script, scriptHash, commitPoint, err = bruteForceDelayPoint(
 		delayPrivKey.PubKey(), remoteRevPoint, revRoot2, lockScript,
 		maxCsvTimeout, maxNumChanUpdates,
@@ -376,18 +412,27 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 			}, nil
 	}
 
+	// Now we try to increase the index by 1 to account for the situation
+	// where the node was started with a version after (including)
+	// v0.13.0-beta
+	revPath3 := []uint32{
+		lnd.HardenedKey(uint32(
+			keychain.KeyFamilyRevocationRoot,
+		)), 0, idx + 1,
+	}
+
 	// Now we try the same with the new revocation producer format.
-	multiSigPath := []uint32{
+	multiSigPath = []uint32{
 		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
 		0, idx,
 	}
-	multiSigPrivKey, err := lnd.PrivKeyFromPath(baseKey, multiSigPath)
+	multiSigPrivKey, err = lnd.PrivKeyFromPath(baseKey, multiSigPath)
 	if err != nil {
 		return 0, nil, nil, nil, nil, err
 	}
 
 	revRoot3, err := lnd.ShaChainFromPath(
-		baseKey, revPath, multiSigPrivKey.PubKey(),
+		baseKey, revPath3, multiSigPrivKey.PubKey(),
 	)
 	if err != nil {
 		return 0, nil, nil, nil, nil, err
