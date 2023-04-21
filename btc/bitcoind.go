@@ -17,6 +17,7 @@ const (
 	FormatCli          = "bitcoin-cli"
 	FormatCliWatchOnly = "bitcoin-cli-watchonly"
 	FormatImportwallet = "bitcoin-importwallet"
+	FormatDescriptors  = "bitcoin-descriptors"
 	FormatElectrum     = "electrum"
 )
 
@@ -39,6 +40,9 @@ func ParseFormat(format string) (KeyExporter, error) {
 
 	case FormatImportwallet:
 		return &ImportWallet{}, nil
+
+	case FormatDescriptors:
+		return &Descriptors{}, nil
 
 	case FormatElectrum:
 		return &Electrum{}, nil
@@ -179,19 +183,14 @@ func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return "", fmt.Errorf("could not create address: %w", err)
 	}
-	addrP2TR, err := lnd.P2TRAddr(pubKey, params)
-	if err != nil {
-		return "", fmt.Errorf("could not create address: %w", err)
-	}
 
 	flags := ""
 	if params.Net == wire.TestNet || params.Net == wire.TestNet3 {
 		flags = " -testnet"
 	}
 	return fmt.Sprintf("bitcoin-cli%s importpubkey %x \"%s/%d/%d/\" "+
-		"false # addr=%s,%s,%s,%s", flags, pubKey.SerializeCompressed(),
-		path, branch, index, addrP2PKH, addrP2WKH, addrNP2WKH,
-		addrP2TR), nil
+		"false # addr=%s,%s,%s", flags, pubKey.SerializeCompressed(),
+		path, branch, index, addrP2PKH, addrP2WKH, addrNP2WKH), nil
 }
 
 func (c *CliWatchOnly) Trailer(birthdayBlock uint32) string {
@@ -275,4 +274,41 @@ func (p *Electrum) Format(hdKey *hdkeychain.ExtendedKey,
 
 func (p *Electrum) Trailer(_ uint32) string {
 	return ""
+}
+
+type Descriptors struct{}
+
+func (d *Descriptors) Header() string {
+	return "# Paste the following lines into a command line window."
+}
+
+func (d *Descriptors) Format(hdKey *hdkeychain.ExtendedKey,
+	params *chaincfg.Params, path string, branch, index uint32) (string,
+	error) {
+
+	privKey, err := hdKey.ECPrivKey()
+	if err != nil {
+		return "", fmt.Errorf("could not derive private key: %w", err)
+	}
+	wif, err := btcutil.NewWIF(privKey, params, true)
+	if err != nil {
+		return "", fmt.Errorf("could not encode WIF: %w", err)
+	}
+
+	np2wkh := makeDescriptor("sh(wpkh(%s))", wif.String())
+	p2wkh := makeDescriptor("wpkh(%s)", wif.String())
+	p2tr := makeDescriptor("tr(%s)", wif.String())
+
+	return fmt.Sprintf("bitcoin-cli importdescriptors '[%s,%s,%s]'",
+		np2wkh, p2wkh, p2tr), nil
+}
+
+func (d *Descriptors) Trailer(birthdayBlock uint32) string {
+	return fmt.Sprintf("bitcoin-cli rescanblockchain %d\n", birthdayBlock)
+}
+
+func makeDescriptor(format, wif string) string {
+	descriptor := fmt.Sprintf(format, wif)
+	return fmt.Sprintf("{\"desc\":\"%s\",\"timestamp\":\"now\"}",
+		DescriptorSumCreate(descriptor))
 }
