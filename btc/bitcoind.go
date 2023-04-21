@@ -294,10 +294,22 @@ func (d *Descriptors) Format(hdKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return "", fmt.Errorf("could not encode WIF: %w", err)
 	}
+	addrP2WKH, err := lnd.P2WKHAddr(privKey.PubKey(), params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+	addrNP2WKH, err := lnd.NP2WKHAddr(privKey.PubKey(), params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
+	addrP2TR, err := lnd.P2TRAddr(privKey.PubKey(), params)
+	if err != nil {
+		return "", fmt.Errorf("could not create address: %w", err)
+	}
 
-	np2wkh := makeDescriptor("sh(wpkh(%s))", wif.String())
-	p2wkh := makeDescriptor("wpkh(%s)", wif.String())
-	p2tr := makeDescriptor("tr(%s)", wif.String())
+	np2wkh := makeDescriptor("sh(wpkh(%s))", wif.String(), addrNP2WKH)
+	p2wkh := makeDescriptor("wpkh(%s)", wif.String(), addrP2WKH)
+	p2tr := makeDescriptor("tr(%s)", wif.String(), addrP2TR)
 
 	return fmt.Sprintf("bitcoin-cli importdescriptors '[%s,%s,%s]'",
 		np2wkh, p2wkh, p2tr), nil
@@ -307,8 +319,11 @@ func (d *Descriptors) Trailer(birthdayBlock uint32) string {
 	return fmt.Sprintf("bitcoin-cli rescanblockchain %d\n", birthdayBlock)
 }
 
-func makeDescriptor(format, wif string) string {
+func makeDescriptor(format, wif string, address btcutil.Address) string {
 	descriptor := fmt.Sprintf(format, wif)
-	return fmt.Sprintf("{\"desc\":\"%s\",\"timestamp\":\"now\"}",
-		DescriptorSumCreate(descriptor))
+	return fmt.Sprintf(
+		"{\"desc\":\"%s\",\"timestamp\":\"now\",\"label\":\"%s\"}",
+		DescriptorSumCreate(descriptor),
+		address.String(),
+	)
 }
