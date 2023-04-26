@@ -95,6 +95,7 @@ func main() {
 		newForceCloseCommand(),
 		newGenImportScriptCommand(),
 		newMigrateDBCommand(),
+		newRecoverLoopInCommand(),
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
 		newRescueFundingCommand(),

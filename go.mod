@@ -17,6 +17,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/hasura/go-graphql-client v0.9.1
+	github.com/lightninglabs/loop v0.23.0-beta
 	github.com/lightninglabs/pool v0.6.2-beta.0.20230329135228-c3bffb52df3a
 	github.com/lightningnetwork/lnd v0.16.0-beta
 	github.com/lightningnetwork/lnd/kvdb v1.4.1
@@ -93,8 +94,10 @@ require (
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/lib/pq v1.10.3 // indirect
+	github.com/lightninglabs/aperture v0.1.20-beta // indirect
 	github.com/lightninglabs/gozmq v0.0.0-20191113021534-d20a764486bf // indirect
 	github.com/lightninglabs/lndclient v0.16.0-10 // indirect
+	github.com/lightninglabs/loop/swapserverrpc v1.0.4 // indirect
 	github.com/lightninglabs/neutrino v0.15.0 // indirect
 	github.com/lightninglabs/neutrino/cache v1.1.1 // indirect
 	github.com/lightninglabs/pool/auctioneerrpc v1.0.7 // indirect

@@ -19,6 +19,8 @@ const (
 	FormatImportwallet = "bitcoin-importwallet"
 	FormatDescriptors  = "bitcoin-descriptors"
 	FormatElectrum     = "electrum"
+
+	PasteString = "# Paste the following lines into a command line window."
 )
 
 type KeyExporter interface {
@@ -130,7 +132,7 @@ func SeedBirthdayToBlock(params *chaincfg.Params,
 type Cli struct{}
 
 func (c *Cli) Header() string {
-	return "# Paste the following lines into a command line window."
+	return PasteString
 }
 
 func (c *Cli) Format(hdKey *hdkeychain.ExtendedKey, params *chaincfg.Params,
@@ -159,7 +161,7 @@ func (c *Cli) Trailer(birthdayBlock uint32) string {
 type CliWatchOnly struct{}
 
 func (c *CliWatchOnly) Header() string {
-	return "# Paste the following lines into a command line window."
+	return PasteString
 }
 
 func (c *CliWatchOnly) Format(hdKey *hdkeychain.ExtendedKey,
@@ -279,7 +281,7 @@ func (p *Electrum) Trailer(_ uint32) string {
 type Descriptors struct{}
 
 func (d *Descriptors) Header() string {
-	return "# Paste the following lines into a command line window."
+	return PasteString
 }
 
 func (d *Descriptors) Format(hdKey *hdkeychain.ExtendedKey,
