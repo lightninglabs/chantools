@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
@@ -270,8 +272,18 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 		}
 	}
 
+	// To achieve a stable order, we sort the matches lexicographically by
+	// their node key.
+	node1IDs := make([]string, 0, len(matches))
+	for node1 := range matches {
+		node1IDs = append(node1IDs, node1)
+	}
+	sort.Strings(node1IDs)
+
 	// Write the matches to files.
-	for node1, node1map := range matches {
+	for _, node1 := range node1IDs {
+		node1map := matches[node1]
+
 		tpl, err := template.New("initial").Parse(initialTemplate)
 		if err != nil {
 			return fmt.Errorf("error parsing template: %w", err)
@@ -288,12 +300,12 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 		}
 
 		folder := fmt.Sprintf("results/match-%s", node1)
-		err = os.MkdirAll(folder, 0755)
-		if err != nil {
-			return err
-		}
-
 		for node2, match := range node1map {
+			err = os.MkdirAll(folder, 0755)
+			if err != nil {
+				return err
+			}
+
 			matchBytes, err := json.MarshalIndent(match, "", " ")
 			if err != nil {
 				return err
@@ -349,6 +361,11 @@ func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 		var query gqGetNodeQuery
 		err := client.Query(context.Background(), &query, variables)
 		if err != nil {
+			if strings.Contains(err.Error(), "Too many requests") {
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
 			return nil, err
 		}
 
