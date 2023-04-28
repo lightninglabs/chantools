@@ -241,8 +241,11 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
 	var (
-		estimator input.TxWeightEstimator
-		signDesc  = &input.SignDescriptor{
+		estimator      input.TxWeightEstimator
+		prevOutFetcher = txscript.NewCannedPrevOutputFetcher(
+			pkScript, sweepValue,
+		)
+		signDesc = &input.SignDescriptor{
 			KeyDesc: keychain.KeyDescriptor{
 				KeyLocator: keychain.KeyLocator{
 					Family: poolscript.AccountKeyFamily,
@@ -255,10 +258,8 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 				PkScript: pkScript,
 				Value:    sweepValue,
 			},
-			InputIndex: 0,
-			PrevOutputFetcher: txscript.NewCannedPrevOutputFetcher(
-				pkScript, sweepValue,
-			),
+			InputIndex:        0,
+			PrevOutputFetcher: prevOutFetcher,
 		}
 	)
 
@@ -267,7 +268,9 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		estimator.AddWitnessInput(poolscript.ExpiryWitnessSize)
 		signDesc.HashType = txscript.SigHashAll
 		signDesc.SignMethod = input.WitnessV0SignMethod
-		signDesc.SigHashes = input.NewTxSigHashesV0Only(sweepTx)
+		signDesc.SigHashes = txscript.NewTxSigHashes(
+			sweepTx, prevOutFetcher,
+		)
 
 	case account.VersionTaprootEnabled:
 		estimator.AddWitnessInput(poolscript.TaprootExpiryWitnessSize)

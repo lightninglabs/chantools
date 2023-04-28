@@ -67,7 +67,6 @@ func (lc *LightningChannel) SignedCommitTx() (*wire.MsgTx, error) {
 
 	// With this, we then generate the full witness so the caller can
 	// broadcast a fully signed transaction.
-	lc.SignDesc.SigHashes = input.NewTxSigHashesV0Only(commitTx)
 	ourSig, err := lc.TXSigner.SignOutputRaw(commitTx, lc.SignDesc)
 	if err != nil {
 		return nil, err

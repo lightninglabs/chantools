@@ -257,7 +257,10 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		totalFee, sweepValue, estimator.Weight())
 
 	// Create the sign descriptor for the input then sign the transaction.
-	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
+	prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
+		scriptHash, sweepValue,
+	)
+	sigHashes := txscript.NewTxSigHashes(sweepTx, prevOutFetcher)
 	signDesc := &input.SignDescriptor{
 		KeyDesc: *delayDesc,
 		SingleTweak: input.SingleTweakBytes(

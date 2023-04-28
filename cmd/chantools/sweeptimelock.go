@@ -222,11 +222,13 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}
 	api := &btc.ExplorerAPI{BaseURL: apiURL}
 
-	sweepTx := wire.NewMsgTx(2)
-	totalOutputValue := int64(0)
-	signDescs := make([]*input.SignDescriptor, 0)
-	var estimator input.TxWeightEstimator
-
+	var (
+		sweepTx          = wire.NewMsgTx(2)
+		totalOutputValue = int64(0)
+		signDescs        = make([]*input.SignDescriptor, 0)
+		prevOutFetcher   = txscript.NewMultiPrevOutFetcher(nil)
+		estimator        input.TxWeightEstimator
+	)
 	for _, target := range targets {
 		// We can't rely on the CSV delay of the channel DB to be
 		// correct. But it doesn't cost us a lot to just brute force it.
@@ -246,11 +248,17 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		}
 
 		// Create the transaction input.
+		prevOutPoint := wire.OutPoint{
+			Hash:  target.txid,
+			Index: target.index,
+		}
+		prevTxOut := &wire.TxOut{
+			PkScript: scriptHash,
+			Value:    target.value,
+		}
+		prevOutFetcher.AddPrevOut(prevOutPoint, prevTxOut)
 		sweepTx.TxIn = append(sweepTx.TxIn, &wire.TxIn{
-			PreviousOutPoint: wire.OutPoint{
-				Hash:  target.txid,
-				Index: target.index,
-			},
+			PreviousOutPoint: prevOutPoint,
 			Sequence: input.LockTimeToSequence(
 				false, uint32(csvTimeout),
 			),
@@ -264,11 +272,8 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 				target.delayBasePointDesc.PubKey,
 			),
 			WitnessScript: script,
-			Output: &wire.TxOut{
-				PkScript: scriptHash,
-				Value:    target.value,
-			},
-			HashType: txscript.SigHashAll,
+			Output:        prevTxOut,
+			HashType:      txscript.SigHashAll,
 		}
 		totalOutputValue += target.value
 		signDescs = append(signDescs, signDesc)
@@ -298,7 +303,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	}}
 
 	// Sign the transaction now.
-	sigHashes := input.NewTxSigHashesV0Only(sweepTx)
+	sigHashes := txscript.NewTxSigHashes(sweepTx, prevOutFetcher)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes
 		desc.InputIndex = idx

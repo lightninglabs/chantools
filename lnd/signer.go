@@ -12,6 +12,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 )
@@ -132,13 +133,16 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	inputIndex int) error {
 
 	// Now we add our partial signature.
+	prevOutFetcher := wallet.PsbtPrevOutputFetcher(packet)
 	signDesc := &input.SignDescriptor{
 		KeyDesc:       keyDesc,
 		WitnessScript: witnessScript,
 		Output:        utxo,
 		InputIndex:    inputIndex,
 		HashType:      txscript.SigHashAll,
-		SigHashes:     input.NewTxSigHashesV0Only(packet.UnsignedTx),
+		SigHashes: txscript.NewTxSigHashes(
+			packet.UnsignedTx, prevOutFetcher,
+		),
 	}
 	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
 	if err != nil {

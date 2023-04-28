@@ -173,6 +173,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		signDescs        []*input.SignDescriptor
 		sweepTx          = wire.NewMsgTx(2)
 		totalOutputValue = uint64(0)
+		prevOutFetcher   = txscript.NewMultiPrevOutFetcher(nil)
 	)
 
 	// Add all found target outputs.
@@ -207,22 +208,25 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				sequence = 1
 			}
 
+			prevOutPoint := wire.OutPoint{
+				Hash:  *txHash,
+				Index: uint32(vout.Outspend.Vin),
+			}
+			prevTxOut := &wire.TxOut{
+				PkScript: pkScript,
+				Value:    int64(vout.Value),
+			}
+			prevOutFetcher.AddPrevOut(prevOutPoint, prevTxOut)
 			sweepTx.TxIn = append(sweepTx.TxIn, &wire.TxIn{
-				PreviousOutPoint: wire.OutPoint{
-					Hash:  *txHash,
-					Index: uint32(vout.Outspend.Vin),
-				},
-				Sequence: sequence,
+				PreviousOutPoint: prevOutPoint,
+				Sequence:         sequence,
 			})
 
 			signDescs = append(signDescs, &input.SignDescriptor{
 				KeyDesc:       *target.keyDesc,
 				WitnessScript: target.script,
-				Output: &wire.TxOut{
-					PkScript: pkScript,
-					Value:    int64(vout.Value),
-				},
-				HashType: txscript.SigHashAll,
+				Output:        prevTxOut,
+				HashType:      txscript.SigHashAll,
 			})
 		}
 	}
@@ -259,7 +263,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			ExtendedKey: extendedKey,
 			ChainParams: chainParams,
 		}
-		sigHashes = input.NewTxSigHashesV0Only(sweepTx)
+		sigHashes = txscript.NewTxSigHashes(sweepTx, prevOutFetcher)
 	)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes

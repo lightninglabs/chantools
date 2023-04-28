@@ -258,8 +258,12 @@ func getSignedTx(signer *lnd.Signer, loopIn *loopdb.LoopIn, sweepTx *wire.MsgTx,
 	keyIndex uint32) ([]byte, error) {
 
 	// Create the sign descriptor.
-	prevoutFetcher := txscript.NewCannedPrevOutputFetcher(
-		htlc.PkScript, int64(loopIn.Contract.AmountRequested),
+	prevTxOut := &wire.TxOut{
+		PkScript: htlc.PkScript,
+		Value:    int64(loopIn.Contract.AmountRequested),
+	}
+	prevOutputFetcher := txscript.NewCannedPrevOutputFetcher(
+		prevTxOut.PkScript, prevTxOut.Value,
 	)
 
 	signDesc := &input.SignDescriptor{
@@ -272,11 +276,8 @@ func getSignedTx(signer *lnd.Signer, loopIn *loopdb.LoopIn, sweepTx *wire.MsgTx,
 		WitnessScript:     htlc.TimeoutScript(),
 		HashType:          htlc.SigHash(),
 		InputIndex:        0,
-		PrevOutputFetcher: prevoutFetcher,
-		Output: &wire.TxOut{
-			PkScript: htlc.PkScript,
-			Value:    int64(loopIn.Contract.AmountRequested),
-		},
+		PrevOutputFetcher: prevOutputFetcher,
+		Output:            prevTxOut,
 	}
 	switch htlc.Version {
 	case swap.HtlcV2:
@@ -303,13 +304,13 @@ func getSignedTx(signer *lnd.Signer, loopIn *loopdb.LoopIn, sweepTx *wire.MsgTx,
 		return nil, err
 	}
 
-	sighashes := txscript.NewTxSigHashes(sweepTx, prevoutFetcher)
+	sigHashes := txscript.NewTxSigHashes(sweepTx, prevOutputFetcher)
 
 	// Verify the signature. This will throw an error if the signature is
 	// invalid and allows us to bruteforce the key index.
 	vm, err := txscript.NewEngine(
-		htlc.PkScript, sweepTx, 0, txscript.StandardVerifyFlags, nil,
-		sighashes, int64(loopIn.Contract.AmountRequested), prevoutFetcher,
+		prevTxOut.PkScript, sweepTx, 0, txscript.StandardVerifyFlags,
+		nil, sigHashes, prevTxOut.Value, prevOutputFetcher,
 	)
 	if err != nil {
 		return nil, err
