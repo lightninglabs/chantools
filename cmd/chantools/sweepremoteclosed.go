@@ -223,10 +223,11 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			})
 
 			signDescs = append(signDescs, &input.SignDescriptor{
-				KeyDesc:       *target.keyDesc,
-				WitnessScript: target.script,
-				Output:        prevTxOut,
-				HashType:      txscript.SigHashAll,
+				KeyDesc:           *target.keyDesc,
+				WitnessScript:     target.script,
+				Output:            prevTxOut,
+				HashType:          txscript.SigHashAll,
+				PrevOutputFetcher: prevOutFetcher,
 			})
 		}
 	}

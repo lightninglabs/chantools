@@ -271,9 +271,10 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 			PkScript: scriptHash,
 			Value:    sweepValue,
 		},
-		InputIndex: 0,
-		SigHashes:  sigHashes,
-		HashType:   txscript.SigHashAll,
+		InputIndex:        0,
+		SigHashes:         sigHashes,
+		PrevOutputFetcher: prevOutFetcher,
+		HashType:          txscript.SigHashAll,
 	}
 	witness, err := input.CommitSpendTimeout(signer, signDesc, sweepTx)
 	if err != nil {

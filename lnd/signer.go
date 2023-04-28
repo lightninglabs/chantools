@@ -135,11 +135,12 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	// Now we add our partial signature.
 	prevOutFetcher := wallet.PsbtPrevOutputFetcher(packet)
 	signDesc := &input.SignDescriptor{
-		KeyDesc:       keyDesc,
-		WitnessScript: witnessScript,
-		Output:        utxo,
-		InputIndex:    inputIndex,
-		HashType:      txscript.SigHashAll,
+		KeyDesc:           keyDesc,
+		WitnessScript:     witnessScript,
+		Output:            utxo,
+		InputIndex:        inputIndex,
+		HashType:          txscript.SigHashAll,
+		PrevOutputFetcher: prevOutFetcher,
 		SigHashes: txscript.NewTxSigHashes(
 			packet.UnsignedTx, prevOutFetcher,
 		),

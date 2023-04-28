@@ -271,9 +271,10 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 				target.commitPoint,
 				target.delayBasePointDesc.PubKey,
 			),
-			WitnessScript: script,
-			Output:        prevTxOut,
-			HashType:      txscript.SigHashAll,
+			WitnessScript:     script,
+			Output:            prevTxOut,
+			HashType:          txscript.SigHashAll,
+			PrevOutputFetcher: prevOutFetcher,
 		}
 		totalOutputValue += target.value
 		signDescs = append(signDescs, signDesc)
