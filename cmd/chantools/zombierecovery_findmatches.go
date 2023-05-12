@@ -300,6 +300,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 		}
 
 		folder := fmt.Sprintf("results/match-%s", node1)
+		today := time.Now().Format("2006-01-02")
 		for node2, match := range node1map {
 			err = os.MkdirAll(folder, 0755)
 			if err != nil {
@@ -312,7 +313,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 			}
 
 			fileName := fmt.Sprintf("%s/%s-%s.json",
-				folder, node2, time.Now().Format("2006-01-02"))
+				folder, node2, today)
 			log.Infof("Writing result to %s", fileName)
 			err = os.WriteFile(fileName, matchBytes, 0644)
 			if err != nil {
@@ -327,7 +328,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 			continue
 		}
 
-		textFileName := fmt.Sprintf("%s/message.txt", folder)
+		textFileName := fmt.Sprintf("%s/message-%s.txt", folder, today)
 		file, err := os.OpenFile(
 			textFileName, os.O_RDWR|os.O_CREATE, 0644,
 		)
