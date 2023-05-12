@@ -32,7 +32,7 @@ type recoverLoopInCommand struct {
 	APIURL  string
 	Publish bool
 
-	LoopDbPath string
+	LoopDbDir string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -48,7 +48,7 @@ func newRecoverLoopInCommand() *cobra.Command {
 	--txid abcdef01234... \
 	--vout 0 \
 	--swap_hash abcdef01234... \
-	--loop_db_path /path/to/loop.db \
+	--loop_db_dir /path/to/loop/db/dir \
 	--sweep_addr bc1pxxxxxxx \
 	--feerate 10`,
 		RunE: cc.Execute,
@@ -66,8 +66,8 @@ func newRecoverLoopInCommand() *cobra.Command {
 			"swap",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.LoopDbPath, "loop_db_path", "", "path to the loop "+
-			"database file",
+		&cc.LoopDbDir, "loop_db_dir", "", "path to the loop "+
+			"database directory, where the loop.db file is located",
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.SweepAddr, "sweep_addr", "", "address to recover "+
@@ -105,6 +105,22 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %w", err)
 	}
 
+	if c.TxID == "" {
+		return fmt.Errorf("txid is required")
+	}
+
+	if c.SwapHash == "" {
+		return fmt.Errorf("swap_hash is required")
+	}
+
+	if c.LoopDbDir == "" {
+		return fmt.Errorf("loop_db_dir is required")
+	}
+
+	if c.SweepAddr == "" {
+		return fmt.Errorf("sweep_addr is required")
+	}
+
 	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
 
 	signer := &lnd.Signer{
@@ -113,7 +129,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Try to fetch the swap from the database.
-	store, err := loopdb.NewBoltSwapStore(c.LoopDbPath, chainParams)
+	store, err := loopdb.NewBoltSwapStore(c.LoopDbDir, chainParams)
 	if err != nil {
 		return err
 	}
@@ -169,7 +185,9 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("unsupported address type")
 	}
 
-	feeRateKWeight := chainfee.SatPerKVByte(1000 * c.FeeRate).FeePerKWeight()
+	feeRateKWeight := chainfee.SatPerKVByte(
+		1000 * c.FeeRate,
+	).FeePerKWeight()
 	fee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
 
 	txID, err := chainhash.NewHashFromStr(c.TxID)
@@ -221,7 +239,8 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 		if rawTx == nil {
 			return fmt.Errorf("failed to brute force key index, " +
-				"please try again with a higher start key index")
+				"please try again with a higher start key " +
+				"index")
 		}
 	} else {
 		rawTx, err = getSignedTx(
@@ -245,9 +264,9 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		log.Infof("Published TX %s, response: %s",
 			sweepTx.TxHash().String(), response)
 	} else {
-		fmt.Printf("Success, we successfully created the sweep transaction. "+
-			"Please publish this using any bitcoin node:\n\n%x\n\n",
-			rawTx)
+		fmt.Printf("Success, we successfully created the sweep "+
+			"transaction. Please publish this using any bitcoin "+
+			"node:\n\n%x\n\n", rawTx)
 	}
 
 	return nil
