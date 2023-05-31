@@ -11,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/guggero/chantools/btc/fasthd"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/btc/fasthd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/aezeed"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"

@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/btcsuite/btclog"
-	"github.com/guggero/chantools/dataformat"
+	"github.com/lightninglabs/chantools/dataformat"
 )
 
 func SummarizeChannels(apiURL string, channels []*dataformat.SummaryEntry,

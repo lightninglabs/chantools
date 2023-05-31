@@ -7,7 +7,7 @@ import (
 
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/spf13/cobra"
 )

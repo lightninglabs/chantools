@@ -18,7 +18,7 @@ func newZombieRecoveryCommand() *cobra.Command {
 		Long: `A sub command that hosts a set of further sub commands
 to help with recovering funds tuck in zombie channels.
 
-Please visit https://github.com/guggero/chantools/blob/master/doc/zombierecovery.md
+Please visit https://github.com/lightninglabs/chantools/blob/master/doc/zombierecovery.md
 for more information on how to use these commands.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {

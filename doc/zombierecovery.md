@@ -46,7 +46,7 @@ Below image is a simplified version of the steps described below the image.
    node, continue:
 3. Send/upload the JSON file(s) to your node. If you open the JSON file(s), you
    will see your own node ID (and contact info) and the peers'. [Download or
-   install chantools](https://github.com/guggero/chantools#installation).
+   install chantools](https://github.com/lightninglabs/chantools#installation).
    Technically, you do not _need_ to install `chantools` on the same machine as
    your node. Maybe you do not feel confident entering your seed words on your
    node and want to do this someplace else.

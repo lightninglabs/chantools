@@ -10,7 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"
 )

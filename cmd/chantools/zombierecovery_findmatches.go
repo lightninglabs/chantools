@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/guggero/chantools/btc"
 	"github.com/hasura/go-graphql-client"
+	"github.com/lightninglabs/chantools/btc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -52,7 +52,7 @@ Contact: {{$peer.Contact}}
 
 {{end}}
 The document that describes what to do exactly is located here:
-https://github.com/guggero/chantools/blob/master/doc/zombierecovery.md
+https://github.com/lightninglabs/chantools/blob/master/doc/zombierecovery.md
 
 Good luck!
 

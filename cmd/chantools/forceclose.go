@@ -11,9 +11,9 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
-	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/dataformat"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/dataformat"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/spf13/cobra"

@@ -6,7 +6,7 @@ Chantools helps recover funds from lightning channels
 
 This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/guggero/chantools/.
+Complete documentation is available at https://github.com/lightninglabs/chantools/.
 
 ### Options
 

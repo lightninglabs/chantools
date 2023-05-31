@@ -9,7 +9,7 @@
 
 set -e
 
-PKG="github.com/guggero/chantools"
+PKG="github.com/lightninglabs/chantools"
 PACKAGE=chantools
 
 # green prints one line of green text (if the terminal supports it).

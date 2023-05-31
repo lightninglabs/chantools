@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
 

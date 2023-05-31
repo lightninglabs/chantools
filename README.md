@@ -24,13 +24,13 @@ a private API URL with `--apiurl`.
 
 The easiest way to install `chantools` is to [download a pre-built binary for
 your operating system and
-architecture](https://github.com/guggero/chantools/releases).
+architecture](https://github.com/lightninglabs/chantools/releases).
 
 Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/guggero/chantools/releases/download/v0.10.7/chantools-linux-amd64-v0.10.7.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.10.7/chantools-linux-amd64-v0.10.7.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```
@@ -43,7 +43,7 @@ need to make sure you have `go 1.19.x` (or later) and `make` installed and can
 then run the following commands:
 
 ```bash
-git clone https://github.com/guggero/chantools.git
+git clone https://github.com/lightninglabs/chantools.git
 cd chantools
 make install
 ```
@@ -401,7 +401,7 @@ run them on a computer with a firewall that blocks outgoing connections.
 ```text
 This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/guggero/chantools/.
+Complete documentation is available at https://github.com/lightninglabs/chantools/.
 
 Usage:
   chantools [command]

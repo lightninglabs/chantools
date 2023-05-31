@@ -1,4 +1,4 @@
-module github.com/guggero/chantools
+module github.com/lightninglabs/chantools
 
 go 1.19
 
@@ -53,7 +53,6 @@ require (
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fergusstrange/embedded-postgres v1.10.0 // indirect
-	github.com/frankban/quicktest v1.11.2 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -81,14 +80,7 @@ require (
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
-	github.com/juju/clock v1.0.0 // indirect
-	github.com/juju/collections v1.0.0 // indirect
-	github.com/juju/errors v1.0.0 // indirect
 	github.com/juju/loggo v0.0.0-20210728185423-eebad3a902c4 // indirect
-	github.com/juju/mgo/v2 v2.0.0 // indirect
-	github.com/juju/retry v1.0.0 // indirect
-	github.com/juju/utils/v3 v3.0.0 // indirect
-	github.com/juju/version/v2 v2.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect

@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/guggero/chantools/dump"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/dump"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/spf13/cobra"
 )
