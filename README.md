@@ -30,7 +30,7 @@ Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.10.7/chantools-linux-amd64-v0.10.7.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.11.2/chantools-linux-amd64-v0.11.2.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```

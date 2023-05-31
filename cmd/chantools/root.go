@@ -27,8 +27,12 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.11.3"
-	na            = "n/a"
+
+	// version is the current version of the tool. It is set during build.
+	// NOTE: When changing this, please also update the version in the
+	// download link shown in the README.
+	version = "0.11.3"
+	na      = "n/a"
 
 	Commit = ""
 )
