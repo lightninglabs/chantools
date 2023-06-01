@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet"
+	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 )
@@ -27,8 +28,6 @@ type Signer struct {
 func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor) (input.Signature, error) {
 
-	witnessScript := signDesc.WitnessScript
-
 	// First attempt to fetch the private key which corresponds to the
 	// specified public key.
 	privKey, err := s.FetchPrivKey(&signDesc.KeyDesc)
@@ -36,6 +35,14 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 		return nil, err
 	}
 
+	return s.SignOutputRawWithPrivkey(tx, signDesc, privKey)
+}
+
+func (s *Signer) SignOutputRawWithPrivkey(tx *wire.MsgTx,
+	signDesc *input.SignDescriptor,
+	privKey *secp256k1.PrivateKey) (input.Signature, error) {
+
+	witnessScript := signDesc.WitnessScript
 	privKey = maybeTweakPrivKey(signDesc, privKey)
 
 	sigHashes := txscript.NewTxSigHashes(tx, signDesc.PrevOutputFetcher)
@@ -43,7 +50,11 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 		// Are we spending a script path or the key path? The API is
 		// slightly different, so we need to account for that to get the
 		// raw signature.
-		var rawSig []byte
+		var (
+			rawSig []byte
+			err    error
+		)
+
 		switch signDesc.SignMethod {
 		case input.TaprootKeySpendBIP0086SignMethod,
 			input.TaprootKeySpendSignMethod:
@@ -105,7 +116,6 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 	// Chop off the sighash flag at the end of the signature.
 	return ecdsa.ParseDERSignature(sig[:len(sig)-1])
 }
-
 func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
 	*input.Script, error) {
 
