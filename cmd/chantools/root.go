@@ -85,6 +85,7 @@ func main() {
 		newCompactDBCommand(),
 		newDeletePaymentsCommand(),
 		newDeriveKeyCommand(),
+		newDoubleSpendInputsCommand(),
 		newDropChannelGraphCommand(),
 		newDumpBackupCommand(),
 		newDumpChannelsCommand(),
