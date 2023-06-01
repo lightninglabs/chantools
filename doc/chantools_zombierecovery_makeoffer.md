@@ -29,7 +29,7 @@ chantools zombierecovery makeoffer \
 
 ```
       --bip39               read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --feerate uint16      fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --feerate uint32      fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                help for makeoffer
       --node1_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 1
       --node2_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 2

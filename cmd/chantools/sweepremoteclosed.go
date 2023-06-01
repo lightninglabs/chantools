@@ -29,7 +29,7 @@ type sweepRemoteClosedCommand struct {
 	APIURL         string
 	Publish        bool
 	SweepAddr      string
-	FeeRate        uint16
+	FeeRate        uint32
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -77,7 +77,7 @@ Supported remote force-closed channel types are:
 	cc.cmd.Flags().StringVar(
 		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)
@@ -122,7 +122,7 @@ type targetAddr struct {
 }
 
 func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
-	sweepAddr string, recoveryWindow uint32, feeRate uint16,
+	sweepAddr string, recoveryWindow uint32, feeRate uint32,
 	publish bool) error {
 
 	var (

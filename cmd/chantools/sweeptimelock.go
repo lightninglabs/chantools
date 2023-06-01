@@ -29,7 +29,7 @@ type sweepTimeLockCommand struct {
 	Publish     bool
 	SweepAddr   string
 	MaxCsvLimit uint16
-	FeeRate     uint16
+	FeeRate     uint32
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -71,7 +71,7 @@ parameter to 144.`,
 		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
 			"limit to use",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)
@@ -125,7 +125,7 @@ type sweepTarget struct {
 
 func sweepTimeLockFromSummary(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	entries []*dataformat.SummaryEntry, sweepAddr string,
-	maxCsvTimeout uint16, publish bool, feeRate uint16) error {
+	maxCsvTimeout uint16, publish bool, feeRate uint32) error {
 
 	targets := make([]*sweepTarget, 0, len(entries))
 	for _, entry := range entries {
@@ -213,7 +213,7 @@ func sweepTimeLockFromSummary(extendedKey *hdkeychain.ExtendedKey, apiURL string
 
 func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	targets []*sweepTarget, sweepAddr string, maxCsvTimeout uint16,
-	publish bool, feeRate uint16) error {
+	publish bool, feeRate uint32) error {
 
 	// Create signer and transaction template.
 	signer := &lnd.Signer{

@@ -34,7 +34,7 @@ chantools sweepremoteclosed \
 ```
       --apiurl string           API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --bip39                   read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --feerate uint16          fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --feerate uint32          fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                    help for sweepremoteclosed
       --publish                 publish sweep TX to the chain API instead of just printing the TX
       --recoverywindow uint32   number of keys to scan per derivation path (default 200)

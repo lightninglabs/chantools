@@ -23,7 +23,7 @@ chantools recoverloopin \
 ```
       --apiurl string         API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --bip39                 read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --feerate uint16        fee rate to use for the sweep transaction in sat/vByte
+      --feerate uint32        fee rate to use for the sweep transaction in sat/vByte
   -h, --help                  help for recoverloopin
       --loop_db_path string   path to the loop database file
       --num_tries int         number of tries to try to find the correct key index (default 1000)
