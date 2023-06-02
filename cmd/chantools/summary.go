@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/dataformat"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/dataformat"
 	"github.com/spf13/cobra"
 )
 

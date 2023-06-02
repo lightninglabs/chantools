@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/spf13/cobra"
 )

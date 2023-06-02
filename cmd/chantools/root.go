@@ -14,9 +14,9 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
-	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/dataformat"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/dataformat"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -27,8 +27,16 @@ import (
 
 const (
 	defaultAPIURL = "https://blockstream.info/api"
-	version       = "0.11.2"
-	na            = "n/a"
+
+	// version is the current version of the tool. It is set during build.
+	// NOTE: When changing this, please also update the version in the
+	// download link shown in the README.
+	version = "0.11.3"
+	na      = "n/a"
+
+	// lndVersion is the current version of lnd that we support. This is
+	// shown in some commands that affect the database and its migrations.
+	lndVersion = "v0.16.0-beta"
 
 	Commit = ""
 )
@@ -47,7 +55,7 @@ var rootCmd = &cobra.Command{
 	Short: "Chantools helps recover funds from lightning channels",
 	Long: `This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/guggero/chantools/.`,
+Complete documentation is available at https://github.com/lightninglabs/chantools/.`,
 	Version: fmt.Sprintf("v%s, commit %s", version, Commit),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		switch {

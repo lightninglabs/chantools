@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +25,7 @@ needs to read the database content.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.16.0-beta or later after using this command!'`,
+run lnd ` + lndVersion + ` or later after using this command!'`,
 		Example: `chantools migratedb \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db`,
 		RunE: cc.Execute,

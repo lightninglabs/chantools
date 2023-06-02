@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"

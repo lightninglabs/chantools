@@ -1,4 +1,4 @@
-module github.com/guggero/chantools
+module github.com/lightninglabs/chantools
 
 go 1.19
 
@@ -19,6 +19,10 @@ require (
 	github.com/hasura/go-graphql-client v0.9.1
 	github.com/lightninglabs/loop v0.23.0-beta
 	github.com/lightninglabs/pool v0.6.2-beta.0.20230329135228-c3bffb52df3a
+	// The current version of lnd we are compatible with, mostly affects the
+	// commands that touch the channel DB and has an impact on the DB schema.
+	// NOTE: When updating this version, make sure to also update the string in
+	// cmd/chantools/root.go.
 	github.com/lightningnetwork/lnd v0.16.0-beta
 	github.com/lightningnetwork/lnd/kvdb v1.4.1
 	github.com/lightningnetwork/lnd/queue v1.1.0
@@ -53,7 +57,6 @@ require (
 	github.com/dsnet/compress v0.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/fergusstrange/embedded-postgres v1.10.0 // indirect
-	github.com/frankban/quicktest v1.11.2 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -81,14 +84,7 @@ require (
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.11 // indirect
-	github.com/juju/clock v1.0.0 // indirect
-	github.com/juju/collections v1.0.0 // indirect
-	github.com/juju/errors v1.0.0 // indirect
 	github.com/juju/loggo v0.0.0-20210728185423-eebad3a902c4 // indirect
-	github.com/juju/mgo/v2 v2.0.0 // indirect
-	github.com/juju/retry v1.0.0 // indirect
-	github.com/juju/utils/v3 v3.0.0 // indirect
-	github.com/juju/version/v2 v2.0.0 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kkdai/bstream v1.0.0 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect

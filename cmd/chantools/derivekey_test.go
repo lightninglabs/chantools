@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/guggero/chantools/btc"
-	"github.com/guggero/chantools/lnd"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/stretchr/testify/require"
 )
 

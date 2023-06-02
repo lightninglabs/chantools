@@ -1,4 +1,4 @@
-PKG := github.com/guggero/chantools
+PKG := github.com/lightninglabs/chantools
 TOOLS_DIR := tools
 
 GOTEST := GO111MODULE=on go test -v

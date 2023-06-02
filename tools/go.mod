@@ -1,4 +1,4 @@
-module github.com/guggero/chantools/tools
+module github.com/lightninglabs/chantools/tools
 
 go 1.18
 
