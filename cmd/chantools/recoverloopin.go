@@ -25,7 +25,7 @@ type recoverLoopInCommand struct {
 	Vout          uint32
 	SwapHash      string
 	SweepAddr     string
-	FeeRate       uint16
+	FeeRate       uint32
 	StartKeyIndex int
 	NumTries      int
 
@@ -73,7 +73,7 @@ func newRecoverLoopInCommand() *cobra.Command {
 		&cc.SweepAddr, "sweep_addr", "", "address to recover "+
 			"the funds to",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", 0, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)

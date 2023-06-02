@@ -26,7 +26,7 @@ import (
 type zombieRecoveryMakeOfferCommand struct {
 	Node1   string
 	Node2   string
-	FeeRate uint16
+	FeeRate uint32
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -60,7 +60,7 @@ a counter offer.`,
 		&cc.Node2, "node2_keys", "", "the JSON file generated in the"+
 			"previous step ('preparekeys') command of node 2",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)

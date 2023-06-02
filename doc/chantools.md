@@ -23,6 +23,7 @@ Complete documentation is available at https://github.com/guggero/chantools/.
 * [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
 * [chantools deletepayments](chantools_deletepayments.md)	 - Remove all (failed) payments from a channel DB
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
+* [chantools doublespendinputs](chantools_doublespendinputs.md)	 - Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
 * [chantools dropchannelgraph](chantools_dropchannelgraph.md)	 - Remove all graph related data from a channel DB
 * [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file
 * [chantools dumpchannels](chantools_dumpchannels.md)	 - Dump all channel information from an lnd channel database

@@ -32,7 +32,7 @@ chantools closepoolaccount \
       --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --auctioneerkey string     the auctioneer's static public key (default "028e87bdd134238f8347f845d9ecc827b843d0d1e27cdcb46da704d916613f4fce")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --feerate uint16           fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --feerate uint32           fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                     help for closepoolaccount
       --maxnumaccounts uint32    the number of account indices to try at most (default 20)
       --maxnumbatchkeys uint32   the number of batch keys to try at most (default 500)

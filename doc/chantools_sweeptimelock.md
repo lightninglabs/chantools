@@ -31,7 +31,7 @@ chantools sweeptimelock \
 ```
       --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
-      --feerate uint16           fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --feerate uint32           fee rate to use for the sweep transaction in sat/vByte (default 30)
       --fromchanneldb string     channel input is in the format of an lnd channel.db file
       --fromsummary string       channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                     help for sweeptimelock

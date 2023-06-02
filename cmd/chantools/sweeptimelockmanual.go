@@ -30,7 +30,7 @@ type sweepTimeLockManualCommand struct {
 	Publish                   bool
 	SweepAddr                 string
 	MaxCsvLimit               uint16
-	FeeRate                   uint16
+	FeeRate                   uint32
 	TimeLockAddr              string
 	RemoteRevocationBasePoint string
 
@@ -92,7 +92,7 @@ address is always the one that's longer (because it's P2WSH and not P2PKH).`,
 		"maximum number of channel updates to try, set to maximum "+
 			"number of times the channel was used",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)
@@ -144,7 +144,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepAddr, timeLockAddr string, remoteRevPoint *btcec.PublicKey,
 	maxCsvTimeout, maxNumChannels uint16, maxNumChanUpdates uint64,
-	publish bool, feeRate uint16) error {
+	publish bool, feeRate uint32) error {
 
 	// First of all, we need to parse the lock addr and make sure we can
 	// brute force the script with the information we have. If not, we can't

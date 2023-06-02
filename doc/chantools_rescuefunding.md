@@ -44,7 +44,7 @@ chantools rescuefunding \
       --channeldb string               lnd channel.db file to rescue a channel from; must contain the pending channel specified with --channelpoint
       --confirmedchannelpoint string   channel outpoint that got confirmed on chain (<txid>:<txindex>); normally this is the same as the --dbchannelpoint so it will be set to that value ifthis is left empty
       --dbchannelpoint string          funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is recorded in the DB
-      --feerate uint16                 fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --feerate uint32                 fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                           help for rescuefunding
       --localkeyindex uint32           in case a channel DB is not available (but perhaps a channel backup file), the derivation index of the local multisig public key can be specified manually
       --remotepubkey string            in case a channel DB is not available (but perhaps a channel backup file), the remote multisig public key can be specified manually

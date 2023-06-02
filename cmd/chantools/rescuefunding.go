@@ -45,7 +45,7 @@ type rescueFundingCommand struct {
 	RemotePubKey  string
 
 	SweepAddr string
-	FeeRate   uint16
+	FeeRate   uint32
 	APIURL    string
 
 	rootKey *rootKey
@@ -115,7 +115,7 @@ chantools rescuefunding \
 	cc.cmd.Flags().StringVar(
 		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)

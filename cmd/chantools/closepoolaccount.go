@@ -42,7 +42,7 @@ type closePoolAccountCommand struct {
 	AuctioneerKey string
 	Publish       bool
 	SweepAddr     string
-	FeeRate       uint16
+	FeeRate       uint32
 
 	MinExpiry       uint32
 	MaxNumBlocks    uint32
@@ -91,7 +91,7 @@ obtained by running 'pool accounts list' `,
 	cc.cmd.Flags().StringVar(
 		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
 	)
-	cc.cmd.Flags().Uint16Var(
+	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)
@@ -158,7 +158,7 @@ func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 
 func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	outpoint *wire.OutPoint, auctioneerKey *btcec.PublicKey,
-	sweepAddr string, publish bool, feeRate uint16, minExpiry,
+	sweepAddr string, publish bool, feeRate uint32, minExpiry,
 	maxNumBlocks, maxNumAccounts, maxNumBatchKeys uint32) error {
 
 	signer := &lnd.Signer{
