@@ -31,7 +31,7 @@ channel was never confirmed on chain!
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.16.0-beta or later after using this command!`,
+run lnd ` + lndVersion + ` or later after using this command!`,
 		Example: `chantools removechannel \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--channel 3149764effbe82718b280de425277e5e7b245a4573aa4a0203ac12cee1c37816:0`,

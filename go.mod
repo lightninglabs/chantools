@@ -19,6 +19,10 @@ require (
 	github.com/hasura/go-graphql-client v0.9.1
 	github.com/lightninglabs/loop v0.23.0-beta
 	github.com/lightninglabs/pool v0.6.2-beta.0.20230329135228-c3bffb52df3a
+	// The current version of lnd we are compatible with, mostly affects the
+	// commands that touch the channel DB and has an impact on the DB schema.
+	// NOTE: When updating this version, make sure to also update the string in
+	// cmd/chantools/root.go.
 	github.com/lightningnetwork/lnd v0.16.0-beta
 	github.com/lightningnetwork/lnd/kvdb v1.4.1
 	github.com/lightningnetwork/lnd/queue v1.1.0

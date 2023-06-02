@@ -46,7 +46,7 @@ without removing any other data.
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.16.0-beta or later after using this command!'`,
+run lnd ` + lndVersion + ` or later after using this command!'`,
 		Example: `chantools dropchannelgraph \
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--node_identity_key 03......

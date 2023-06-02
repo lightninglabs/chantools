@@ -34,6 +34,10 @@ const (
 	version = "0.11.3"
 	na      = "n/a"
 
+	// lndVersion is the current version of lnd that we support. This is
+	// shown in some commands that affect the database and its migrations.
+	lndVersion = "v0.16.0-beta"
+
 	Commit = ""
 )
 
