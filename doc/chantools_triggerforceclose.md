@@ -1,6 +1,14 @@
 ## chantools triggerforceclose
 
-Connect to a peer and send a custom message to trigger a force close of the specified channel
+Connect to a CLN peer and send a custom message to trigger a force close of the specified channel
+
+### Synopsis
+
+Certain versions of CLN didn't properly react to error
+messages sent by peers and therefore didn't follow the DLP protocol to recover
+channel funds using SCB. This command can be used to trigger a force close with
+those earlier versions of CLN (this command will not work for lnd peers or CLN
+peers of a different version).
 
 ```
 chantools triggerforceclose [flags]
