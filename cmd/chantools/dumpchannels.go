@@ -107,7 +107,30 @@ func dumpClosedChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 		return err
 	}
 
-	dumpChannels, err := dump.ClosedChannelDump(channels, chainParams)
+	historicalChannels := make([]*channeldb.OpenChannel, len(channels))
+	for idx := range channels {
+		closedChan := channels[idx]
+		histChan, err := chanDb.FetchHistoricalChannel(
+			&closedChan.ChanPoint,
+		)
+		switch err {
+		// The channel was closed in a pre-historic version of lnd.
+		// Ignore the error.
+		case channeldb.ErrNoHistoricalBucket:
+		case channeldb.ErrChannelNotFound:
+
+		case nil:
+			historicalChannels[idx] = histChan
+
+		// Non-nil error not due to older versions of lnd.
+		default:
+			return err
+		}
+	}
+
+	dumpChannels, err := dump.ClosedChannelDump(
+		channels, historicalChannels, chainParams,
+	)
 	if err != nil {
 		return fmt.Errorf("error converting to dump format: %w", err)
 	}
