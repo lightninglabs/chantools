@@ -48,6 +48,7 @@ chantools closepoolaccount \
 
 ```
   -r, --regtest   Indicates if regtest parameters should be used
+  -s, --signet    Indicates if the public signet parameters should be used
   -t, --testnet   Indicates if testnet parameters should be used
 ```
 
