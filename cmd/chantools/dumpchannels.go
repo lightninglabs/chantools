@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
@@ -113,13 +114,14 @@ func dumpClosedChannelInfo(chanDb *channeldb.ChannelStateDB) error {
 		histChan, err := chanDb.FetchHistoricalChannel(
 			&closedChan.ChanPoint,
 		)
-		switch err {
+
+		switch {
 		// The channel was closed in a pre-historic version of lnd.
 		// Ignore the error.
-		case channeldb.ErrNoHistoricalBucket:
-		case channeldb.ErrChannelNotFound:
+		case errors.Is(err, channeldb.ErrNoHistoricalBucket):
+		case errors.Is(err, channeldb.ErrChannelNotFound):
 
-		case nil:
+		case err == nil:
 			historicalChannels[idx] = histChan
 
 		// Non-nil error not due to older versions of lnd.
