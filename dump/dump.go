@@ -263,7 +263,7 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 		return nil, err
 	}
 
-	toLocalPkScript, err := txscript.ParsePkScript(toLocalScript.PkScript)
+	toLocalPkScript, err := txscript.ParsePkScript(toLocalScript.PkScript())
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 		return nil, err
 	}
 
-	toRemotePkScript, err := txscript.ParsePkScript(toRemoteScript.PkScript)
+	toRemotePkScript, err := txscript.ParsePkScript(toRemoteScript.PkScript())
 	if err != nil {
 		return nil, err
 	}
@@ -282,10 +282,12 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 	}
 
 	return &ChannelDebugInfo{
-		ToLocalScript: hex.EncodeToString(toLocalScript.WitnessScript),
-		ToLocalAddr:   toLocalAddr.String(),
+		ToLocalScript: hex.EncodeToString(
+			toLocalScript.WitnessScriptToSign(),
+		),
+		ToLocalAddr: toLocalAddr.String(),
 		ToRemoteScript: hex.EncodeToString(
-			toRemoteScript.WitnessScript,
+			toRemoteScript.WitnessScriptToSign(),
 		),
 		ToRemoteAddr: toRemoteAddr.String(),
 	}, nil
