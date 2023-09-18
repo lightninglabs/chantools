@@ -103,6 +103,7 @@ func main() {
 		newDeriveKeyCommand(),
 		newDoubleSpendInputsCommand(),
 		newDropChannelGraphCommand(),
+		newDropGraphZombiesCommand(),
 		newDumpBackupCommand(),
 		newDumpChannelsCommand(),
 		newDocCommand(),

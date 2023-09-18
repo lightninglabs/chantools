@@ -58,7 +58,7 @@ chantools dropchannelgraph \
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to dump "+
+		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to drop "+
 			"channels from",
 	)
 	cc.cmd.Flags().Uint64Var(

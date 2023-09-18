@@ -414,6 +414,7 @@ Available Commands:
   derivekey           Derive a key with a specific derivation path
   doublespendinputs   Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
   dropchannelgraph    Remove all graph related data from a channel DB
+  dropgraphzombies    Remove all channels identified as zombies from the graph to force a re-sync of the graph
   dumpbackup          Dump the content of a channel.backup file
   dumpchannels        Dump all channel information from an lnd channel database
   fakechanbackup      Fake a channel backup file to attempt fund recovery
@@ -471,6 +472,7 @@ Legend:
 | [derivekey](doc/chantools_derivekey.md)                     | :pencil: Derive a single private/public key from `lnd`'s seed, use to test seed                                                          |
 | [doublespendinputs](doc/chantools_doublespendinputs.md)     | :pencil: Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address      |
 | [dropchannelgraph](doc/chantools_dropchannelgraph.md)       | (:warning:) Completely drop the channel graph from a `channel.db` to force re-sync                                                       |
+| [dropgraphzombies](doc/chantools_dropgraphzombies.md)       | Drop all zombie channels from a `channel.db` to force a graph re-sync                                                                    |
 | [dumpbackup](doc/chantools_dumpbackup.md)                   | :pencil: Show the content of a `channel.backup` file as text                                                                             |
 | [dumpchannels](doc/chantools_dumpchannels.md)               | Show the content of a `channel.db` file as text                                                                                          |
 | [fakechanbackup](doc/chantools_fakechanbackup.md)           | :pencil: Create a fake `channel.backup` file from public information                                                                     |

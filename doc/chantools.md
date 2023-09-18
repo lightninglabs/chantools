@@ -26,6 +26,7 @@ Complete documentation is available at https://github.com/lightninglabs/chantool
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
 * [chantools doublespendinputs](chantools_doublespendinputs.md)	 - Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
 * [chantools dropchannelgraph](chantools_dropchannelgraph.md)	 - Remove all graph related data from a channel DB
+* [chantools dropgraphzombies](chantools_dropgraphzombies.md)	 - Remove all channels identified as zombies from the graph to force a re-sync of the graph
 * [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file
 * [chantools dumpchannels](chantools_dumpchannels.md)	 - Dump all channel information from an lnd channel database
 * [chantools fakechanbackup](chantools_fakechanbackup.md)	 - Fake a channel backup file to attempt fund recovery

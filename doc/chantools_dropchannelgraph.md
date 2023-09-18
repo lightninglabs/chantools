@@ -34,7 +34,7 @@ chantools dropchannelgraph \
 ### Options
 
 ```
-      --channeldb string           lnd channel.db file to dump channels from
+      --channeldb string           lnd channel.db file to drop channels from
       --fix_only                   fix an already empty graph by re-adding the own node's channels
   -h, --help                       help for dropchannelgraph
       --node_identity_key string   your node's identity public key
