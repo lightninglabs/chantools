@@ -44,6 +44,7 @@ const (
 var (
 	Testnet bool
 	Regtest bool
+	Signet  bool
 
 	logWriter   = build.NewRotatingLogWriter()
 	log         = build.NewSubLogger("CHAN", genSubLogger(logWriter))
@@ -65,6 +66,9 @@ Complete documentation is available at https://github.com/lightninglabs/chantool
 		case Regtest:
 			chainParams = &chaincfg.RegressionNetParams
 
+		case Signet:
+			chainParams = &chaincfg.SigNetParams
+
 		default:
 			chainParams = &chaincfg.MainNetParams
 		}
@@ -85,6 +89,10 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&Regtest, "regtest", "r", false, "Indicates if regtest "+
 			"parameters should be used",
+	)
+	rootCmd.PersistentFlags().BoolVarP(
+		&Signet, "signet", "s", false, "Indicates if the public "+
+			"signet parameters should be used",
 	)
 
 	rootCmd.AddCommand(
