@@ -113,10 +113,8 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		NotifyWhenOffline: func(peerPubKey [33]byte) <-chan struct{} {
 			return make(chan struct{})
 		},
-		SelfNodeAnnouncement: func(bool) (lnwire.NodeAnnouncement,
-			error) {
-
-			return lnwire.NodeAnnouncement{}, nil
+		FetchSelfAnnouncement: func() lnwire.NodeAnnouncement {
+			return lnwire.NodeAnnouncement{}
 		},
 		ProofMatureDelta:    0,
 		TrickleDelay:        time.Millisecond * 50,
@@ -183,7 +181,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 				key.SerializeCompressed())
 			return nil
 		},
-		GenNodeAnnouncement: func(b bool,
+		GenNodeAnnouncement: func(
 			modifier ...netann.NodeAnnModifier) (
 			lnwire.NodeAnnouncement, error) {
 

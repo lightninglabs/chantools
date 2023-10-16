@@ -19,6 +19,11 @@ linters-settings:
   staticcheck:
     go: "1.18"
     checks: ["-SA1019"]
+  gomoddirectives:
+    replace-allow-list:
+      # See go.mod for the explanation why these are needed.
+      - google.golang.org/protobuf
+
 
 linters:
   enable-all: true
