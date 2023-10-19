@@ -30,7 +30,7 @@ Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.11.3/chantools-linux-amd64-v0.11.3.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.12.0/chantools-linux-amd64-v0.12.0.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```
@@ -384,7 +384,7 @@ $    export AEZEED_MNEMONIC="abandon able ... ... ..."
 $    export AEZEED_PASSPHRASE="-"
 $ chantools showrootkey
 
-2020-10-29 20:22:42.329 [INF] CHAN: chantools version v0.6.0 commit v0.6.0-3
+2020-10-29 20:22:42.329 [INF] CHAN: chantools version v0.12.0 commit v0.12.0
 
 Your BIP32 HD root key is: xprv9s21ZrQH1...
 ```
