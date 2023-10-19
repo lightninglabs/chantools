@@ -272,7 +272,9 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 		return nil, err
 	}
 
-	toRemotePkScript, err := txscript.ParsePkScript(toRemoteScript.PkScript())
+	toRemotePkScript, err := txscript.ParsePkScript(
+		toRemoteScript.PkScript(),
+	)
 	if err != nil {
 		return nil, err
 	}
