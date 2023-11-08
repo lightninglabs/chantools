@@ -34,8 +34,8 @@ type sweepTimeLockManualCommand struct {
 	TimeLockAddr              string
 	RemoteRevocationBasePoint string
 
-	MaxNumChansTotal  uint16
-	MaxNumChanUpdates uint64
+	MaxNumChannelsTotal uint16
+	MaxNumChanUpdates   uint64
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -83,7 +83,7 @@ address is always the one that's longer (because it's P2WSH and not P2PKH).`,
 			"limit to use",
 	)
 	cc.cmd.Flags().Uint16Var(
-		&cc.MaxNumChansTotal, "maxnumchanstotal", maxKeys, "maximum "+
+		&cc.MaxNumChannelsTotal, "maxnumchanstotal", maxKeys, "maximum "+
 			"number of keys to try, set to maximum number of "+
 			"channels the local node potentially has or had",
 	)
@@ -136,7 +136,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 	return sweepTimeLockManual(
 		extendedKey, c.APIURL, c.SweepAddr, c.TimeLockAddr,
-		remoteRevPoint, 0, c.MaxCsvLimit, 0, c.MaxNumChansTotal,
+		remoteRevPoint, 0, c.MaxCsvLimit, 0, c.MaxNumChannelsTotal,
 		c.MaxNumChanUpdates, c.Publish, c.FeeRate,
 	)
 }
