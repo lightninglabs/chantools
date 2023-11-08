@@ -136,15 +136,15 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 	return sweepTimeLockManual(
 		extendedKey, c.APIURL, c.SweepAddr, c.TimeLockAddr,
-		remoteRevPoint, c.MaxCsvLimit, c.MaxNumChansTotal,
+		remoteRevPoint, 0, c.MaxCsvLimit, 0, c.MaxNumChansTotal,
 		c.MaxNumChanUpdates, c.Publish, c.FeeRate,
 	)
 }
 
 func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepAddr, timeLockAddr string, remoteRevPoint *btcec.PublicKey,
-	maxCsvTimeout, maxNumChannels uint16, maxNumChanUpdates uint64,
-	publish bool, feeRate uint32) error {
+	startCsvTimeout, maxCsvTimeout, startNumChannels, maxNumChannels uint16,
+	maxNumChanUpdates uint64, publish bool, feeRate uint32) error {
 
 	// First of all, we need to parse the lock addr and make sure we can
 	// brute force the script with the information we have. If not, we can't
@@ -179,10 +179,10 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		delayDesc   *keychain.KeyDescriptor
 		commitPoint *btcec.PublicKey
 	)
-	for i := uint16(0); i < maxNumChannels; i++ {
+	for i := startNumChannels; i < maxNumChannels; i++ {
 		csvTimeout, script, scriptHash, commitPoint, delayDesc, err = tryKey(
-			baseKey, remoteRevPoint, maxCsvTimeout, lockScript,
-			uint32(i), maxNumChanUpdates,
+			baseKey, remoteRevPoint, startCsvTimeout, maxCsvTimeout,
+			lockScript, uint32(i), maxNumChanUpdates,
 		)
 
 		if err == nil {
@@ -305,7 +305,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 }
 
 func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
-	maxCsvTimeout uint16, lockScript []byte, idx uint32,
+	startCsvTimeout, maxCsvTimeout uint16, lockScript []byte, idx uint32,
 	maxNumChanUpdates uint64) (int32, []byte, []byte, *btcec.PublicKey,
 	*keychain.KeyDescriptor, error) {
 
@@ -338,7 +338,7 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 	// points and CSV values.
 	csvTimeout, script, scriptHash, commitPoint, err := bruteForceDelayPoint(
 		delayPrivKey.PubKey(), remoteRevPoint, revRoot, lockScript,
-		maxCsvTimeout, maxNumChanUpdates,
+		startCsvTimeout, maxCsvTimeout, maxNumChanUpdates,
 	)
 	if err == nil {
 		return csvTimeout, script, scriptHash, commitPoint,
@@ -403,7 +403,7 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 
 	csvTimeout, script, scriptHash, commitPoint, err = bruteForceDelayPoint(
 		delayPrivKey.PubKey(), remoteRevPoint, revRoot2, lockScript,
-		maxCsvTimeout, maxNumChanUpdates,
+		startCsvTimeout, maxCsvTimeout, maxNumChanUpdates,
 	)
 	if err == nil {
 		return csvTimeout, script, scriptHash, commitPoint,
@@ -444,7 +444,7 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 
 	csvTimeout, script, scriptHash, commitPoint, err = bruteForceDelayPoint(
 		delayPrivKey.PubKey(), remoteRevPoint, revRoot3, lockScript,
-		maxCsvTimeout, maxNumChanUpdates,
+		startCsvTimeout, maxCsvTimeout, maxNumChanUpdates,
 	)
 	if err == nil {
 		return csvTimeout, script, scriptHash, commitPoint,
@@ -462,8 +462,8 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 
 func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
 	revRoot *shachain.RevocationProducer, lockScript []byte,
-	maxCsvTimeout uint16, maxChanUpdates uint64) (int32, []byte, []byte,
-	*btcec.PublicKey, error) {
+	startCsvTimeout, maxCsvTimeout uint16, maxChanUpdates uint64) (int32,
+	[]byte, []byte, *btcec.PublicKey, error) {
 
 	for i := uint64(0); i < maxChanUpdates; i++ {
 		revPreimage, err := revRoot.AtIndex(i)
@@ -475,7 +475,7 @@ func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
 		csvTimeout, script, scriptHash, err := bruteForceDelay(
 			input.TweakPubKey(delayBase, commitPoint),
 			input.DeriveRevocationPubkey(revBase, commitPoint),
-			lockScript, maxCsvTimeout,
+			lockScript, startCsvTimeout, maxCsvTimeout,
 		)
 
 		if err != nil {
