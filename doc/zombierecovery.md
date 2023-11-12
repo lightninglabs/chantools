@@ -8,7 +8,7 @@ known anymore: no one knows what the balances were (there is no channel DB,
 static channel backup did not work, force closing was not possible).
 
 This means:
-1. Hou have to find the peer (which, if you want to do a zombie recovery, was
+1. You have to find the peer (which, if you want to do a zombie recovery, was
    probably offline if you tried to recover)
 2. You have to find a way to contact this peer (twitter, email, ...)
 3. You and your peer will have to negotiate a closing state: you only know the
