@@ -12,6 +12,10 @@ funds from those channels. But this method can help if the other node doesn't
 know about the channels any more but we still have the channel.db from the
 moment they force-closed.
 
+NOTE: Unless your channel was opened before 2019, you very likely don't need to
+use this command as things were simplified. Use 'chantools sweepremoteclosed'
+instead if the remote party has already closed the channel.
+
 The alternative use case for this command is if you got the commit point by
 running the fund-recovery branch of my guggero/lnd fork (see 
 https://github.com/guggero/lnd/releases for a binary release) in combination
@@ -48,7 +52,7 @@ chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
       --bip39                     read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channeldb string          lnd channel.db file to use for rescuing force-closed channels
       --commit_point string       the commit point that was obtained from the logs after running the fund-recovery branch of guggero/lnd
-      --force_close_addr string   the address the channel was force closed to
+      --force_close_addr string   the address the channel was force closed to, look up in block explorer by following funding txid
       --fromchanneldb string      channel input is in the format of an lnd channel.db file
       --fromsummary string        channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                      help for rescueclosed

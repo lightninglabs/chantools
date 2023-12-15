@@ -60,6 +60,10 @@ funds from those channels. But this method can help if the other node doesn't
 know about the channels any more but we still have the channel.db from the
 moment they force-closed.
 
+NOTE: Unless your channel was opened before 2019, you very likely don't need to
+use this command as things were simplified. Use 'chantools sweepremoteclosed'
+instead if the remote party has already closed the channel.
+
 The alternative use case for this command is if you got the commit point by
 running the fund-recovery branch of my guggero/lnd fork (see 
 https://github.com/guggero/lnd/releases for a binary release) in combination
@@ -88,7 +92,8 @@ chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.Addr, "force_close_addr", "", "the address the channel "+
-			"was force closed to",
+			"was force closed to, look up in block explorer by "+
+			"following funding txid",
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.CommitPoint, "commit_point", "", "the commit point that "+
