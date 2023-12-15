@@ -13,7 +13,6 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/gogo/protobuf/jsonpb"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
@@ -138,8 +137,9 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error reading graph JSON file %s: "+
 				"%v", c.FromChannelGraph, err)
 		}
+
 		graph := &lnrpc.ChannelGraph{}
-		err = jsonpb.UnmarshalString(string(graphBytes), graph)
+		err = lnrpc.ProtoJSONUnmarshalOpts.Unmarshal(graphBytes, graph)
 		if err != nil {
 			return fmt.Errorf("error parsing graph JSON: %w", err)
 		}
