@@ -276,11 +276,7 @@ func GetWitnessAddrScript(addr btcutil.Address,
 			chainParams.Name)
 	}
 
-	builder := txscript.NewScriptBuilder()
-	builder.AddOp(txscript.OP_0)
-	builder.AddData(addr.ScriptAddress())
-
-	return builder.Script()
+	return txscript.PayToAddrScript(addr)
 }
 
 // GetP2WPKHScript creates a P2WKH output script from an address. If the address
@@ -385,6 +381,21 @@ func P2AnchorStaticRemote(pubKey *btcec.PublicKey,
 	scriptHash := sha256.Sum256(commitScript)
 	p2wsh, err := btcutil.NewAddressWitnessScriptHash(scriptHash[:], params)
 	return p2wsh, commitScript, err
+}
+
+func P2TaprootStaticRemove(pubKey *btcec.PublicKey,
+	params *chaincfg.Params) (*btcutil.AddressTaproot,
+	*input.CommitScriptTree, error) {
+
+	scriptTree, err := input.NewRemoteCommitScriptTree(pubKey)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create script: %w", err)
+	}
+
+	addr, err := btcutil.NewAddressTaproot(
+		schnorr.SerializePubKey(scriptTree.TaprootKey), params,
+	)
+	return addr, scriptTree, err
 }
 
 type HDKeyRing struct {
