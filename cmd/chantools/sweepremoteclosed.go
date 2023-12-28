@@ -53,6 +53,7 @@ funds can be swept after the force-close transaction was confirmed.
 Supported remote force-closed channel types are:
  - STATIC_REMOTE_KEY (a.k.a. tweakless channels)
  - ANCHOR (a.k.a. anchor output channels)
+ - SIMPLE_TAPROOT (a.k.a. simple taproot channels)
 `,
 		Example: `chantools sweepremoteclosed \
 	--recoverywindow 300 \
@@ -113,12 +114,13 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 }
 
 type targetAddr struct {
-	addr    btcutil.Address
-	pubKey  *btcec.PublicKey
-	path    string
-	keyDesc *keychain.KeyDescriptor
-	vouts   []*btc.Vout
-	script  []byte
+	addr       btcutil.Address
+	pubKey     *btcec.PublicKey
+	path       string
+	keyDesc    *keychain.KeyDescriptor
+	vouts      []*btc.Vout
+	script     []byte
+	scriptTree *input.CommitScriptTree
 }
 
 func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
@@ -196,18 +198,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 					err)
 			}
 
-			sequence := wire.MaxTxInSequenceNum
-			switch target.addr.(type) {
-			case *btcutil.AddressWitnessPubKeyHash:
-				estimator.AddP2WKHInput()
-
-			case *btcutil.AddressWitnessScriptHash:
-				estimator.AddWitnessInput(
-					input.ToRemoteConfirmedWitnessSize,
-				)
-				sequence = 1
-			}
-
 			prevOutPoint := wire.OutPoint{
 				Hash:  *txHash,
 				Index: uint32(vout.Outspend.Vin),
@@ -217,18 +207,76 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				Value:    int64(vout.Value),
 			}
 			prevOutFetcher.AddPrevOut(prevOutPoint, prevTxOut)
-			sweepTx.TxIn = append(sweepTx.TxIn, &wire.TxIn{
+			txIn := &wire.TxIn{
 				PreviousOutPoint: prevOutPoint,
-				Sequence:         sequence,
-			})
+				Sequence:         wire.MaxTxInSequenceNum,
+			}
+			sweepTx.TxIn = append(sweepTx.TxIn, txIn)
+			inputIndex := len(sweepTx.TxIn) - 1
 
-			signDescs = append(signDescs, &input.SignDescriptor{
-				KeyDesc:           *target.keyDesc,
-				WitnessScript:     target.script,
-				Output:            prevTxOut,
-				HashType:          txscript.SigHashAll,
-				PrevOutputFetcher: prevOutFetcher,
-			})
+			var signDesc *input.SignDescriptor
+			switch target.addr.(type) {
+			case *btcutil.AddressWitnessPubKeyHash:
+				estimator.AddP2WKHInput()
+
+				signDesc = &input.SignDescriptor{
+					KeyDesc:           *target.keyDesc,
+					WitnessScript:     target.script,
+					Output:            prevTxOut,
+					HashType:          txscript.SigHashAll,
+					PrevOutputFetcher: prevOutFetcher,
+					InputIndex:        inputIndex,
+				}
+
+			case *btcutil.AddressWitnessScriptHash:
+				estimator.AddWitnessInput(
+					input.ToRemoteConfirmedWitnessSize,
+				)
+				txIn.Sequence = 1
+
+				signDesc = &input.SignDescriptor{
+					KeyDesc:           *target.keyDesc,
+					WitnessScript:     target.script,
+					Output:            prevTxOut,
+					HashType:          txscript.SigHashAll,
+					PrevOutputFetcher: prevOutFetcher,
+					InputIndex:        inputIndex,
+				}
+
+			case *btcutil.AddressTaproot:
+				estimator.AddWitnessInput(
+					input.TaprootToRemoteWitnessSize,
+				)
+				txIn.Sequence = 1
+
+				tree := target.scriptTree
+				controlBlock, err := tree.CtrlBlockForPath(
+					input.ScriptPathSuccess,
+				)
+				if err != nil {
+					return err
+				}
+				controlBlockBytes, err := controlBlock.ToBytes()
+				if err != nil {
+					return err
+				}
+
+				script := tree.SettleLeaf.Script
+				signMethod := input.TaprootScriptSpendSignMethod
+				signDesc = &input.SignDescriptor{
+					KeyDesc:           *target.keyDesc,
+					WitnessScript:     script,
+					Output:            prevTxOut,
+					HashType:          txscript.SigHashDefault,
+					PrevOutputFetcher: prevOutFetcher,
+					ControlBlock:      controlBlockBytes,
+					InputIndex:        inputIndex,
+					SignMethod:        signMethod,
+					TapTweak:          tree.TapscriptRoot,
+				}
+			}
+
+			signDescs = append(signDescs, signDesc)
 		}
 	}
 
@@ -270,7 +318,19 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		desc.SigHashes = sigHashes
 		desc.InputIndex = idx
 
-		if len(desc.WitnessScript) > 0 {
+		switch {
+		// Simple Taproot Channels.
+		case desc.SignMethod == input.TaprootScriptSpendSignMethod:
+			witness, err := input.TaprootCommitSpendSuccess(
+				signer, desc, sweepTx, nil,
+			)
+			if err != nil {
+				return err
+			}
+			sweepTx.TxIn[idx].Witness = witness
+
+		// Anchor Channels.
+		case len(desc.WitnessScript) > 0:
 			witness, err := input.CommitSpendToRemoteConfirmed(
 				signer, desc, sweepTx,
 			)
@@ -278,7 +338,9 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				return err
 			}
 			sweepTx.TxIn[idx].Witness = witness
-		} else {
+
+		// Static Remote Key Channels.
+		default:
 			// The txscript library expects the witness script of a
 			// P2WKH descriptor to be set to the pkScript of the
 			// output...
@@ -320,7 +382,9 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 	error) {
 
 	var targets []*targetAddr
-	queryAddr := func(address btcutil.Address, script []byte) error {
+	queryAddr := func(address btcutil.Address, script []byte,
+		scriptTree *input.CommitScriptTree) error {
+
 		unspent, err := api.Unspent(address.EncodeAddress())
 		if err != nil {
 			return fmt.Errorf("could not query unspent: %w", err)
@@ -330,12 +394,13 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 			log.Infof("Found %d unspent outputs for address %v",
 				len(unspent), address.EncodeAddress())
 			targets = append(targets, &targetAddr{
-				addr:    address,
-				pubKey:  pubKey,
-				path:    path,
-				keyDesc: keyDesc,
-				vouts:   unspent,
-				script:  script,
+				addr:       address,
+				pubKey:     pubKey,
+				path:       path,
+				keyDesc:    keyDesc,
+				vouts:      unspent,
+				script:     script,
+				scriptTree: scriptTree,
 			})
 		}
 
@@ -346,7 +411,7 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 	if err != nil {
 		return nil, err
 	}
-	if err := queryAddr(p2wkh, nil); err != nil {
+	if err := queryAddr(p2wkh, nil, nil); err != nil {
 		return nil, err
 	}
 
@@ -354,7 +419,15 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 	if err != nil {
 		return nil, err
 	}
-	if err := queryAddr(p2anchor, script); err != nil {
+	if err := queryAddr(p2anchor, script, nil); err != nil {
+		return nil, err
+	}
+
+	p2tr, scriptTree, err := lnd.P2TaprootStaticRemove(pubKey, chainParams)
+	if err != nil {
+		return nil, err
+	}
+	if err := queryAddr(p2tr, nil, scriptTree); err != nil {
 		return nil, err
 	}
 
