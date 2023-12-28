@@ -86,7 +86,7 @@ func TestSweepTimeLockManual(t *testing.T) {
 		revPubKey, _ := btcec.ParsePubKey(revPubKeyBytes)
 
 		_, _, _, _, _, err = tryKey(
-			baseKey, revPubKey, defaultCsvLimit, lockScript,
+			baseKey, revPubKey, 0, defaultCsvLimit, lockScript,
 			tc.keyIndex, 500,
 		)
 		require.NoError(t, err)

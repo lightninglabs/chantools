@@ -239,7 +239,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 			), input.DeriveRevocationPubkey(
 				target.revocationBasePoint,
 				target.commitPoint,
-			), target.lockScript, maxCsvTimeout,
+			), target.lockScript, 0, maxCsvTimeout,
 		)
 		if err != nil {
 			log.Errorf("Could not create matching script for %s "+
@@ -346,14 +346,14 @@ func pubKeyFromHex(pubKeyHex string) (*btcec.PublicKey, error) {
 }
 
 func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
-	targetScript []byte, maxCsvTimeout uint16) (int32, []byte, []byte,
-	error) {
+	targetScript []byte, startCsvTimeout, maxCsvTimeout uint16) (int32,
+	[]byte, []byte, error) {
 
 	if len(targetScript) != 34 {
 		return 0, nil, nil, fmt.Errorf("invalid target script: %s",
 			targetScript)
 	}
-	for i := uint16(0); i <= maxCsvTimeout; i++ {
+	for i := startCsvTimeout; i <= maxCsvTimeout; i++ {
 		s, err := input.CommitScriptToSelf(
 			uint32(i), delayPubkey, revocationPubkey,
 		)
