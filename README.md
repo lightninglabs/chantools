@@ -423,6 +423,7 @@ Available Commands:
   forceclose          Force-close the last state that is in the channel.db provided
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
   migratedb           Apply all recent lnd channel database migrations
+  pullanchor          Attempt to CPFP an anchor output of a channel
   removechannel       Remove a single channel from the given channel DB
   rescueclosed        Try finding the private keys for funds that are in outputs of remotely force-closed channels
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
@@ -481,6 +482,7 @@ Legend:
 | [forceclose](doc/chantools_forceclose.md)                   | :pencil: (:skull: :warning:) Publish an old channel state from a `channel.db` file                                                       |
 | [genimportscript](doc/chantools_genimportscript.md)         | :pencil: Create a script/text file that can be used to import `lnd` keys into other software                                             |
 | [migratedb](doc/chantools_migratedb.md)                     | Upgrade the `channel.db` file to the latest version                                                                                      |
+| [pullanchor](doc/chantools_pullanchor.md) | :pencil: Attempt to CPFP an anchor output of a channel                                                                                   | 
 | [recoverloopin](doc/chantools_recoverloopin.md)             | :pencil: Recover funds from a failed Lightning Loop inbound swap                                                                         |
 | [removechannel](doc/chantools_removechannel.md)             | (:skull: :warning:) Remove a single channel from a `channel.db` file                                                                     |
 | [rescueclosed](doc/chantools_rescueclosed.md)               | :pencil: (:pushpin:) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |

@@ -31,7 +31,7 @@ const (
 	// version is the current version of the tool. It is set during build.
 	// NOTE: When changing this, please also update the version in the
 	// download link shown in the README.
-	version = "0.12.0"
+	version = "0.12.1"
 	na      = "n/a"
 
 	// lndVersion is the current version of lnd that we support. This is
@@ -113,6 +113,7 @@ func main() {
 		newForceCloseCommand(),
 		newGenImportScriptCommand(),
 		newMigrateDBCommand(),
+		newPullAnchorCommand(),
 		newRecoverLoopInCommand(),
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
