@@ -112,7 +112,9 @@ chantools rescuefunding \
 			"specified manually",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -224,6 +226,14 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error parsing confirmed channel "+
 				"point: %w", err)
 		}
+	}
+
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Make sure the sweep addr is a P2WKH address so we can do accurate

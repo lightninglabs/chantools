@@ -88,7 +88,9 @@ obtained by running 'pool accounts list' `,
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -124,8 +126,12 @@ func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Parse account outpoint and auctioneer key.

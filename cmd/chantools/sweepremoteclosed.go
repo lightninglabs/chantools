@@ -76,7 +76,9 @@ Supported remote force-closed channel types are:
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -95,8 +97,12 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Set default values.
@@ -423,7 +429,7 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 		return nil, err
 	}
 
-	p2tr, scriptTree, err := lnd.P2TaprootStaticRemove(pubKey, chainParams)
+	p2tr, scriptTree, err := lnd.P2TaprootStaticRemote(pubKey, chainParams)
 	if err != nil {
 		return nil, err
 	}

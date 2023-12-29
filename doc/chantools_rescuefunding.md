@@ -49,7 +49,7 @@ chantools rescuefunding \
       --localkeyindex uint32           in case a channel DB is not available (but perhaps a channel backup file), the derivation index of the local multisig public key can be specified manually
       --remotepubkey string            in case a channel DB is not available (but perhaps a channel backup file), the remote multisig public key can be specified manually
       --rootkey string                 BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
-      --sweepaddr string               address to sweep the funds to
+      --sweepaddr string               address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
 ```
 
 ### Options inherited from parent commands

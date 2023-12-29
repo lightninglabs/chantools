@@ -69,8 +69,9 @@ func newRecoverLoopInCommand() *cobra.Command {
 			"database directory, where the loop.db file is located",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweep_addr", "", "address to recover "+
-			"the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", 0, "fee rate to "+
@@ -116,12 +117,15 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("loop_db_dir is required")
 	}
 
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep_addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	api := newExplorerAPI(c.APIURL)
-
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,

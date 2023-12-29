@@ -65,7 +65,9 @@ transaction of an anchor output channel type. This will attempt to CPFP the
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.ChangeAddr, "changeaddr", "", "the change address to "+
-			"send the remaining funds to",
+			"send the remaining funds back to; specify '"+
+			lnd.AddressDeriveFromWallet+"' to derive a new "+
+			"address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -90,8 +92,21 @@ func (c *pullAnchorCommand) Execute(_ *cobra.Command, _ []string) error {
 	if len(c.AnchorAddrs) == 0 {
 		return fmt.Errorf("at least one anchor addr is required")
 	}
-	if c.ChangeAddr == "" {
-		return fmt.Errorf("change addr is required")
+	for _, anchorAddr := range c.AnchorAddrs {
+		err = lnd.CheckAddress(
+			anchorAddr, chainParams, true, "anchor",
+			lnd.AddrTypeP2WSH, lnd.AddrTypeP2TR,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	err = lnd.CheckAddress(
+		c.ChangeAddr, chainParams, true, "change", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	outpoint, err := lnd.ParseOutpoint(c.SponsorInput)

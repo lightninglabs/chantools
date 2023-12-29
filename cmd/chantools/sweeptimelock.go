@@ -64,7 +64,9 @@ parameter to 144.`,
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint16Var(
 		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
@@ -88,8 +90,12 @@ func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Parse channel entries from any of the possible input files.

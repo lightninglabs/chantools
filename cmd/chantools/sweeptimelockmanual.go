@@ -89,7 +89,9 @@ chantools sweeptimelockmanual \
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint16Var(
 		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
@@ -142,11 +144,20 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 	}
 
 	// Make sure the sweep and time lock addrs are set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
-	if c.TimeLockAddr == "" {
-		return fmt.Errorf("time lock addr is required")
+
+	err = lnd.CheckAddress(
+		c.TimeLockAddr, chainParams, true, "time lock",
+		lnd.AddrTypeP2WSH,
+	)
+	if err != nil {
+		return err
 	}
 
 	var (
