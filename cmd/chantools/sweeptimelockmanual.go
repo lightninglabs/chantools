@@ -248,12 +248,30 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		maxCsvTimeout, startNumChannels, maxNumChannels,
 		maxNumChanUpdates)
 
+	// Create signer and transaction template.
+	var (
+		estimator input.TxWeightEstimator
+		signer    = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+		api = newExplorerAPI(apiURL)
+	)
+
 	// First of all, we need to parse the lock addr and make sure we can
 	// brute force the script with the information we have. If not, we can't
 	// continue anyway.
-	lockScript, err := lnd.GetP2WSHScript(timeLockAddr, chainParams)
+	lockScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, nil, extendedKey, "time lock",
+	)
 	if err != nil {
-		return fmt.Errorf("invalid time lock addr: %w", err)
+		return err
+	}
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
 	}
 
 	// We need to go through a lot of our keys so it makes sense to
@@ -303,13 +321,6 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		return fmt.Errorf("target script not derived")
 	}
 
-	// Create signer and transaction template.
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
-	}
-	api := newExplorerAPI(apiURL)
-
 	// We now know everything we need to construct the sweep transaction,
 	// except for what outpoint to sweep. We'll ask the chain API to give
 	// us this information.
@@ -339,17 +350,11 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
-	var estimator input.TxWeightEstimator
 	estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
-	estimator.AddP2WKHOutput()
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
 	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
 
 	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
 	sweepTx.TxOut = []*wire.TxOut{{
 		Value:    sweepValue - int64(totalFee),
 		PkScript: sweepScript,

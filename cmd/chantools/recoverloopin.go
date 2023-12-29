@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -165,27 +164,18 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Get the destination address.
-	sweepAddr, err := btcutil.DecodeAddress(c.SweepAddr, chainParams)
+	var estimator input.TxWeightEstimator
+	sweepScript, err := lnd.PrepareWalletAddress(
+		c.SweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
 	if err != nil {
 		return err
 	}
 
 	// Calculate the sweep fee.
-	estimator := &input.TxWeightEstimator{}
-	err = htlc.AddTimeoutToEstimator(estimator)
+	err = htlc.AddTimeoutToEstimator(&estimator)
 	if err != nil {
 		return err
-	}
-
-	switch sweepAddr.(type) {
-	case *btcutil.AddressWitnessPubKeyHash:
-		estimator.AddP2WKHOutput()
-
-	case *btcutil.AddressTaproot:
-		estimator.AddP2TROutput()
-
-	default:
-		return fmt.Errorf("unsupported address type")
 	}
 
 	feeRateKWeight := chainfee.SatPerKVByte(
@@ -216,13 +206,8 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	})
 
 	// Add output for the destination address.
-	sweepPkScript, err := txscript.PayToAddrScript(sweepAddr)
-	if err != nil {
-		return err
-	}
-
 	sweepTx.AddTxOut(&wire.TxOut{
-		PkScript: sweepPkScript,
+		PkScript: sweepScript,
 		Value:    int64(loopIn.Contract.AmountRequested) - int64(fee),
 	})
 

@@ -236,23 +236,27 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	// Make sure the sweep addr is a P2WKH address so we can do accurate
-	// fee estimation.
-	sweepScript, err := lnd.GetP2WPKHScript(c.SweepAddr, chainParams)
-	if err != nil {
-		return fmt.Errorf("error parsing sweep addr: %w", err)
-	}
-
 	return rescueFunding(
-		localKeyDesc, remotePubKey, signer, chainOp,
-		sweepScript, btcutil.Amount(c.FeeRate), c.APIURL,
+		localKeyDesc, remotePubKey, signer, chainOp, c.SweepAddr,
+		btcutil.Amount(c.FeeRate), c.APIURL,
 	)
 }
 
 func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 	remoteKey *btcec.PublicKey, signer *lnd.Signer,
-	chainPoint *wire.OutPoint, sweepPKScript []byte, feeRate btcutil.Amount,
+	chainPoint *wire.OutPoint, sweepAddr string, feeRate btcutil.Amount,
 	apiURL string) error {
+
+	var (
+		estimator input.TxWeightEstimator
+		api       = newExplorerAPI(apiURL)
+	)
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, signer.ExtendedKey, "sweep",
+	)
+	if err != nil {
+		return err
+	}
 
 	// Prepare the wire part of the PSBT.
 	txIn := &wire.TxIn{
@@ -260,11 +264,10 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		Sequence:         0,
 	}
 	txOut := &wire.TxOut{
-		PkScript: sweepPKScript,
+		PkScript: sweepScript,
 	}
 
 	// Locate the output in the funding TX.
-	api := newExplorerAPI(apiURL)
 	tx, err := api.Transaction(chainPoint.Hash.String())
 	if err != nil {
 		return fmt.Errorf("error fetching UTXO info for outpoint %s: "+
@@ -303,17 +306,15 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		WitnessScript: witnessScript,
 		Unknowns: []*psbt.Unknown{{
 			// We add the public key the other party needs to sign
-			// with as a proprietary field so we can easily read it
+			// with as a proprietary field, so we can easily read it
 			// out with the signrescuefunding command.
 			Key:   PsbtKeyTypeOutputMissingSigPubkey,
 			Value: remoteKey.SerializeCompressed(),
 		}},
 	}
 
-	// Estimate the transaction weight so we can do the fee estimation.
-	var estimator input.TxWeightEstimator
+	// Estimate the transaction weight, so we can do the fee estimation.
 	estimator.AddWitnessInput(MultiSigWitnessSize)
-	estimator.AddP2WKHOutput()
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
 	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
 	txOut.Value = utxo.Value - int64(totalFee)

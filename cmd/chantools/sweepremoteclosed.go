@@ -133,6 +133,14 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	sweepAddr string, recoveryWindow uint32, feeRate uint32,
 	publish bool) error {
 
+	var estimator input.TxWeightEstimator
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
+	}
+
 	var (
 		targets []*targetAddr
 		api     = newExplorerAPI(apiURL)
@@ -177,7 +185,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 
 	// Create estimator and transaction template.
 	var (
-		estimator        input.TxWeightEstimator
 		signDescs        []*input.SignDescriptor
 		sweepTx          = wire.NewMsgTx(2)
 		totalOutputValue = uint64(0)
@@ -291,13 +298,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			"of %d satoshis which is below the dust limit of %d",
 			len(targets), totalOutputValue, sweepDustLimit)
 	}
-
-	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
-	estimator.AddP2WKHOutput()
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.

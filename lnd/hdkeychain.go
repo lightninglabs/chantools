@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/shachain"
@@ -435,6 +436,67 @@ func CheckAddress(addr string, chainParams *chaincfg.Params, allowDerive bool,
 	}
 
 	return nil
+}
+
+func PrepareWalletAddress(addr string, chainParams *chaincfg.Params,
+	estimator *input.TxWeightEstimator, rootKey *hdkeychain.ExtendedKey,
+	hint string) ([]byte, error) {
+
+	// We already checked if deriving a new address is allowed in a previous
+	// step, so we can just go ahead and do it now if requested.
+	if addr == AddressDeriveFromWallet {
+		// To maximize compatibility and recoverability, we always
+		// derive the very first P2WKH address from the wallet.
+		// This corresponds to the derivation path: m/84'/0'/0'/0/0.
+		derivedKey, err := DeriveChildren(rootKey, []uint32{
+			HardenedKeyStart + waddrmgr.KeyScopeBIP0084.Purpose,
+			HardenedKeyStart + chainParams.HDCoinType,
+			HardenedKeyStart + 0, 0, 0,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		derivedPubKey, err := derivedKey.ECPubKey()
+		if err != nil {
+			return nil, err
+		}
+
+		p2wkhAddr, err := P2WKHAddr(derivedPubKey, chainParams)
+		if err != nil {
+			return nil, err
+		}
+
+		return txscript.PayToAddrScript(p2wkhAddr)
+	}
+
+	parsedAddr, err := ParseAddress(addr, chainParams)
+	if err != nil {
+		return nil, fmt.Errorf("%s address is invalid: %w", hint, err)
+	}
+
+	// Exit early if we don't need to estimate the weight.
+	if estimator == nil {
+		return txscript.PayToAddrScript(parsedAddr)
+	}
+
+	// These are the three address types that we support in general. We
+	// should have checked that we get the correct type in a previous step.
+	switch parsedAddr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		estimator.AddP2WKHOutput()
+
+	case *btcutil.AddressWitnessScriptHash:
+		estimator.AddP2WSHOutput()
+
+	case *btcutil.AddressTaproot:
+		estimator.AddP2TROutput()
+
+	default:
+		return nil, fmt.Errorf("%s address is of wrong type", hint)
+	}
+
+	return txscript.PayToAddrScript(parsedAddr)
 }
 
 func matchAddrType(addr btcutil.Address, allowedTypes ...AddrType) bool {

@@ -221,18 +221,26 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	publish bool, feeRate uint32) error {
 
 	// Create signer and transaction template.
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
+	var (
+		estimator input.TxWeightEstimator
+		signer    = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+		api = newExplorerAPI(apiURL)
+	)
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
 	}
-	api := newExplorerAPI(apiURL)
 
 	var (
 		sweepTx          = wire.NewMsgTx(2)
 		totalOutputValue = int64(0)
 		signDescs        = make([]*input.SignDescriptor, 0)
 		prevOutFetcher   = txscript.NewMultiPrevOutFetcher(nil)
-		estimator        input.TxWeightEstimator
 	)
 	for _, target := range targets {
 		// We can't rely on the CSV delay of the channel DB to be
@@ -247,8 +255,8 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 			), target.lockScript, 0, maxCsvTimeout,
 		)
 		if err != nil {
-			log.Errorf("Could not create matching script for %s "+
-				"or csv too high: %w", target.channelPoint, err)
+			log.Errorf("could not create matching script for %s "+
+				"or csv too high: %v", target.channelPoint, err)
 			continue
 		}
 
@@ -287,13 +295,6 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		// Account for the input weight.
 		estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
 	}
-
-	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
-	estimator.AddP2WKHOutput()
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
