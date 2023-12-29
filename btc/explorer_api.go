@@ -196,13 +196,17 @@ func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
 	url := fmt.Sprintf("%s/tx", a.BaseURL)
 	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error posting data to API '%s', "+
+			"server might be experiencing temporary issues, try "+
+			"again later; error details: %w", url, err)
 	}
 	defer resp.Body.Close()
 	body := new(bytes.Buffer)
 	_, err = body.ReadFrom(resp.Body)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error fetching data from API '%s', "+
+			"server might be experiencing temporary issues, try "+
+			"again later; error details: %w", url, err)
 	}
 	return body.String(), nil
 }
@@ -210,20 +214,29 @@ func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
 func fetchJSON(url string, target interface{}) error {
 	resp, err := http.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching data from API '%s', "+
+			"server might be experiencing temporary issues, try "+
+			"again later; error details: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	body := new(bytes.Buffer)
 	_, err = body.ReadFrom(resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("error fetching data from API '%s', "+
+			"server might be experiencing temporary issues, try "+
+			"again later; error details: %w", url, err)
 	}
 	err = json.Unmarshal(body.Bytes(), target)
 	if err != nil {
 		if body.String() == "Transaction not found" {
 			return ErrTxNotFound
 		}
+
+		return fmt.Errorf("error decoding data from API '%s', "+
+			"server might be experiencing temporary issues, try "+
+			"again later; error details: %w", url, err)
 	}
-	return err
+
+	return nil
 }
