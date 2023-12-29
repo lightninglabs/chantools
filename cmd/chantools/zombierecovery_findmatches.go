@@ -14,7 +14,6 @@ import (
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/hasura/go-graphql-client"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
@@ -188,7 +187,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 		log.Infof("%s: %s", groups[1], groups[2])
 	}
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
+	api := newExplorerAPI(c.APIURL)
 	src := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: c.AmbossKey})
 	httpClient := oauth2.NewClient(context.Background(), src)
 	client := graphql.NewClient(

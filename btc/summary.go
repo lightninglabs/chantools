@@ -7,13 +7,12 @@ import (
 	"github.com/lightninglabs/chantools/dataformat"
 )
 
-func SummarizeChannels(apiURL string, channels []*dataformat.SummaryEntry,
+func SummarizeChannels(api *ExplorerAPI, channels []*dataformat.SummaryEntry,
 	log btclog.Logger) (*dataformat.SummaryEntryFile, error) {
 
 	summaryFile := &dataformat.SummaryEntryFile{
 		Channels: channels,
 	}
-	api := &ExplorerAPI{BaseURL: apiURL}
 
 	for idx, channel := range channels {
 		tx, err := api.Transaction(channel.FundingTXID)

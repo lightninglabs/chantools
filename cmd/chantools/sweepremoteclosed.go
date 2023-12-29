@@ -129,7 +129,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 
 	var (
 		targets []*targetAddr
-		api     = &btc.ExplorerAPI{BaseURL: apiURL}
+		api     = newExplorerAPI(apiURL)
 	)
 	for index := uint32(0); index < recoveryWindow; index++ {
 		path := fmt.Sprintf("m/1017'/%d'/%d'/0/%d",

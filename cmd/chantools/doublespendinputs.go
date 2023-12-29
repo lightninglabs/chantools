@@ -13,7 +13,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
@@ -93,7 +92,7 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("inputoutpoints are required")
 	}
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
+	api := newExplorerAPI(c.APIURL)
 
 	addresses := make([]btcutil.Address, 0, len(c.InputOutpoints))
 	outpoints := make([]*wire.OutPoint, 0, len(c.InputOutpoints))

@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightninglabs/pool/account"
 	"github.com/lightninglabs/pool/poolscript"
@@ -165,7 +164,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	api := newExplorerAPI(apiURL)
 
 	tx, err := api.Transaction(outpoint.Hash.String())
 	if err != nil {

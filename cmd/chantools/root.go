@@ -26,7 +26,9 @@ import (
 )
 
 const (
-	defaultAPIURL = "https://blockstream.info/api"
+	defaultAPIURL        = "https://blockstream.info/api"
+	defaultTestnetAPIURL = "https://blockstream.info/testnet/api"
+	defaultRegtestAPIURL = "http://localhost:3004"
 
 	// version is the current version of the tool. It is set during build.
 	// NOTE: When changing this, please also update the version in the
@@ -56,7 +58,8 @@ var rootCmd = &cobra.Command{
 	Short: "Chantools helps recover funds from lightning channels",
 	Long: `This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/lightninglabs/chantools/.`,
+Complete documentation is available at
+https://github.com/lightninglabs/chantools/.`,
 	Version: fmt.Sprintf("v%s, commit %s", version, Commit),
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		switch {
@@ -325,4 +328,23 @@ func setSubLogger(subsystem string, logger btclog.Logger,
 
 func noConsole() ([]byte, error) {
 	return nil, fmt.Errorf("wallet db requires console access")
+}
+
+func newExplorerAPI(apiURL string) *btc.ExplorerAPI {
+	// Override for testnet if default is used.
+	if apiURL == defaultAPIURL &&
+		chainParams.Name == chaincfg.TestNet3Params.Name {
+
+		return &btc.ExplorerAPI{BaseURL: defaultTestnetAPIURL}
+	}
+
+	// Also override for regtest if default is used.
+	if apiURL == defaultAPIURL &&
+		chainParams.Name == chaincfg.RegressionNetParams.Name {
+
+		return &btc.ExplorerAPI{BaseURL: defaultRegtestAPIURL}
+	}
+
+	// Otherwise use the provided URL.
+	return &btc.ExplorerAPI{BaseURL: apiURL}
 }

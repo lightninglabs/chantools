@@ -9,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightninglabs/loop"
 	"github.com/lightninglabs/loop/loopdb"
@@ -121,7 +120,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("sweep_addr is required")
 	}
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
+	api := newExplorerAPI(c.APIURL)
 
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,

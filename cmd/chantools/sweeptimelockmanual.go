@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -298,7 +297,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	api := newExplorerAPI(apiURL)
 
 	// We now know everything we need to construct the sweep transaction,
 	// except for what outpoint to sweep. We'll ask the chain API to give

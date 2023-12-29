@@ -9,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -255,7 +254,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 	}
 
 	// Locate the output in the funding TX.
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	api := newExplorerAPI(apiURL)
 	tx, err := api.Transaction(chainPoint.Hash.String())
 	if err != nil {
 		return fmt.Errorf("error fetching UTXO info for outpoint %s: "+

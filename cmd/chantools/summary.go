@@ -53,7 +53,8 @@ func (c *summaryCommand) Execute(_ *cobra.Command, _ []string) error {
 func summarizeChannels(apiURL string,
 	channels []*dataformat.SummaryEntry) error {
 
-	summaryFile, err := btc.SummarizeChannels(apiURL, channels, log)
+	api := newExplorerAPI(apiURL)
+	summaryFile, err := btc.SummarizeChannels(api, channels, log)
 	if err != nil {
 		return fmt.Errorf("error running summary: %w", err)
 	}

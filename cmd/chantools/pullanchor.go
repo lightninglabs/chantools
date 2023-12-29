@@ -132,7 +132,7 @@ func createPullTransactionTemplate(rootKey *hdkeychain.ExtendedKey,
 		ExtendedKey: rootKey,
 		ChainParams: chainParams,
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	api := newExplorerAPI(apiURL)
 	estimator := input.TxWeightEstimator{}
 
 	// Make sure the sponsor input is a P2WPKH or P2TR input and is known

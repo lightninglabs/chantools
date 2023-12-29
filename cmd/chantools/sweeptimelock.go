@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/dataformat"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
@@ -220,7 +219,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
+	api := newExplorerAPI(apiURL)
 
 	var (
 		sweepTx          = wire.NewMsgTx(2)
