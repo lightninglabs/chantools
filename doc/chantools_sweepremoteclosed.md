@@ -13,6 +13,7 @@ funds can be swept after the force-close transaction was confirmed.
 Supported remote force-closed channel types are:
  - STATIC_REMOTE_KEY (a.k.a. tweakless channels)
  - ANCHOR (a.k.a. anchor output channels)
+ - SIMPLE_TAPROOT (a.k.a. simple taproot channels)
 
 
 ```

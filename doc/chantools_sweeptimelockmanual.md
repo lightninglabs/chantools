@@ -12,6 +12,9 @@ and only the channel.backup file is available.
 To get the value for --remoterevbasepoint you must use the dumpbackup command,
 then look up the value for RemoteChanCfg -> RevocationBasePoint -> PubKey.
 
+Alternatively you can directly use the --frombackup and --channelpoint flags to
+pull the required information from the given channel.backup file automatically.
+
 To get the value for --timelockaddr you must look up the channel's funding
 output on chain, then follow it to the force close output. The time locked
 address is always the one that's longer (because it's P2WSH and not P2PKH).
@@ -29,6 +32,14 @@ chantools sweeptimelockmanual \
 	--remoterevbasepoint 03xxxxxxx \
 	--feerate 10 \
 	--publish
+
+chantools sweeptimelockmanual \
+	--sweepaddr bc1q..... \
+	--timelockaddr bc1q............ \
+	--frombackup channel.backup \
+	--channelpoint f39310xxxxxxxxxx:1 \
+	--feerate 10 \
+	--publish
 ```
 
 ### Options
@@ -36,7 +47,9 @@ chantools sweeptimelockmanual \
 ```
       --apiurl string               API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
       --bip39                       read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
+      --channelpoint string         channel point to use for locating the channel in the channel backup file specified in the --frombackup flag, format: txid:index
       --feerate uint32              fee rate to use for the sweep transaction in sat/vByte (default 30)
+      --frombackup string           channel backup file to read the channel information from
       --fromchanneldb string        channel input is in the format of an lnd channel.db file
       --fromsummary string          channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                        help for sweeptimelockmanual

@@ -42,8 +42,6 @@ func (s *Signer) SignOutputRawWithPrivkey(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor,
 	privKey *secp256k1.PrivateKey) (input.Signature, error) {
 
-	fmt.Printf("Using private key %x (pubkey %x)\n", privKey.Serialize(), privKey.PubKey().SerializeCompressed())
-
 	witnessScript := signDesc.WitnessScript
 	privKey = maybeTweakPrivKey(signDesc, privKey)
 
@@ -63,7 +61,6 @@ func (s *Signer) SignOutputRawWithPrivkey(tx *wire.MsgTx,
 
 			// This function tweaks the private key using the tap
 			// root key supplied as the tweak.
-			fmt.Printf("Using private key %x (pubkey %x)\n", privKey.Serialize(), privKey.PubKey().SerializeCompressed())
 			rawSig, err = txscript.RawTxInTaprootSignature(
 				tx, sigHashes, signDesc.InputIndex,
 				signDesc.Output.Value, signDesc.Output.PkScript,
