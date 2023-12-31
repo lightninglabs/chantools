@@ -19,7 +19,7 @@ import (
 )
 
 type Signer struct {
-	input.MockSigner
+	*input.MusigSessionManager
 
 	ExtendedKey *hdkeychain.ExtendedKey
 	ChainParams *chaincfg.Params
