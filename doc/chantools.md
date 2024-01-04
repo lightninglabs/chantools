@@ -6,7 +6,8 @@ Chantools helps recover funds from lightning channels
 
 This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/lightninglabs/chantools/.
+Complete documentation is available at
+https://github.com/lightninglabs/chantools/.
 
 ### Options
 
@@ -24,7 +25,7 @@ Complete documentation is available at https://github.com/lightninglabs/chantool
 * [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
 * [chantools deletepayments](chantools_deletepayments.md)	 - Remove all (failed) payments from a channel DB
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
-* [chantools doublespendinputs](chantools_doublespendinputs.md)	 - Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
+* [chantools doublespendinputs](chantools_doublespendinputs.md)	 - Replace a transaction by double spending its input
 * [chantools dropchannelgraph](chantools_dropchannelgraph.md)	 - Remove all graph related data from a channel DB
 * [chantools dropgraphzombies](chantools_dropgraphzombies.md)	 - Remove all channels identified as zombies from the graph to force a re-sync of the graph
 * [chantools dumpbackup](chantools_dumpbackup.md)	 - Dump the content of a channel.backup file

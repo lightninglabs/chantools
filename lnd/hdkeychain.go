@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/shachain"
@@ -24,6 +25,16 @@ const (
 	WalletBIP49DerivationPath   = "m/49'/0'/0'"
 	WalletBIP86DerivationPath   = "m/86'/0'/0'"
 	LndDerivationPath           = "m/1017'/%d'/%d'"
+
+	AddressDeriveFromWallet = "fromseed"
+)
+
+type AddrType int
+
+const (
+	AddrTypeP2WKH AddrType = iota
+	AddrTypeP2WSH
+	AddrTypeP2TR
 )
 
 func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
@@ -383,7 +394,7 @@ func P2AnchorStaticRemote(pubKey *btcec.PublicKey,
 	return p2wsh, commitScript, err
 }
 
-func P2TaprootStaticRemove(pubKey *btcec.PublicKey,
+func P2TaprootStaticRemote(pubKey *btcec.PublicKey,
 	params *chaincfg.Params) (*btcutil.AddressTaproot,
 	*input.CommitScriptTree, error) {
 
@@ -396,6 +407,140 @@ func P2TaprootStaticRemove(pubKey *btcec.PublicKey,
 		schnorr.SerializePubKey(scriptTree.TaprootKey), params,
 	)
 	return addr, scriptTree, err
+}
+
+func CheckAddress(addr string, chainParams *chaincfg.Params, allowDerive bool,
+	hint string, allowedTypes ...AddrType) error {
+
+	// We generally always want an address to be specified. If one should
+	// be derived from the wallet automatically, the user should specify
+	// "derive" as the address.
+	if addr == "" {
+		return fmt.Errorf("%s address cannot be empty", hint)
+	}
+
+	// If we're allowed to derive an address from the wallet, we can skip
+	// the rest of the checks.
+	if allowDerive && addr == AddressDeriveFromWallet {
+		return nil
+	}
+
+	parsedAddr, err := ParseAddress(addr, chainParams)
+	if err != nil {
+		return fmt.Errorf("%s address is invalid: %w", hint, err)
+	}
+
+	if !matchAddrType(parsedAddr, allowedTypes...) {
+		return fmt.Errorf("%s address is of wrong type, allowed "+
+			"types: %s", hint, addrTypesToString(allowedTypes))
+	}
+
+	return nil
+}
+
+func PrepareWalletAddress(addr string, chainParams *chaincfg.Params,
+	estimator *input.TxWeightEstimator, rootKey *hdkeychain.ExtendedKey,
+	hint string) ([]byte, error) {
+
+	// We already checked if deriving a new address is allowed in a previous
+	// step, so we can just go ahead and do it now if requested.
+	if addr == AddressDeriveFromWallet {
+		// To maximize compatibility and recoverability, we always
+		// derive the very first P2WKH address from the wallet.
+		// This corresponds to the derivation path: m/84'/0'/0'/0/0.
+		derivedKey, err := DeriveChildren(rootKey, []uint32{
+			HardenedKeyStart + waddrmgr.KeyScopeBIP0084.Purpose,
+			HardenedKeyStart + chainParams.HDCoinType,
+			HardenedKeyStart + 0, 0, 0,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		derivedPubKey, err := derivedKey.ECPubKey()
+		if err != nil {
+			return nil, err
+		}
+
+		p2wkhAddr, err := P2WKHAddr(derivedPubKey, chainParams)
+		if err != nil {
+			return nil, err
+		}
+
+		return txscript.PayToAddrScript(p2wkhAddr)
+	}
+
+	parsedAddr, err := ParseAddress(addr, chainParams)
+	if err != nil {
+		return nil, fmt.Errorf("%s address is invalid: %w", hint, err)
+	}
+
+	// Exit early if we don't need to estimate the weight.
+	if estimator == nil {
+		return txscript.PayToAddrScript(parsedAddr)
+	}
+
+	// These are the three address types that we support in general. We
+	// should have checked that we get the correct type in a previous step.
+	switch parsedAddr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		estimator.AddP2WKHOutput()
+
+	case *btcutil.AddressWitnessScriptHash:
+		estimator.AddP2WSHOutput()
+
+	case *btcutil.AddressTaproot:
+		estimator.AddP2TROutput()
+
+	default:
+		return nil, fmt.Errorf("%s address is of wrong type", hint)
+	}
+
+	return txscript.PayToAddrScript(parsedAddr)
+}
+
+func matchAddrType(addr btcutil.Address, allowedTypes ...AddrType) bool {
+	contains := func(allowedTypes []AddrType, addrType AddrType) bool {
+		for _, allowedType := range allowedTypes {
+			if allowedType == addrType {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	switch addr.(type) {
+	case *btcutil.AddressWitnessPubKeyHash:
+		return contains(allowedTypes, AddrTypeP2WKH)
+
+	case *btcutil.AddressWitnessScriptHash:
+		return contains(allowedTypes, AddrTypeP2WSH)
+
+	case *btcutil.AddressTaproot:
+		return contains(allowedTypes, AddrTypeP2TR)
+
+	default:
+		return false
+	}
+}
+
+func addrTypesToString(allowedTypes []AddrType) string {
+	var types []string
+	for _, allowedType := range allowedTypes {
+		switch allowedType {
+		case AddrTypeP2WKH:
+			types = append(types, "P2WKH")
+
+		case AddrTypeP2WSH:
+			types = append(types, "P2WSH")
+
+		case AddrTypeP2TR:
+			types = append(types, "P2TR")
+		}
+	}
+
+	return strings.Join(types, ", ")
 }
 
 type HDKeyRing struct {

@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightninglabs/pool/account"
 	"github.com/lightninglabs/pool/poolscript"
@@ -89,7 +88,9 @@ obtained by running 'pool accounts list' `,
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -125,8 +126,12 @@ func (c *closePoolAccountCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Parse account outpoint and auctioneer key.
@@ -161,11 +166,21 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepAddr string, publish bool, feeRate uint32, minExpiry,
 	maxNumBlocks, maxNumAccounts, maxNumBatchKeys uint32) error {
 
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
+	var (
+		estimator input.TxWeightEstimator
+		signer    = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+		api = newExplorerAPI(apiURL)
+	)
+
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
 
 	tx, err := api.Transaction(outpoint.Hash.String())
 	if err != nil {
@@ -241,7 +256,6 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
 	var (
-		estimator      input.TxWeightEstimator
 		prevOutFetcher = txscript.NewCannedPrevOutputFetcher(
 			pkScript, sweepValue,
 		)
@@ -277,15 +291,10 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		signDesc.HashType = txscript.SigHashDefault
 		signDesc.SignMethod = input.TaprootScriptSpendSignMethod
 	}
-	estimator.AddP2WKHOutput()
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
 	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
 
 	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
 	sweepTx.TxOut = []*wire.TxOut{{
 		Value:    sweepValue - int64(totalFee),
 		PkScript: sweepScript,

@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/connmgr"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/brontide"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -152,7 +151,7 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	log.Infof("Message sent, waiting for force close transaction to " +
 		"appear in mempool")
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
+	api := newExplorerAPI(c.APIURL)
 	channelAddress, err := api.Address(c.ChannelPoint)
 	if err != nil {
 		return fmt.Errorf("error getting channel address: %w", err)

@@ -9,7 +9,6 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -113,7 +112,9 @@ chantools rescuefunding \
 			"specified manually",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -227,23 +228,35 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Make sure the sweep addr is a P2WKH address so we can do accurate
-	// fee estimation.
-	sweepScript, err := lnd.GetP2WPKHScript(c.SweepAddr, chainParams)
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
 	if err != nil {
-		return fmt.Errorf("error parsing sweep addr: %w", err)
+		return err
 	}
 
 	return rescueFunding(
-		localKeyDesc, remotePubKey, signer, chainOp,
-		sweepScript, btcutil.Amount(c.FeeRate), c.APIURL,
+		localKeyDesc, remotePubKey, signer, chainOp, c.SweepAddr,
+		btcutil.Amount(c.FeeRate), c.APIURL,
 	)
 }
 
 func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 	remoteKey *btcec.PublicKey, signer *lnd.Signer,
-	chainPoint *wire.OutPoint, sweepPKScript []byte, feeRate btcutil.Amount,
+	chainPoint *wire.OutPoint, sweepAddr string, feeRate btcutil.Amount,
 	apiURL string) error {
+
+	var (
+		estimator input.TxWeightEstimator
+		api       = newExplorerAPI(apiURL)
+	)
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, signer.ExtendedKey, "sweep",
+	)
+	if err != nil {
+		return err
+	}
 
 	// Prepare the wire part of the PSBT.
 	txIn := &wire.TxIn{
@@ -251,11 +264,10 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		Sequence:         0,
 	}
 	txOut := &wire.TxOut{
-		PkScript: sweepPKScript,
+		PkScript: sweepScript,
 	}
 
 	// Locate the output in the funding TX.
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
 	tx, err := api.Transaction(chainPoint.Hash.String())
 	if err != nil {
 		return fmt.Errorf("error fetching UTXO info for outpoint %s: "+
@@ -294,17 +306,15 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 		WitnessScript: witnessScript,
 		Unknowns: []*psbt.Unknown{{
 			// We add the public key the other party needs to sign
-			// with as a proprietary field so we can easily read it
+			// with as a proprietary field, so we can easily read it
 			// out with the signrescuefunding command.
 			Key:   PsbtKeyTypeOutputMissingSigPubkey,
 			Value: remoteKey.SerializeCompressed(),
 		}},
 	}
 
-	// Estimate the transaction weight so we can do the fee estimation.
-	var estimator input.TxWeightEstimator
+	// Estimate the transaction weight, so we can do the fee estimation.
 	estimator.AddWitnessInput(MultiSigWitnessSize)
-	estimator.AddP2WKHOutput()
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
 	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
 	txOut.Value = utxo.Value - int64(totalFee)

@@ -5,11 +5,9 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightninglabs/loop"
 	"github.com/lightninglabs/loop/loopdb"
@@ -70,8 +68,9 @@ func newRecoverLoopInCommand() *cobra.Command {
 			"database directory, where the loop.db file is located",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweep_addr", "", "address to recover "+
-			"the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", 0, "fee rate to "+
@@ -117,12 +116,15 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("loop_db_dir is required")
 	}
 
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep_addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
-
+	api := newExplorerAPI(c.APIURL)
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
@@ -162,27 +164,18 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Get the destination address.
-	sweepAddr, err := btcutil.DecodeAddress(c.SweepAddr, chainParams)
+	var estimator input.TxWeightEstimator
+	sweepScript, err := lnd.PrepareWalletAddress(
+		c.SweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
 	if err != nil {
 		return err
 	}
 
 	// Calculate the sweep fee.
-	estimator := &input.TxWeightEstimator{}
-	err = htlc.AddTimeoutToEstimator(estimator)
+	err = htlc.AddTimeoutToEstimator(&estimator)
 	if err != nil {
 		return err
-	}
-
-	switch sweepAddr.(type) {
-	case *btcutil.AddressWitnessPubKeyHash:
-		estimator.AddP2WKHOutput()
-
-	case *btcutil.AddressTaproot:
-		estimator.AddP2TROutput()
-
-	default:
-		return fmt.Errorf("unsupported address type")
 	}
 
 	feeRateKWeight := chainfee.SatPerKVByte(
@@ -213,13 +206,8 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	})
 
 	// Add output for the destination address.
-	sweepPkScript, err := txscript.PayToAddrScript(sweepAddr)
-	if err != nil {
-		return err
-	}
-
 	sweepTx.AddTxOut(&wire.TxOut{
-		PkScript: sweepPkScript,
+		PkScript: sweepScript,
 		Value:    int64(loopIn.Contract.AmountRequested) - int64(fee),
 	})
 

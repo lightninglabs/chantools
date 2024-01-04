@@ -13,7 +13,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
@@ -35,16 +34,16 @@ type doubleSpendInputs struct {
 func newDoubleSpendInputsCommand() *cobra.Command {
 	cc := &doubleSpendInputs{}
 	cc.cmd = &cobra.Command{
-		Use: "doublespendinputs",
-		Short: "Tries to double spend the given inputs by deriving the " +
-			"private for the address and sweeping the funds to the given " +
-			"address. This can only be used with inputs that belong to " +
-			"an lnd wallet.",
+		Use:   "doublespendinputs",
+		Short: "Replace a transaction by double spending its input",
+		Long: `Tries to double spend the given inputs by deriving the
+private for the address and sweeping the funds to the given address. This can
+only be used with inputs that belong to an lnd wallet.`,
 		Example: `chantools doublespendinputs \
-		--inputoutpoints xxxxxxxxx:y,xxxxxxxxx:y \
-		--sweepaddr bc1q..... \
-		--feerate 10 \
-		--publish`,
+	--inputoutpoints xxxxxxxxx:y,xxxxxxxxx:y \
+	--sweepaddr bc1q..... \
+	--feerate 10 \
+	--publish`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
@@ -56,7 +55,9 @@ func newDoubleSpendInputsCommand() *cobra.Command {
 		"list of outpoints to double spend in the format txid:vout",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -84,8 +85,12 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Make sure we have at least one input.
@@ -93,15 +98,15 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("inputoutpoints are required")
 	}
 
-	api := &btc.ExplorerAPI{BaseURL: c.APIURL}
+	api := newExplorerAPI(c.APIURL)
 
 	addresses := make([]btcutil.Address, 0, len(c.InputOutpoints))
 	outpoints := make([]*wire.OutPoint, 0, len(c.InputOutpoints))
 	privKeys := make([]*secp256k1.PrivateKey, 0, len(c.InputOutpoints))
 
 	// Get the addresses for the inputs.
-	for _, input := range c.InputOutpoints {
-		addrString, err := api.Address(input)
+	for _, inputOutpoint := range c.InputOutpoints {
+		addrString, err := api.Address(inputOutpoint)
 		if err != nil {
 			return err
 		}
@@ -113,12 +118,12 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 
 		addresses = append(addresses, addr)
 
-		txHash, err := chainhash.NewHashFromStr(input[:64])
+		txHash, err := chainhash.NewHashFromStr(inputOutpoint[:64])
 		if err != nil {
 			return err
 		}
 
-		vout, err := strconv.Atoi(input[65:])
+		vout, err := strconv.Atoi(inputOutpoint[65:])
 		if err != nil {
 			return err
 		}
@@ -139,7 +144,13 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Start with the txweight estimator.
-	estimator := input.TxWeightEstimator{}
+	var estimator input.TxWeightEstimator
+	sweepScript, err := lnd.PrepareWalletAddress(
+		c.SweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
+	}
 
 	// Find the key for the given addresses and add their
 	// output weight to the tx estimator.
@@ -164,7 +175,9 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 				return err
 			}
 
-			estimator.AddTaprootKeySpendInput(txscript.SigHashDefault)
+			estimator.AddTaprootKeySpendInput(
+				txscript.SigHashDefault,
+			)
 
 		default:
 			return fmt.Errorf("address type %T not supported", addr)
@@ -184,45 +197,30 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 
 	// Next get the full value of the inputs.
 	var totalInput btcutil.Amount
-	for _, input := range outpoints {
+	for _, outpoint := range outpoints {
 		// Get the transaction.
-		tx, err := api.Transaction(input.Hash.String())
+		tx, err := api.Transaction(outpoint.Hash.String())
 		if err != nil {
 			return err
 		}
 
-		value := tx.Vout[input.Index].Value
+		value := tx.Vout[outpoint.Index].Value
 
 		// Get the output index.
 		totalInput += btcutil.Amount(value)
 
-		scriptPubkey, err := hex.DecodeString(tx.Vout[input.Index].ScriptPubkey)
+		scriptPubkey, err := hex.DecodeString(
+			tx.Vout[outpoint.Index].ScriptPubkey,
+		)
 		if err != nil {
 			return err
 		}
 
 		// Add the output to the map.
-		prevOuts[*input] = &wire.TxOut{
+		prevOuts[*outpoint] = &wire.TxOut{
 			Value:    int64(value),
 			PkScript: scriptPubkey,
 		}
-	}
-
-	// Calculate the fee.
-	sweepAddr, err := btcutil.DecodeAddress(c.SweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
-
-	switch sweepAddr.(type) {
-	case *btcutil.AddressWitnessPubKeyHash:
-		estimator.AddP2WKHOutput()
-
-	case *btcutil.AddressTaproot:
-		estimator.AddP2TROutput()
-
-	default:
-		return fmt.Errorf("address type %T not supported", sweepAddr)
 	}
 
 	// Calculate the fee.
@@ -233,14 +231,8 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 	tx := wire.NewMsgTx(2)
 
 	// Add the inputs.
-	for _, input := range outpoints {
-		tx.AddTxIn(wire.NewTxIn(input, nil, nil))
-	}
-
-	// Add the output.
-	sweepScript, err := txscript.PayToAddrScript(sweepAddr)
-	if err != nil {
-		return err
+	for _, outpoint := range outpoints {
+		tx.AddTxIn(wire.NewTxIn(outpoint, nil, nil))
 	}
 
 	tx.AddTxOut(wire.NewTxOut(int64(totalInput-totalFee), sweepScript))
@@ -280,7 +272,8 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 			}
 
 		default:
-			return fmt.Errorf("address type %T not supported", addresses[i])
+			return fmt.Errorf("address type %T not supported",
+				addresses[i])
 		}
 	}
 
@@ -291,7 +284,7 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Print the transaction.
-	fmt.Printf("Sweeping transaction:\n%s\n", hex.EncodeToString(txBuf.Bytes()))
+	fmt.Printf("Sweeping transaction:\n%x\n", txBuf.Bytes())
 
 	// Publish the transaction.
 	if c.Publish {

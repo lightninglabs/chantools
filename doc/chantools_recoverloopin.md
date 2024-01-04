@@ -31,7 +31,7 @@ chantools recoverloopin \
       --rootkey string        BIP32 HD root key of the wallet to use for deriving starting key; leave empty to prompt for lnd 24 word aezeed
       --start_key_index int   start key index to try to find the correct key index
       --swap_hash string      swap hash of the loop in swap
-      --sweep_addr string     address to recover the funds to
+      --sweepaddr string      address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
       --txid string           transaction id of the on-chain transaction that created the HTLC
       --vout uint32           output index of the on-chain transaction that created the HTLC
 ```

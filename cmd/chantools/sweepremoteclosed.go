@@ -76,7 +76,9 @@ Supported remote force-closed channel types are:
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -95,8 +97,12 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Set default values.
@@ -127,9 +133,17 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	sweepAddr string, recoveryWindow uint32, feeRate uint32,
 	publish bool) error {
 
+	var estimator input.TxWeightEstimator
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
+	}
+
 	var (
 		targets []*targetAddr
-		api     = &btc.ExplorerAPI{BaseURL: apiURL}
+		api     = newExplorerAPI(apiURL)
 	)
 	for index := uint32(0); index < recoveryWindow; index++ {
 		path := fmt.Sprintf("m/1017'/%d'/%d'/0/%d",
@@ -171,7 +185,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 
 	// Create estimator and transaction template.
 	var (
-		estimator        input.TxWeightEstimator
 		signDescs        []*input.SignDescriptor
 		sweepTx          = wire.NewMsgTx(2)
 		totalOutputValue = uint64(0)
@@ -285,13 +298,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			"of %d satoshis which is below the dust limit of %d",
 			len(targets), totalOutputValue, sweepDustLimit)
 	}
-
-	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
-	estimator.AddP2WKHOutput()
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
@@ -423,7 +429,7 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 		return nil, err
 	}
 
-	p2tr, scriptTree, err := lnd.P2TaprootStaticRemove(pubKey, chainParams)
+	p2tr, scriptTree, err := lnd.P2TaprootStaticRemote(pubKey, chainParams)
 	if err != nil {
 		return nil, err
 	}

@@ -10,7 +10,6 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/dataformat"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
@@ -65,7 +64,9 @@ parameter to 144.`,
 			"API instead of just printing the TX",
 	)
 	cc.cmd.Flags().StringVar(
-		&cc.SweepAddr, "sweepaddr", "", "address to sweep the funds to",
+		&cc.SweepAddr, "sweepaddr", "", "address to recover the funds "+
+			"to; specify '"+lnd.AddressDeriveFromWallet+"' to "+
+			"derive a new address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint16Var(
 		&cc.MaxCsvLimit, "maxcsvlimit", defaultCsvLimit, "maximum CSV "+
@@ -89,8 +90,12 @@ func (c *sweepTimeLockCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Make sure sweep addr is set.
-	if c.SweepAddr == "" {
-		return fmt.Errorf("sweep addr is required")
+	err = lnd.CheckAddress(
+		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	// Parse channel entries from any of the possible input files.
@@ -216,18 +221,26 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	publish bool, feeRate uint32) error {
 
 	// Create signer and transaction template.
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
+	var (
+		estimator input.TxWeightEstimator
+		signer    = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+		api = newExplorerAPI(apiURL)
+	)
+	sweepScript, err := lnd.PrepareWalletAddress(
+		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
+	)
+	if err != nil {
+		return err
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
 
 	var (
 		sweepTx          = wire.NewMsgTx(2)
 		totalOutputValue = int64(0)
 		signDescs        = make([]*input.SignDescriptor, 0)
 		prevOutFetcher   = txscript.NewMultiPrevOutFetcher(nil)
-		estimator        input.TxWeightEstimator
 	)
 	for _, target := range targets {
 		// We can't rely on the CSV delay of the channel DB to be
@@ -242,8 +255,8 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 			), target.lockScript, 0, maxCsvTimeout,
 		)
 		if err != nil {
-			log.Errorf("Could not create matching script for %s "+
-				"or csv too high: %w", target.channelPoint, err)
+			log.Errorf("could not create matching script for %s "+
+				"or csv too high: %v", target.channelPoint, err)
 			continue
 		}
 
@@ -282,13 +295,6 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		// Account for the input weight.
 		estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
 	}
-
-	// Add our sweep destination output.
-	sweepScript, err := lnd.GetP2WPKHScript(sweepAddr, chainParams)
-	if err != nil {
-		return err
-	}
-	estimator.AddP2WKHOutput()
 
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.

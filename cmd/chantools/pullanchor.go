@@ -65,7 +65,9 @@ transaction of an anchor output channel type. This will attempt to CPFP the
 	)
 	cc.cmd.Flags().StringVar(
 		&cc.ChangeAddr, "changeaddr", "", "the change address to "+
-			"send the remaining funds to",
+			"send the remaining funds back to; specify '"+
+			lnd.AddressDeriveFromWallet+"' to derive a new "+
+			"address from the seed automatically",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
@@ -90,8 +92,21 @@ func (c *pullAnchorCommand) Execute(_ *cobra.Command, _ []string) error {
 	if len(c.AnchorAddrs) == 0 {
 		return fmt.Errorf("at least one anchor addr is required")
 	}
-	if c.ChangeAddr == "" {
-		return fmt.Errorf("change addr is required")
+	for _, anchorAddr := range c.AnchorAddrs {
+		err = lnd.CheckAddress(
+			anchorAddr, chainParams, true, "anchor",
+			lnd.AddrTypeP2WSH, lnd.AddrTypeP2TR,
+		)
+		if err != nil {
+			return err
+		}
+	}
+	err = lnd.CheckAddress(
+		c.ChangeAddr, chainParams, true, "change", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
+	if err != nil {
+		return err
 	}
 
 	outpoint, err := lnd.ParseOutpoint(c.SponsorInput)
@@ -100,17 +115,12 @@ func (c *pullAnchorCommand) Execute(_ *cobra.Command, _ []string) error {
 			err)
 	}
 
-	changeScript, err := lnd.GetP2WPKHScript(c.ChangeAddr, chainParams)
-	if err != nil {
-		return fmt.Errorf("error parsing change addr: %w", err)
-	}
-
 	// Set default values.
 	if c.FeeRate == 0 {
 		c.FeeRate = defaultFeeSatPerVByte
 	}
 	return createPullTransactionTemplate(
-		extendedKey, c.APIURL, outpoint, c.AnchorAddrs, changeScript,
+		extendedKey, c.APIURL, outpoint, c.AnchorAddrs, c.ChangeAddr,
 		c.FeeRate,
 	)
 }
@@ -126,14 +136,23 @@ type targetAnchor struct {
 
 func createPullTransactionTemplate(rootKey *hdkeychain.ExtendedKey,
 	apiURL string, sponsorOutpoint *wire.OutPoint, anchorAddrs []string,
-	changeScript []byte, feeRate uint32) error {
+	changeAddr string, feeRate uint32) error {
 
-	signer := &lnd.Signer{
-		ExtendedKey: rootKey,
-		ChainParams: chainParams,
+	var (
+		signer = &lnd.Signer{
+			ExtendedKey: rootKey,
+			ChainParams: chainParams,
+		}
+		api       = newExplorerAPI(apiURL)
+		estimator input.TxWeightEstimator
+	)
+
+	changeScript, err := lnd.PrepareWalletAddress(
+		changeAddr, chainParams, &estimator, rootKey, "change",
+	)
+	if err != nil {
+		return err
 	}
-	api := &btc.ExplorerAPI{BaseURL: apiURL}
-	estimator := input.TxWeightEstimator{}
 
 	// Make sure the sponsor input is a P2WPKH or P2TR input and is known
 	// to the block explorer, so we can fetch the witness utxo.
@@ -194,7 +213,6 @@ func createPullTransactionTemplate(rootKey *hdkeychain.ExtendedKey,
 	}
 
 	// Now we can calculate the fee and add the change output.
-	estimator.AddP2WKHOutput()
 	anchorAmt := uint64(len(anchorAddrs)) * 330
 	totalOutputValue := btcutil.Amount(sponsorTxOut.Value + anchorAmt)
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()

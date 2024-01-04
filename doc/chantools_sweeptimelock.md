@@ -40,7 +40,7 @@ chantools sweeptimelock \
       --pendingchannels string   channel input is in the format of lncli's pendingchannels format; specify '-' to read from stdin
       --publish                  publish sweep TX to the chain API instead of just printing the TX
       --rootkey string           BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
-      --sweepaddr string         address to sweep the funds to
+      --sweepaddr string         address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
 ```
 
 ### Options inherited from parent commands
