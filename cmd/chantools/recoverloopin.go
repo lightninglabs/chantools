@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -23,6 +24,7 @@ type recoverLoopInCommand struct {
 	Vout          uint32
 	SwapHash      string
 	SweepAddr     string
+	OutputAmt     uint64
 	FeeRate       uint32
 	StartKeyIndex int
 	NumTries      int
@@ -92,6 +94,9 @@ func newRecoverLoopInCommand() *cobra.Command {
 		&cc.Publish, "publish", false, "publish sweep TX to the chain "+
 			"API instead of just printing the TX",
 	)
+	cc.cmd.Flags().Uint64Var(
+		&cc.OutputAmt, "output_amt", 0, "amount of the output to sweep",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "deriving starting key")
 
@@ -153,7 +158,19 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("swap not found")
 	}
 
+	// If the swap is an external htlc, we require the output amount to be
+	// set, as a lot of failure cases steam from the output amount being
+	// wrong.
+	if loopIn.Contract.ExternalHtlc && c.OutputAmt == 0 {
+		return fmt.Errorf("output_amt is required for external htlc")
+	}
+
 	fmt.Println("Loop expires at block height", loopIn.Contract.CltvExpiry)
+
+	outputValue := loopIn.Contract.AmountRequested
+	if c.OutputAmt != 0 {
+		outputValue = btcutil.Amount(c.OutputAmt)
+	}
 
 	// Get the swaps htlc.
 	htlc, err := loop.GetHtlc(
@@ -208,7 +225,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Add output for the destination address.
 	sweepTx.AddTxOut(&wire.TxOut{
 		PkScript: sweepScript,
-		Value:    int64(loopIn.Contract.AmountRequested) - int64(fee),
+		Value:    int64(outputValue) - int64(fee),
 	})
 
 	// If the htlc is version 2, we need to brute force the key locator, as
@@ -218,8 +235,9 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		fmt.Println("Brute forcing key index...")
 		for i := c.StartKeyIndex; i < c.StartKeyIndex+c.NumTries; i++ {
 			rawTx, err = getSignedTx(
-				signer, loopIn, sweepTx, htlc,
+				signer, sweepTx, htlc,
 				keychain.KeyFamily(swap.KeyFamily), uint32(i),
+				outputValue,
 			)
 			if err == nil {
 				break
@@ -232,9 +250,10 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 	} else {
 		rawTx, err = getSignedTx(
-			signer, loopIn, sweepTx, htlc,
+			signer, sweepTx, htlc,
 			loopIn.Contract.HtlcKeys.ClientScriptKeyLocator.Family,
 			loopIn.Contract.HtlcKeys.ClientScriptKeyLocator.Index,
+			outputValue,
 		)
 		if err != nil {
 			return err
@@ -260,14 +279,14 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	return nil
 }
 
-func getSignedTx(signer *lnd.Signer, loopIn *loopdb.LoopIn, sweepTx *wire.MsgTx,
-	htlc *swap.Htlc, keyFamily keychain.KeyFamily,
-	keyIndex uint32) ([]byte, error) {
+func getSignedTx(signer *lnd.Signer, sweepTx *wire.MsgTx, htlc *swap.Htlc,
+	keyFamily keychain.KeyFamily, keyIndex uint32,
+	outputValue btcutil.Amount) ([]byte, error) {
 
 	// Create the sign descriptor.
 	prevTxOut := &wire.TxOut{
 		PkScript: htlc.PkScript,
-		Value:    int64(loopIn.Contract.AmountRequested),
+		Value:    int64(outputValue),
 	}
 	prevOutputFetcher := txscript.NewCannedPrevOutputFetcher(
 		prevTxOut.PkScript, prevTxOut.Value,
