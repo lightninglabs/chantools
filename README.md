@@ -186,7 +186,7 @@ compacting the DB).
    in the user's home directory) is safely moved away (or the whole folder
    renamed) before continuing.<br/>
    To start the on-chain recovery, [follow the sub step "Starting On-Chain
-   Recovery" of this guide][2].
+   Recovery" of this guide][recovery].
    Don't follow the whole guide, only this single chapter!
    <br/><br/>
    This step is completed once the `lncli getinfo` command shows both
@@ -212,7 +212,7 @@ compacting the DB).
    channels!
    If the list stays un-changed for several hours, it means not all channels
    could be restored using this method.
-   [One explanation can be found here.][1]
+   [One explanation can be found here.][safety-zombie]
 
 4. **Install chantools**: To try to recover the remaining channels, we are going
    to use `chantools`.
