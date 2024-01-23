@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/lightninglabs/chantools/lnd"
@@ -19,6 +20,8 @@ const (
 type zombieRecoveryPrepareKeysCommand struct {
 	MatchFile  string
 	PayoutAddr string
+
+	NumKeys uint32
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -47,7 +50,12 @@ correct ones for the matched channels.`,
 	cc.cmd.Flags().StringVar(
 		&cc.PayoutAddr, "payout_addr", "", "the address where this "+
 			"node's rescued funds should be sent to, must be a "+
-			"P2WPKH (native SegWit) address")
+			"P2WPKH (native SegWit) address",
+	)
+	cc.cmd.Flags().Uint32Var(
+		&cc.NumKeys, "num_keys", numMultisigKeys, "the number of "+
+			"multisig keys to derive",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "deriving the multisig keys")
 
@@ -108,9 +116,9 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 	}
 
 	// Derive all 2500 keys now, this might take a while.
-	for index := 0; index < numMultisigKeys; index++ {
+	for index := uint32(0); index < c.NumKeys; index++ {
 		_, pubKey, _, err := lnd.DeriveKey(
-			extendedKey, lnd.MultisigPath(chainParams, index),
+			extendedKey, lnd.MultisigPath(chainParams, int(index)),
 			chainParams,
 		)
 		if err != nil {
@@ -134,5 +142,5 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 	fileName := fmt.Sprintf("results/preparedkeys-%s-%s.json",
 		time.Now().Format("2006-01-02"), pubKeyStr)
 	log.Infof("Writing result to %s", fileName)
-	return ioutil.WriteFile(fileName, matchBytes, 0644)
+	return os.WriteFile(fileName, matchBytes, 0644)
 }
