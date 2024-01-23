@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -27,6 +26,8 @@ type zombieRecoveryMakeOfferCommand struct {
 	Node1   string
 	Node2   string
 	FeeRate uint32
+
+	MatchOnly bool
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -64,6 +65,10 @@ a counter offer.`,
 		&cc.FeeRate, "feerate", defaultFeeSatPerVByte, "fee rate to "+
 			"use for the sweep transaction in sat/vByte",
 	)
+	cc.cmd.Flags().BoolVar(
+		&cc.MatchOnly, "matchonly", false, "only match the keys, "+
+			"don't create an offer",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "signing the offer")
 
@@ -82,12 +87,12 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		c.FeeRate = defaultFeeSatPerVByte
 	}
 
-	node1Bytes, err := ioutil.ReadFile(c.Node1)
+	node1Bytes, err := os.ReadFile(c.Node1)
 	if err != nil {
 		return fmt.Errorf("error reading node1 key file %s: %w",
 			c.Node1, err)
 	}
-	node2Bytes, err := ioutil.ReadFile(c.Node2)
+	node2Bytes, err := os.ReadFile(c.Node2)
 	if err != nil {
 		return fmt.Errorf("error reading node2 key file %s: %w",
 			c.Node2, err)
@@ -153,6 +158,22 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		}
 	}
 
+	// If we're only matching, we can stop here.
+	if c.MatchOnly {
+		ourPubKeys, err := parseKeys(keys1.Node1.MultisigKeys)
+		if err != nil {
+			return fmt.Errorf("error parsing their keys: %w", err)
+		}
+
+		theirPubKeys, err := parseKeys(keys2.Node2.MultisigKeys)
+		if err != nil {
+			return fmt.Errorf("error parsing our keys: %w", err)
+		}
+		return matchKeys(
+			keys1.Channels, ourPubKeys, theirPubKeys, chainParams,
+		)
+	}
+
 	// Make sure one of the nodes is ours.
 	_, pubKey, _, err := lnd.DeriveKey(
 		extendedKey, lnd.IdentityPath(chainParams), chainParams,
@@ -206,52 +227,19 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		return fmt.Errorf("payout address missing")
 	}
 
-	ourPubKeys := make([]*btcec.PublicKey, len(ourKeys))
-	theirPubKeys := make([]*btcec.PublicKey, len(theirKeys))
-	for idx, pubKeyHex := range ourKeys {
-		ourPubKeys[idx], err = pubKeyFromHex(pubKeyHex)
-		if err != nil {
-			return fmt.Errorf("error parsing our pubKey: %w", err)
-		}
-	}
-	for idx, pubKeyHex := range theirKeys {
-		theirPubKeys[idx], err = pubKeyFromHex(pubKeyHex)
-		if err != nil {
-			return fmt.Errorf("error parsing their pubKey: %w", err)
-		}
+	ourPubKeys, err := parseKeys(ourKeys)
+	if err != nil {
+		return fmt.Errorf("error parsing their keys: %w", err)
 	}
 
-	// Loop through all channels and all keys now, this will definitely take
-	// a while.
-channelLoop:
-	for _, channel := range keys1.Channels {
-		for ourKeyIndex, ourKey := range ourPubKeys {
-			for _, theirKey := range theirPubKeys {
-				match, witnessScript, err := matchScript(
-					channel.Address, ourKey, theirKey,
-					chainParams,
-				)
-				if err != nil {
-					return fmt.Errorf("error matching "+
-						"keys to script: %w", err)
-				}
+	theirPubKeys, err := parseKeys(theirKeys)
+	if err != nil {
+		return fmt.Errorf("error parsing our keys: %w", err)
+	}
 
-				if match {
-					channel.ourKeyIndex = uint32(ourKeyIndex)
-					channel.ourKey = ourKey
-					channel.theirKey = theirKey
-					channel.witnessScript = witnessScript
-
-					log.Infof("Found keys for channel %s",
-						channel.ChanPoint)
-
-					continue channelLoop
-				}
-			}
-		}
-
-		return fmt.Errorf("didn't find matching multisig keys for "+
-			"channel %s", channel.ChanPoint)
+	err = matchKeys(keys1.Channels, ourPubKeys, theirPubKeys, chainParams)
+	if err != nil {
+		return err
 	}
 
 	// Let's now sum up the tally of how much of the rescued funds should
@@ -440,6 +428,64 @@ channelLoop:
 	fmt.Printf("Done creating offer, please send this PSBT string to \n"+
 		"the other party to review and sign (if they accept): \n%s\n",
 		base64)
+
+	return nil
+}
+
+// parseKeys parses a list of string keys into public keys.
+func parseKeys(keys []string) ([]*btcec.PublicKey, error) {
+	pubKeys := make([]*btcec.PublicKey, 0, len(keys))
+	for _, key := range keys {
+		pubKey, err := pubKeyFromHex(key)
+		if err != nil {
+			return nil, err
+		}
+		pubKeys = append(pubKeys, pubKey)
+	}
+
+	return pubKeys, nil
+}
+
+// matchKeys tries to match the keys from the two nodes. It updates the channels
+// with the correct keys and witness scripts.
+func matchKeys(channels []*channel, ourPubKeys, theirPubKeys []*btcec.PublicKey,
+	chainParams *chaincfg.Params) error {
+
+	// Loop through all channels and all keys now, this will definitely take
+	// a while.
+channelLoop:
+	for _, channel := range channels {
+		for ourKeyIndex, ourKey := range ourPubKeys {
+			for _, theirKey := range theirPubKeys {
+				match, witnessScript, err := matchScript(
+					channel.Address, ourKey, theirKey,
+					chainParams,
+				)
+				if err != nil {
+					return fmt.Errorf("error matching "+
+						"keys to script: %w", err)
+				}
+
+				if match {
+					channel.ourKeyIndex = uint32(ourKeyIndex)
+					channel.ourKey = ourKey
+					channel.theirKey = theirKey
+					channel.witnessScript = witnessScript
+
+					log.Infof("Found keys for channel %s: "+
+						"our key %x, their key %x",
+						channel.ChanPoint,
+						ourKey.SerializeCompressed(),
+						theirKey.SerializeCompressed())
+
+					continue channelLoop
+				}
+			}
+		}
+
+		return fmt.Errorf("didn't find matching multisig keys for "+
+			"channel %s", channel.ChanPoint)
+	}
 
 	return nil
 }
