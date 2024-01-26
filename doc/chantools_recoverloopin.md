@@ -27,6 +27,7 @@ chantools recoverloopin \
   -h, --help                  help for recoverloopin
       --loop_db_dir string    path to the loop database directory, where the loop.db file is located
       --num_tries int         number of tries to try to find the correct key index (default 1000)
+      --output_amt uint       amount of the output to sweep
       --publish               publish sweep TX to the chain API instead of just printing the TX
       --rootkey string        BIP32 HD root key of the wallet to use for deriving starting key; leave empty to prompt for lnd 24 word aezeed
       --start_key_index int   start key index to try to find the correct key index

@@ -31,6 +31,7 @@ chantools zombierecovery makeoffer \
       --bip39               read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --feerate uint32      fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                help for makeoffer
+      --matchonly           only match the keys, don't create an offer
       --node1_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 1
       --node2_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 2
       --rootkey string      BIP32 HD root key of the wallet to use for signing the offer; leave empty to prompt for lnd 24 word aezeed
