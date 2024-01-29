@@ -19,7 +19,6 @@ chantools doublespendinputs \
 	--inputoutpoints xxxxxxxxx:y,xxxxxxxxx:y \
 	--sweepaddr bc1q..... \
 	--feerate 10 \
-	--rbf=true \
 	--publish
 ```
 
@@ -32,7 +31,6 @@ chantools doublespendinputs \
   -h, --help                     help for doublespendinputs
       --inputoutpoints strings   list of outpoints to double spend in the format txid:vout
       --publish                  publish replacement TX to the chain API instead of just printing the TX
-      --rbf                      choose RBF flag for this double spend transaction. (Be sure to use '=' with this argument) (default true)
       --recoverywindow uint32    number of keys to scan per internal/external branch; output will consist of double this amount of keys (default 2500)
       --rootkey string           BIP32 HD root key of the wallet to use for deriving the input keys; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string         address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically

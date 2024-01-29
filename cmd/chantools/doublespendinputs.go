@@ -27,7 +27,6 @@ type doubleSpendInputs struct {
 	SweepAddr      string
 	FeeRate        uint32
 	RecoveryWindow uint32
-	Rbf            bool
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -45,7 +44,6 @@ only be used with inputs that belong to an lnd wallet.`,
 	--inputoutpoints xxxxxxxxx:y,xxxxxxxxx:y \
 	--sweepaddr bc1q..... \
 	--feerate 10 \
-	--rbf=true \
 	--publish`,
 		RunE: cc.Execute,
 	}
@@ -70,10 +68,6 @@ only be used with inputs that belong to an lnd wallet.`,
 		&cc.RecoveryWindow, "recoverywindow", defaultRecoveryWindow,
 		"number of keys to scan per internal/external branch; output "+
 			"will consist of double this amount of keys",
-	)
-	cc.cmd.Flags().BoolVar(
-		&cc.Rbf, "rbf", true, "choose RBF flag for this double spend "+
-			"transaction. (Be sure to use '=' with this argument)",
 	)
 	cc.cmd.Flags().BoolVar(
 		&cc.Publish, "publish", false, "publish replacement TX to "+
@@ -237,18 +231,11 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 	// Create the transaction.
 	tx := wire.NewMsgTx(2)
 
-	// enable/disable RBF
-	var sequence uint32 = mempool.MaxRBFSequence
-	if !c.Rbf {
-		sequence = wire.MaxTxInSequenceNum
-	}
-
 	// Add the inputs.
 	for _, outpoint := range outpoints {
-
 		tx.AddTxIn(&wire.TxIn{
 			PreviousOutPoint: *outpoint,
-			Sequence:         sequence,
+			Sequence:         mempool.MaxRBFSequence,
 		})
 	}
 
