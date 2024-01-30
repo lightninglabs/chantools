@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/btcsuite/btcd/mempool"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -232,7 +233,10 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 
 	// Add the inputs.
 	for _, outpoint := range outpoints {
-		tx.AddTxIn(wire.NewTxIn(outpoint, nil, nil))
+		tx.AddTxIn(&wire.TxIn{
+			PreviousOutPoint: *outpoint,
+			Sequence:         mempool.MaxRBFSequence,
+		})
 	}
 
 	tx.AddTxOut(wire.NewTxOut(int64(totalInput-totalFee), sweepScript))
