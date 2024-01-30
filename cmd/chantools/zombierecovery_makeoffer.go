@@ -369,10 +369,8 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		return fmt.Errorf("error creating PSBT from TX: %w", err)
 	}
 
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
-	}
+	// First we add the necessary information to the psbt package so that
+	// we can sign the transaction with SIGHASH_ALL.
 	for idx, txIn := range inputs {
 		channel := keys1.Channels[idx]
 
@@ -399,6 +397,16 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 				Value: channel.theirKey.SerializeCompressed(),
 			},
 		)
+	}
+
+	// Loop a second time through the inputs and sign each input. We now
+	// have all the witness/nonwitness data filled in the psbt package.
+	signer := &lnd.Signer{
+		ExtendedKey: extendedKey,
+		ChainParams: chainParams,
+	}
+	for idx, txIn := range inputs {
+		channel := keys1.Channels[idx]
 
 		keyDesc := keychain.KeyDescriptor{
 			PubKey: channel.ourKey,
