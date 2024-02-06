@@ -429,6 +429,7 @@ Available Commands:
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
   rescuetweakedkey    Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
   showrootkey         Extract and show the BIP32 HD root key from the 24 word lnd aezeed
+  signmessage         Sign a message with the nodes identity pubkey.
   signrescuefunding   Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
   summary             Compile a summary about the current state of channels
   sweeptimelock       Sweep the force-closed state after the time lock has expired
@@ -488,6 +489,7 @@ Legend:
 | [rescueclosed](doc/chantools_rescueclosed.md)               | :pencil: (:pushpin:) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
 | [rescuefunding](doc/chantools_rescuefunding.md)             | :pencil: (:pushpin:) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |
 | [showrootkey](doc/chantools_showrootkey.md)                 | :pencil: Display the master root key (`xprv`) from your seed (DO NOT SHARE WITH ANYONE)                                                  |
+| [signmessage](doc/chantools_signmessage.md)                 | :pencil: Sign a message with the nodes identity pubkey.                                                                                  |
 | [signrescuefunding](doc/chantools_signrescuefunding.md)     | :pencil: (:pushpin:) Sign to funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead |
 | [summary](doc/chantools_summary.md)                         | Create a summary of channel funds from a `channel.db` file                                                                               |
 | [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)     | :pencil: Find channel funds from remotely force closed channels and sweep them                                                           |
