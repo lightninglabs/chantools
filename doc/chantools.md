@@ -23,6 +23,7 @@ https://github.com/lightninglabs/chantools/.
 * [chantools chanbackup](chantools_chanbackup.md)	 - Create a channel.backup file from a channel database
 * [chantools closepoolaccount](chantools_closepoolaccount.md)	 - Tries to close a Pool account that has expired
 * [chantools compactdb](chantools_compactdb.md)	 - Create a copy of a channel.db file in safe/read-only mode
+* [chantools createwallet](chantools_createwallet.md)	 - Create a new lnd compatible wallet.db file from an existing seed or by generating a new one
 * [chantools deletepayments](chantools_deletepayments.md)	 - Remove all (failed) payments from a channel DB
 * [chantools derivekey](chantools_derivekey.md)	 - Derive a key with a specific derivation path
 * [chantools doublespendinputs](chantools_doublespendinputs.md)	 - Replace a transaction by double spending its input
@@ -43,6 +44,8 @@ https://github.com/lightninglabs/chantools/.
 * [chantools rescuefunding](chantools_rescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
 * [chantools rescuetweakedkey](chantools_rescuetweakedkey.md)	 - Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
 * [chantools showrootkey](chantools_showrootkey.md)	 - Extract and show the BIP32 HD root key from the 24 word lnd aezeed
+* [chantools signmessage](chantools_signmessage.md)	 - Sign a message with the node's private key.
+* [chantools signpsbt](chantools_signpsbt.md)	 - Sign a Partially Signed Bitcoin Transaction (PSBT)
 * [chantools signrescuefunding](chantools_signrescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
 * [chantools summary](chantools_summary.md)	 - Compile a summary about the current state of channels
 * [chantools sweepremoteclosed](chantools_sweepremoteclosed.md)	 - Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address

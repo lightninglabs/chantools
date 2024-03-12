@@ -65,6 +65,7 @@ chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
       --remote_node_addr string     the remote node connection information in the format pubkey@host:port
       --rootkey string              BIP32 HD root key of the wallet to use for encrypting the backup; leave empty to prompt for lnd 24 word aezeed
       --short_channel_id string     the short channel ID in the format <blockheight>x<transactionindex>x<outputindex>
+      --walletdb string             read the seed/master root key to use fro encrypting the backup from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands
