@@ -101,6 +101,7 @@ func main() {
 	rootCmd.AddCommand(
 		newChanBackupCommand(),
 		newClosePoolAccountCommand(),
+		newCreateWalletCommand(),
 		newCompactDBCommand(),
 		newDeletePaymentsCommand(),
 		newDeriveKeyCommand(),
