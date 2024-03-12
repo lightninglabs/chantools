@@ -140,8 +140,9 @@ func main() {
 }
 
 type rootKey struct {
-	RootKey string
-	BIP39   bool
+	RootKey  string
+	BIP39    bool
+	WalletDB string
 }
 
 func newRootKey(cmd *cobra.Command, desc string) *rootKey {
@@ -155,6 +156,12 @@ func newRootKey(cmd *cobra.Command, desc string) *rootKey {
 		&r.BIP39, "bip39", false, "read a classic BIP39 seed and "+
 			"passphrase from the terminal instead of asking for "+
 			"lnd seed format or providing the --rootkey flag",
+	)
+	cmd.Flags().StringVar(
+		&r.WalletDB, "walletdb", "", "read the seed/master root key "+
+			"to use fro "+desc+" from an lnd wallet.db file "+
+			"instead of asking for a seed or providing the "+
+			"--rootkey flag",
 	)
 
 	return r
@@ -177,6 +184,39 @@ func (r *rootKey) readWithBirthday() (*hdkeychain.ExtendedKey, time.Time,
 	case r.BIP39:
 		extendedKey, err := btc.ReadMnemonicFromTerminal(chainParams)
 		return extendedKey, time.Unix(0, 0), err
+
+	case r.WalletDB != "":
+		wallet, pw, cleanup, err := lnd.OpenWallet(
+			r.WalletDB, chainParams,
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"opening wallet '%s': %w", r.WalletDB, err)
+		}
+
+		defer func() {
+			if err := cleanup(); err != nil {
+				log.Errorf("error closing wallet: %v", err)
+			}
+		}()
+
+		extendedKeyBytes, err := lnd.DecryptWalletRootKey(
+			wallet.Database(), pw,
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"decrypting wallet root key: %w", err)
+		}
+
+		extendedKey, err := hdkeychain.NewKeyFromString(
+			string(extendedKeyBytes),
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"parsing master key: %w", err)
+		}
+
+		return extendedKey, wallet.Manager.Birthday(), nil
 
 	default:
 		return lnd.ReadAezeed(chainParams)
