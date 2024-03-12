@@ -30,15 +30,15 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 
 	// First attempt to fetch the private key which corresponds to the
 	// specified public key.
-	privKey, err := s.FetchPrivKey(&signDesc.KeyDesc)
+	privKey, err := s.FetchPrivateKey(&signDesc.KeyDesc)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.SignOutputRawWithPrivkey(tx, signDesc, privKey)
+	return s.SignOutputRawWithPrivateKey(tx, signDesc, privKey)
 }
 
-func (s *Signer) SignOutputRawWithPrivkey(tx *wire.MsgTx,
+func (s *Signer) SignOutputRawWithPrivateKey(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor,
 	privKey *secp256k1.PrivateKey) (input.Signature, error) {
 
@@ -122,7 +122,7 @@ func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
 	return nil, fmt.Errorf("unimplemented")
 }
 
-func (s *Signer) FetchPrivKey(descriptor *keychain.KeyDescriptor) (
+func (s *Signer) FetchPrivateKey(descriptor *keychain.KeyDescriptor) (
 	*btcec.PrivateKey, error) {
 
 	key, err := DeriveChildren(s.ExtendedKey, []uint32{
@@ -169,6 +169,50 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	status, err := updater.Sign(
 		inputIndex, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
 		witnessScript,
+	)
+	if err != nil {
+		return fmt.Errorf("error adding signature to PSBT: %w", err)
+	}
+	if status != 0 {
+		return fmt.Errorf("unexpected status for signature update, "+
+			"got %d wanted 0", status)
+	}
+
+	return nil
+}
+
+func (s *Signer) AddPartialSignatureForPrivateKey(packet *psbt.Packet,
+	privateKey *btcec.PrivateKey, utxo *wire.TxOut, witnessScript []byte,
+	inputIndex int) error {
+
+	// Now we add our partial signature.
+	prevOutFetcher := wallet.PsbtPrevOutputFetcher(packet)
+	signDesc := &input.SignDescriptor{
+		WitnessScript:     witnessScript,
+		Output:            utxo,
+		InputIndex:        inputIndex,
+		HashType:          txscript.SigHashAll,
+		PrevOutputFetcher: prevOutFetcher,
+		SigHashes: txscript.NewTxSigHashes(
+			packet.UnsignedTx, prevOutFetcher,
+		),
+	}
+	ourSigRaw, err := s.SignOutputRawWithPrivateKey(
+		packet.UnsignedTx, signDesc, privateKey,
+	)
+	if err != nil {
+		return fmt.Errorf("error signing with our key: %w", err)
+	}
+	ourSig := append(ourSigRaw.Serialize(), byte(txscript.SigHashAll))
+
+	// Great, we were able to create our sig, let's add it to the PSBT.
+	updater, err := psbt.NewUpdater(packet)
+	if err != nil {
+		return fmt.Errorf("error creating PSBT updater: %w", err)
+	}
+	status, err := updater.Sign(
+		inputIndex, ourSig, privateKey.PubKey().SerializeCompressed(),
+		nil, witnessScript,
 	)
 	if err != nil {
 		return fmt.Errorf("error adding signature to PSBT: %w", err)
