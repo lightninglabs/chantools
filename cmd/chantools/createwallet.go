@@ -115,7 +115,7 @@ func (c *createWalletCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// To automate things with chantools, we also offer reading the wallet
 	// password from environment variables.
-	pw := []byte(strings.TrimSpace(os.Getenv(passwordEnvName)))
+	pw := []byte(strings.TrimSpace(os.Getenv(lnd.PasswordEnvName)))
 
 	// Because we cannot differentiate between an empty and a non-existent
 	// environment variable, we need a special character that indicates that
@@ -131,11 +131,13 @@ func (c *createWalletCommand) Execute(_ *cobra.Command, _ []string) error {
 	case len(pw) == 0:
 		fmt.Printf("\n\nThe wallet password is used to encrypt the " +
 			"wallet.db file itself and is unrelated to the seed.\n")
-		pw, err = passwordFromConsole("Input new wallet password: ")
+		pw, err = lnd.PasswordFromConsole("Input new wallet password: ")
 		if err != nil {
 			return err
 		}
-		pw2, err := passwordFromConsole("Confirm new wallet password: ")
+		pw2, err := lnd.PasswordFromConsole(
+			"Confirm new wallet password: ",
+		)
 		if err != nil {
 			return err
 		}

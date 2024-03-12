@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/stretchr/testify/require"
 )
 
@@ -20,7 +21,7 @@ func TestWalletInfo(t *testing.T) {
 		WithRootKey: true,
 	}
 
-	t.Setenv(passwordEnvName, testPassPhrase)
+	t.Setenv(lnd.PasswordEnvName, testPassPhrase)
 
 	err := info.Execute(nil, nil)
 	require.NoError(t, err)

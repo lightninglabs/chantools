@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -22,7 +20,6 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/peer"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -265,27 +262,6 @@ func readInput(input string) ([]byte, error) {
 	return ioutil.ReadFile(input)
 }
 
-func passwordFromConsole(userQuery string) ([]byte, error) {
-	// Read from terminal (if there is one).
-	if terminal.IsTerminal(int(syscall.Stdin)) { //nolint
-		fmt.Print(userQuery)
-		pw, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println()
-		return pw, nil
-	}
-
-	// Read from stdin as a fallback.
-	reader := bufio.NewReader(os.Stdin)
-	pw, err := reader.ReadBytes('\n')
-	if err != nil {
-		return nil, err
-	}
-	return pw, nil
-}
-
 func setupLogging() {
 	setSubLogger("CHAN", log)
 	addSubLogger("CHDB", channeldb.UseLogger)
@@ -326,10 +302,6 @@ func setSubLogger(subsystem string, logger btclog.Logger,
 	for _, useLogger := range useLoggers {
 		useLogger(logger)
 	}
-}
-
-func noConsole() ([]byte, error) {
-	return nil, fmt.Errorf("wallet db requires console access")
 }
 
 func newExplorerAPI(apiURL string) *btc.ExplorerAPI {

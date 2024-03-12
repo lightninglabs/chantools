@@ -1,28 +1,19 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcwallet/snacl"
 	"github.com/btcsuite/btcwallet/waddrmgr"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/btcsuite/btcwallet/walletdb"
 	_ "github.com/btcsuite/btcwallet/walletdb/bdb"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/keychain"
-	"github.com/lightningnetwork/lnd/lncfg"
-	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/spf13/cobra"
-	"go.etcd.io/bbolt"
 )
 
 const (
-	passwordEnvName = "WALLET_PASSWORD"
-
 	walletInfoFormat = `
 Identity Pubkey:		%x
 BIP32 HD extended root key:	%s
@@ -38,19 +29,7 @@ Scope:	m/%d'/%d'
 )
 
 var (
-	// Namespace from github.com/btcsuite/btcwallet/wallet/wallet.go.
-	waddrmgrNamespaceKey = []byte("waddrmgr")
-
-	// Bucket names from github.com/btcsuite/btcwallet/waddrmgr/db.go.
-	mainBucketName    = []byte("main")
-	masterPrivKeyName = []byte("mpriv")
-	cryptoPrivKeyName = []byte("cpriv")
-	masterHDPrivName  = []byte("mhdpriv")
-	defaultAccount    = uint32(waddrmgr.DefaultAccountNum)
-	openCallbacks     = &waddrmgr.OpenCallbacks{
-		ObtainSeed:        noConsole,
-		ObtainPrivatePass: noConsole,
-	}
+	defaultAccount = uint32(waddrmgr.DefaultAccountNum)
 )
 
 type walletInfoCommand struct {
@@ -98,75 +77,24 @@ or simply press <enter> without entering a password when being prompted.`,
 }
 
 func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
-	var (
-		publicWalletPw  = lnwallet.DefaultPublicPassphrase
-		privateWalletPw = lnwallet.DefaultPrivatePassphrase
-		err             error
-	)
-
 	// Check that we have a wallet DB.
 	if c.WalletDB == "" {
 		return fmt.Errorf("wallet DB is required")
 	}
 
-	// To automate things with chantools, we also offer reading the wallet
-	// password from environment variables.
-	pw := []byte(strings.TrimSpace(os.Getenv(passwordEnvName)))
-
-	// Because we cannot differentiate between an empty and a non-existent
-	// environment variable, we need a special character that indicates that
-	// no password should be used. We use a single dash (-) for that as that
-	// would be too short for an explicit password anyway.
-	switch {
-	// The user indicated in the environment variable that no passphrase
-	// should be used. We don't set any value.
-	case string(pw) == "-":
-
-	// The environment variable didn't contain anything, we'll read the
-	// passphrase from the terminal.
-	case len(pw) == 0:
-		pw, err = passwordFromConsole("Input wallet password: ")
-		if err != nil {
-			return err
-		}
-		if len(pw) > 0 {
-			publicWalletPw = pw
-			privateWalletPw = pw
-		}
-
-	// There was a password in the environment, just use it directly.
-	default:
-		publicWalletPw = pw
-		privateWalletPw = pw
-	}
-
-	// Try to load and open the wallet.
-	db, err := walletdb.Open(
-		"bdb", lncfg.CleanAndExpandPath(c.WalletDB), false,
-		lnd.DefaultOpenTimeout,
+	w, privateWalletPw, cleanup, err := lnd.OpenWallet(
+		c.WalletDB, chainParams,
 	)
-	if errors.Is(err, bbolt.ErrTimeout) {
-		return fmt.Errorf("error opening wallet database, make sure " +
-			"lnd is not running and holding the exclusive lock " +
-			"on the wallet")
-	}
 	if err != nil {
-		return fmt.Errorf("error opening wallet database: %w", err)
-	}
-	defer func() { _ = db.Close() }()
-
-	w, err := wallet.Open(db, publicWalletPw, openCallbacks, chainParams, 0)
-	if err != nil {
-		return err
+		return fmt.Errorf("error opening wallet file '%s': %w",
+			c.WalletDB, err)
 	}
 
-	// Start and unlock the wallet.
-	w.Start()
-	defer w.Stop()
-	err = w.Unlock(privateWalletPw, nil)
-	if err != nil {
-		return err
-	}
+	defer func() {
+		if err := cleanup(); err != nil {
+			log.Errorf("error closing wallet: %v", err)
+		}
+	}()
 
 	// Print the wallet info and if requested the root key.
 	identityKey, scopeInfo, err := walletInfo(w, c.DumpAddrs)
@@ -175,7 +103,9 @@ func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	rootKey := na
 	if c.WithRootKey {
-		masterHDPrivKey, err := decryptRootKey(db, privateWalletPw)
+		masterHDPrivKey, err := lnd.DecryptWalletRootKey(
+			w.Database(), privateWalletPw,
+		)
 		if err != nil {
 			return err
 		}
@@ -259,7 +189,7 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 			err = walletdb.View(
 				w.Database(), func(tx walletdb.ReadTx) error {
 					waddrmgrNs := tx.ReadBucket(
-						waddrmgrNamespaceKey,
+						lnd.WaddrmgrNamespaceKey,
 					)
 
 					return mgr.ForEachAccountAddress(
@@ -303,65 +233,4 @@ func printScopeInfo(name string, w *wallet.Wallet,
 	}
 
 	return scopeInfo, nil
-}
-
-func decryptRootKey(db walletdb.DB, privPassphrase []byte) ([]byte, error) {
-	// Step 1: Load the encryption parameters and encrypted keys from the
-	// database.
-	var masterKeyPrivParams []byte
-	var cryptoKeyPrivEnc []byte
-	var masterHDPrivEnc []byte
-	err := walletdb.View(db, func(tx walletdb.ReadTx) error {
-		ns := tx.ReadBucket(waddrmgrNamespaceKey)
-		if ns == nil {
-			return fmt.Errorf("namespace '%s' does not exist",
-				waddrmgrNamespaceKey)
-		}
-
-		mainBucket := ns.NestedReadBucket(mainBucketName)
-		if mainBucket == nil {
-			return fmt.Errorf("bucket '%s' does not exist",
-				mainBucketName)
-		}
-
-		val := mainBucket.Get(masterPrivKeyName)
-		if val != nil {
-			masterKeyPrivParams = make([]byte, len(val))
-			copy(masterKeyPrivParams, val)
-		}
-		val = mainBucket.Get(cryptoPrivKeyName)
-		if val != nil {
-			cryptoKeyPrivEnc = make([]byte, len(val))
-			copy(cryptoKeyPrivEnc, val)
-		}
-		val = mainBucket.Get(masterHDPrivName)
-		if val != nil {
-			masterHDPrivEnc = make([]byte, len(val))
-			copy(masterHDPrivEnc, val)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// Step 2: Unmarshal the master private key parameters and derive
-	// key from passphrase.
-	var masterKeyPriv snacl.SecretKey
-	if err := masterKeyPriv.Unmarshal(masterKeyPrivParams); err != nil {
-		return nil, err
-	}
-	if err := masterKeyPriv.DeriveKey(&privPassphrase); err != nil {
-		return nil, err
-	}
-
-	// Step 3: Decrypt the keys in the correct order.
-	cryptoKeyPriv := &snacl.CryptoKey{}
-	cryptoKeyPrivBytes, err := masterKeyPriv.Decrypt(cryptoKeyPrivEnc)
-	if err != nil {
-		return nil, err
-	}
-	copy(cryptoKeyPriv[:], cryptoKeyPrivBytes)
-	return cryptoKeyPriv.Decrypt(masterHDPrivEnc)
 }

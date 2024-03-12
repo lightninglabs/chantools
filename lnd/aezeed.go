@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -11,19 +12,45 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcwallet/snacl"
+	"github.com/btcsuite/btcwallet/waddrmgr"
+	"github.com/btcsuite/btcwallet/wallet"
+	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/aezeed"
+	"github.com/lightningnetwork/lnd/lncfg"
+	"github.com/lightningnetwork/lnd/lnwallet"
+	"go.etcd.io/bbolt"
 	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
 	MnemonicEnvName   = "AEZEED_MNEMONIC"
 	PassphraseEnvName = "AEZEED_PASSPHRASE"
+	PasswordEnvName   = "WALLET_PASSWORD"
 )
 
 var (
 	numberDotsRegex = regexp.MustCompile(`[\d.\-\n\r\t]*`)
 	multipleSpaces  = regexp.MustCompile(" [ ]+")
+
+	openCallbacks = &waddrmgr.OpenCallbacks{
+		ObtainSeed:        noConsole,
+		ObtainPrivatePass: noConsole,
+	}
+
+	// Namespace from github.com/btcsuite/btcwallet/wallet/wallet.go.
+	WaddrmgrNamespaceKey = []byte("waddrmgr")
+
+	// Bucket names from github.com/btcsuite/btcwallet/waddrmgr/db.go.
+	mainBucketName    = []byte("main")
+	masterPrivKeyName = []byte("mpriv")
+	cryptoPrivKeyName = []byte("cpriv")
+	masterHDPrivName  = []byte("mhdpriv")
 )
+
+func noConsole() ([]byte, error) {
+	return nil, fmt.Errorf("wallet db requires console access")
+}
 
 // ReadAezeed reads an aezeed from the console or the environment variable.
 func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
@@ -129,4 +156,175 @@ func ReadPassphrase(verb string) ([]byte, error) {
 	}
 
 	return passphraseBytes, nil
+}
+
+// PasswordFromConsole reads a password from the console or stdin.
+func PasswordFromConsole(userQuery string) ([]byte, error) {
+	// Read from terminal (if there is one).
+	if terminal.IsTerminal(int(syscall.Stdin)) { //nolint
+		fmt.Print(userQuery)
+		pw, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println()
+		return pw, nil
+	}
+
+	// Read from stdin as a fallback.
+	reader := bufio.NewReader(os.Stdin)
+	pw, err := reader.ReadBytes('\n')
+	if err != nil {
+		return nil, err
+	}
+	return pw, nil
+}
+
+// OpenWallet opens a lnd compatible wallet and returns it, along with the
+// private wallet password.
+func OpenWallet(walletDbPath string,
+	chainParams *chaincfg.Params) (*wallet.Wallet, []byte, func() error,
+	error) {
+
+	var (
+		publicWalletPw  = lnwallet.DefaultPublicPassphrase
+		privateWalletPw = lnwallet.DefaultPrivatePassphrase
+		err             error
+	)
+
+	// To automate things with chantools, we also offer reading the wallet
+	// password from environment variables.
+	pw := []byte(strings.TrimSpace(os.Getenv(PasswordEnvName)))
+
+	// Because we cannot differentiate between an empty and a non-existent
+	// environment variable, we need a special character that indicates that
+	// no password should be used. We use a single dash (-) for that as that
+	// would be too short for an explicit password anyway.
+	switch {
+	// The user indicated in the environment variable that no passphrase
+	// should be used. We don't set any value.
+	case string(pw) == "-":
+
+	// The environment variable didn't contain anything, we'll read the
+	// passphrase from the terminal.
+	case len(pw) == 0:
+		pw, err = PasswordFromConsole("Input wallet password: ")
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		if len(pw) > 0 {
+			publicWalletPw = pw
+			privateWalletPw = pw
+		}
+
+	// There was a password in the environment, just use it directly.
+	default:
+		publicWalletPw = pw
+		privateWalletPw = pw
+	}
+
+	// Try to load and open the wallet.
+	db, err := walletdb.Open(
+		"bdb", lncfg.CleanAndExpandPath(walletDbPath), false,
+		DefaultOpenTimeout,
+	)
+	if errors.Is(err, bbolt.ErrTimeout) {
+		return nil, nil, nil, fmt.Errorf("error opening wallet " +
+			"database, make sure lnd is not running and holding " +
+			"the exclusive lock on the wallet")
+	}
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("error opening wallet "+
+			"database: %w", err)
+	}
+
+	w, err := wallet.Open(db, publicWalletPw, openCallbacks, chainParams, 0)
+	if err != nil {
+		_ = db.Close()
+		return nil, nil, nil, fmt.Errorf("error opening wallet %w", err)
+	}
+
+	// Start and unlock the wallet.
+	w.Start()
+	err = w.Unlock(privateWalletPw, nil)
+	if err != nil {
+		w.Stop()
+		_ = db.Close()
+		return nil, nil, nil, err
+	}
+
+	cleanup := func() error {
+		w.Stop()
+		if err := db.Close(); err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return w, privateWalletPw, cleanup, nil
+}
+
+// DecryptWalletRootKey decrypts a lnd compatible wallet's root key.
+func DecryptWalletRootKey(db walletdb.DB,
+	privatePassphrase []byte) ([]byte, error) {
+
+	// Step 1: Load the encryption parameters and encrypted keys from the
+	// database.
+	var masterKeyPrivParams []byte
+	var cryptoKeyPrivEnc []byte
+	var masterHDPrivEnc []byte
+	err := walletdb.View(db, func(tx walletdb.ReadTx) error {
+		ns := tx.ReadBucket(WaddrmgrNamespaceKey)
+		if ns == nil {
+			return fmt.Errorf("namespace '%s' does not exist",
+				WaddrmgrNamespaceKey)
+		}
+
+		mainBucket := ns.NestedReadBucket(mainBucketName)
+		if mainBucket == nil {
+			return fmt.Errorf("bucket '%s' does not exist",
+				mainBucketName)
+		}
+
+		val := mainBucket.Get(masterPrivKeyName)
+		if val != nil {
+			masterKeyPrivParams = make([]byte, len(val))
+			copy(masterKeyPrivParams, val)
+		}
+		val = mainBucket.Get(cryptoPrivKeyName)
+		if val != nil {
+			cryptoKeyPrivEnc = make([]byte, len(val))
+			copy(cryptoKeyPrivEnc, val)
+		}
+		val = mainBucket.Get(masterHDPrivName)
+		if val != nil {
+			masterHDPrivEnc = make([]byte, len(val))
+			copy(masterHDPrivEnc, val)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 2: Unmarshal the master private key parameters and derive
+	// key from passphrase.
+	var masterKeyPriv snacl.SecretKey
+	if err := masterKeyPriv.Unmarshal(masterKeyPrivParams); err != nil {
+		return nil, err
+	}
+	if err := masterKeyPriv.DeriveKey(&privatePassphrase); err != nil {
+		return nil, err
+	}
+
+	// Step 3: Decrypt the keys in the correct order.
+	cryptoKeyPriv := &snacl.CryptoKey{}
+	cryptoKeyPrivBytes, err := masterKeyPriv.Decrypt(cryptoKeyPrivEnc)
+	if err != nil {
+		return nil, err
+	}
+	copy(cryptoKeyPriv[:], cryptoKeyPrivBytes)
+	return cryptoKeyPriv.Decrypt(masterHDPrivEnc)
 }
