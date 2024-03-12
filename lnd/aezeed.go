@@ -25,6 +25,7 @@ var (
 	multipleSpaces  = regexp.MustCompile(" [ ]+")
 )
 
+// ReadAezeed reads an aezeed from the console or the environment variable.
 func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 	error) {
 
@@ -67,38 +68,9 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 			len(cipherSeedMnemonic), 24)
 	}
 
-	// Additionally, the user may have a passphrase, that will also need to
-	// be provided so the daemon can properly decipher the cipher seed.
-	// Try the environment variable first.
-	passphrase := strings.TrimSpace(os.Getenv(PassphraseEnvName))
-
-	// Because we cannot differentiate between an empty and a non-existent
-	// environment variable, we need a special character that indicates that
-	// no passphrase should be used. We use a single dash (-) for that as
-	// that would be too short for a passphrase anyway.
-	var passphraseBytes []byte
-	switch {
-	// The user indicated in the environment variable that no passphrase
-	// should be used. We don't set any value.
-	case passphrase == "-":
-
-	// The environment variable didn't contain anything, we'll read the
-	// passphrase from the terminal.
-	case passphrase == "":
-		fmt.Printf("Input your cipher seed passphrase (press enter " +
-			"if your seed doesn't have a passphrase): ")
-		var err error
-		passphraseBytes, err = terminal.ReadPassword(
-			int(syscall.Stdin), //nolint
-		)
-		if err != nil {
-			return nil, time.Unix(0, 0), err
-		}
-		fmt.Println()
-
-	// There was a password in the environment, just convert it to bytes.
-	default:
-		passphraseBytes = []byte(passphrase)
+	passphraseBytes, err := ReadPassphrase("doesn't have")
+	if err != nil {
+		return nil, time.Unix(0, 0), err
 	}
 
 	var mnemonic aezeed.Mnemonic
@@ -117,4 +89,44 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 			"master extended key")
 	}
 	return rootKey, cipherSeed.BirthdayTime(), nil
+}
+
+// ReadPassphrase reads a cipher seed passphrase from the console or the
+// environment variable.
+func ReadPassphrase(verb string) ([]byte, error) {
+	// Additionally, the user may have a passphrase, that will also need to
+	// be provided so the daemon can properly decipher the cipher seed.
+	// Try the environment variable first.
+	passphrase := strings.TrimSpace(os.Getenv(PassphraseEnvName))
+
+	// Because we cannot differentiate between an empty and a non-existent
+	// environment variable, we need a special character that indicates that
+	// no passphrase should be used. We use a single dash (-) for that as
+	// that would be too short for a passphrase anyway.
+	var passphraseBytes []byte
+	switch {
+	// The user indicated in the environment variable that no passphrase
+	// should be used. We don't set any value.
+	case passphrase == "-":
+
+	// The environment variable didn't contain anything, we'll read the
+	// passphrase from the terminal.
+	case passphrase == "":
+		fmt.Printf("Input your cipher seed passphrase (press enter "+
+			"if your seed %s a passphrase): ", verb)
+		var err error
+		passphraseBytes, err = terminal.ReadPassword(
+			int(syscall.Stdin), //nolint
+		)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println()
+
+	// There was a password in the environment, just convert it to bytes.
+	default:
+		passphraseBytes = []byte(passphrase)
+	}
+
+	return passphraseBytes, nil
 }
