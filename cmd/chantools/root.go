@@ -123,6 +123,7 @@ func main() {
 		newShowRootKeyCommand(),
 		newSignMessageCommand(),
 		newSignRescueFundingCommand(),
+		newSignPSBTCommand(),
 		newSummaryCommand(),
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
