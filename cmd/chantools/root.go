@@ -114,6 +114,7 @@ func main() {
 		newFilterBackupCommand(),
 		newFixOldBackupCommand(),
 		newForceCloseCommand(),
+		newScbForceCloseCommand(),
 		newGenImportScriptCommand(),
 		newMigrateDBCommand(),
 		newPullAnchorCommand(),

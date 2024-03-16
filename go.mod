@@ -189,3 +189,5 @@ require (
 // allows us to specify that as an option. This is required for the
 // taproot-assets dependency to function properly.
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.30.0-hex-display
+
+replace github.com/lightningnetwork/lnd => github.com/starius/lnd v0.17.0-beta-close-tx-4
