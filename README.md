@@ -410,6 +410,7 @@ Available Commands:
   chanbackup          Create a channel.backup file from a channel database
   closepoolaccount    Tries to close a Pool account that has expired
   compactdb           Create a copy of a channel.db file in safe/read-only mode
+  createwallet        Create a new lnd compatible wallet.db file from an existing seed or by generating a new one
   deletepayments      Remove all (failed) payments from a channel DB
   derivekey           Derive a key with a specific derivation path
   doublespendinputs   Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
@@ -430,6 +431,7 @@ Available Commands:
   rescuetweakedkey    Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
   showrootkey         Extract and show the BIP32 HD root key from the 24 word lnd aezeed
   signmessage         Sign a message with the nodes identity pubkey.
+  signpsbt            Sign a Partially Signed Bitcoin Transaction (PSBT)
   signrescuefunding   Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
   summary             Compile a summary about the current state of channels
   sweeptimelock       Sweep the force-closed state after the time lock has expired
@@ -470,6 +472,7 @@ Legend:
 | [chanbackup](doc/chantools_chanbackup.md)                   | :pencil: Extract a `channel.backup` file from a `channel.db` file                                                                        |
 | [closepoolaccount](doc/chantools_closepoolaccount.md)       | :pencil: Manually close an expired Lightning Pool account                                                                                |
 | [compactdb](doc/chantools_compactdb.md)                     | Run database compaction manually to reclaim space                                                                                        |
+| [createwallet](doc/chantools_createwallet.md)               | :pencil: Create a new lnd compatible wallet.db file from an existing seed or by generating a new one                                     |
 | [deletepayments](doc/chantools_deletepayments.md)           | Remove ALL payments from a `channel.db` file to reduce size                                                                              |
 | [derivekey](doc/chantools_derivekey.md)                     | :pencil: Derive a single private/public key from `lnd`'s seed, use to test seed                                                          |
 | [doublespendinputs](doc/chantools_doublespendinputs.md)     | :pencil: Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address      |
@@ -483,13 +486,14 @@ Legend:
 | [forceclose](doc/chantools_forceclose.md)                   | :pencil: (:skull: :warning:) Publish an old channel state from a `channel.db` file                                                       |
 | [genimportscript](doc/chantools_genimportscript.md)         | :pencil: Create a script/text file that can be used to import `lnd` keys into other software                                             |
 | [migratedb](doc/chantools_migratedb.md)                     | Upgrade the `channel.db` file to the latest version                                                                                      |
-| [pullanchor](doc/chantools_pullanchor.md) | :pencil: Attempt to CPFP an anchor output of a channel                                                                                   | 
+| [pullanchor](doc/chantools_pullanchor.md)                   | :pencil: Attempt to CPFP an anchor output of a channel                                                                                   | 
 | [recoverloopin](doc/chantools_recoverloopin.md)             | :pencil: Recover funds from a failed Lightning Loop inbound swap                                                                         |
 | [removechannel](doc/chantools_removechannel.md)             | (:skull: :warning:) Remove a single channel from a `channel.db` file                                                                     |
 | [rescueclosed](doc/chantools_rescueclosed.md)               | :pencil: (:pushpin:) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
 | [rescuefunding](doc/chantools_rescuefunding.md)             | :pencil: (:pushpin:) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |
 | [showrootkey](doc/chantools_showrootkey.md)                 | :pencil: Display the master root key (`xprv`) from your seed (DO NOT SHARE WITH ANYONE)                                                  |
 | [signmessage](doc/chantools_signmessage.md)                 | :pencil: Sign a message with the nodes identity pubkey.                                                                                  |
+| [signpsbt](doc/chantools_signpsbt.md)                       | :pencil: Sign a Partially Signed Bitcoin Transaction (PSBT)                                                                              |
 | [signrescuefunding](doc/chantools_signrescuefunding.md)     | :pencil: (:pushpin:) Sign to funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead |
 | [summary](doc/chantools_summary.md)                         | Create a summary of channel funds from a `channel.db` file                                                                               |
 | [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)     | :pencil: Find channel funds from remotely force closed channels and sweep them                                                           |

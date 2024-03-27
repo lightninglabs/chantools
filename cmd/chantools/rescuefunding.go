@@ -209,7 +209,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 				Index:  c.LocalKeyIndex,
 			},
 		}
-		privKey, err := signer.FetchPrivKey(localKeyDesc)
+		privKey, err := signer.FetchPrivateKey(localKeyDesc)
 		if err != nil {
 			return fmt.Errorf("error deriving local key: %w", err)
 		}

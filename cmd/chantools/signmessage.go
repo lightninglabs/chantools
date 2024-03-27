@@ -61,7 +61,7 @@ func (c *signMessageCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Fetch the private key for node key.
-	privKey, err := signer.FetchPrivKey(&keychain.KeyDescriptor{
+	privKey, err := signer.FetchPrivateKey(&keychain.KeyDescriptor{
 		KeyLocator: keyLocator,
 	})
 	if err != nil {

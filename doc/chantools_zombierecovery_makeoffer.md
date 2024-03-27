@@ -35,6 +35,7 @@ chantools zombierecovery makeoffer \
       --node1_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 1
       --node2_keys string   the JSON file generated in theprevious step ('preparekeys') command of node 2
       --rootkey string      BIP32 HD root key of the wallet to use for signing the offer; leave empty to prompt for lnd 24 word aezeed
+      --walletdb string     read the seed/master root key to use fro signing the offer from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

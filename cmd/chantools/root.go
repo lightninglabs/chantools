@@ -1,14 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -22,7 +20,6 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/peer"
 	"github.com/spf13/cobra"
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 const (
@@ -33,7 +30,7 @@ const (
 	// version is the current version of the tool. It is set during build.
 	// NOTE: When changing this, please also update the version in the
 	// download link shown in the README.
-	version = "0.12.2"
+	version = "0.13.0"
 	na      = "n/a"
 
 	// lndVersion is the current version of lnd that we support. This is
@@ -101,6 +98,7 @@ func main() {
 	rootCmd.AddCommand(
 		newChanBackupCommand(),
 		newClosePoolAccountCommand(),
+		newCreateWalletCommand(),
 		newCompactDBCommand(),
 		newDeletePaymentsCommand(),
 		newDeriveKeyCommand(),
@@ -125,6 +123,7 @@ func main() {
 		newShowRootKeyCommand(),
 		newSignMessageCommand(),
 		newSignRescueFundingCommand(),
+		newSignPSBTCommand(),
 		newSummaryCommand(),
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
@@ -142,8 +141,9 @@ func main() {
 }
 
 type rootKey struct {
-	RootKey string
-	BIP39   bool
+	RootKey  string
+	BIP39    bool
+	WalletDB string
 }
 
 func newRootKey(cmd *cobra.Command, desc string) *rootKey {
@@ -157,6 +157,12 @@ func newRootKey(cmd *cobra.Command, desc string) *rootKey {
 		&r.BIP39, "bip39", false, "read a classic BIP39 seed and "+
 			"passphrase from the terminal instead of asking for "+
 			"lnd seed format or providing the --rootkey flag",
+	)
+	cmd.Flags().StringVar(
+		&r.WalletDB, "walletdb", "", "read the seed/master root key "+
+			"to use fro "+desc+" from an lnd wallet.db file "+
+			"instead of asking for a seed or providing the "+
+			"--rootkey flag",
 	)
 
 	return r
@@ -179,6 +185,39 @@ func (r *rootKey) readWithBirthday() (*hdkeychain.ExtendedKey, time.Time,
 	case r.BIP39:
 		extendedKey, err := btc.ReadMnemonicFromTerminal(chainParams)
 		return extendedKey, time.Unix(0, 0), err
+
+	case r.WalletDB != "":
+		wallet, pw, cleanup, err := lnd.OpenWallet(
+			r.WalletDB, chainParams,
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"opening wallet '%s': %w", r.WalletDB, err)
+		}
+
+		defer func() {
+			if err := cleanup(); err != nil {
+				log.Errorf("error closing wallet: %v", err)
+			}
+		}()
+
+		extendedKeyBytes, err := lnd.DecryptWalletRootKey(
+			wallet.Database(), pw,
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"decrypting wallet root key: %w", err)
+		}
+
+		extendedKey, err := hdkeychain.NewKeyFromString(
+			string(extendedKeyBytes),
+		)
+		if err != nil {
+			return nil, time.Unix(0, 0), fmt.Errorf("error "+
+				"parsing master key: %w", err)
+		}
+
+		return extendedKey, wallet.Manager.Birthday(), nil
 
 	default:
 		return lnd.ReadAezeed(chainParams)
@@ -264,27 +303,6 @@ func readInput(input string) ([]byte, error) {
 	return ioutil.ReadFile(input)
 }
 
-func passwordFromConsole(userQuery string) ([]byte, error) {
-	// Read from terminal (if there is one).
-	if terminal.IsTerminal(int(syscall.Stdin)) { //nolint
-		fmt.Print(userQuery)
-		pw, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println()
-		return pw, nil
-	}
-
-	// Read from stdin as a fallback.
-	reader := bufio.NewReader(os.Stdin)
-	pw, err := reader.ReadBytes('\n')
-	if err != nil {
-		return nil, err
-	}
-	return pw, nil
-}
-
 func setupLogging() {
 	setSubLogger("CHAN", log)
 	addSubLogger("CHDB", channeldb.UseLogger)
@@ -325,10 +343,6 @@ func setSubLogger(subsystem string, logger btclog.Logger,
 	for _, useLogger := range useLoggers {
 		useLogger(logger)
 	}
-}
-
-func noConsole() ([]byte, error) {
-	return nil, fmt.Errorf("wallet db requires console access")
 }
 
 func newExplorerAPI(apiURL string) *btc.ExplorerAPI {

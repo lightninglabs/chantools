@@ -34,6 +34,7 @@ chantools doublespendinputs \
       --recoverywindow uint32    number of keys to scan per internal/external branch; output will consist of double this amount of keys (default 2500)
       --rootkey string           BIP32 HD root key of the wallet to use for deriving the input keys; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string         address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
+      --walletdb string          read the seed/master root key to use fro deriving the input keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands
