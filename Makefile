@@ -20,14 +20,13 @@ VERSION_TAG = $(shell git describe --tags)
 VERSION_CHECK = @$(call print, "Building master with date version tag")
 
 BUILD_SYSTEM = darwin-amd64 \
+darwin-arm64 \
 linux-386 \
 linux-amd64 \
 linux-armv6 \
 linux-armv7 \
 linux-arm64 \
-windows-386 \
-windows-amd64 \
-windows-arm
+windows-amd64
 
 # By default we will build all systems. But with the 'sys' tag, a specific
 # system can be specified. This is useful to release for a subset of
