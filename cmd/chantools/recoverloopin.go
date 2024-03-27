@@ -2,8 +2,12 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"path/filepath"
+	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -15,8 +19,13 @@ import (
 	"github.com/lightninglabs/loop/swap"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
+)
+
+var (
+	errSwapNotFound = fmt.Errorf("loop in swap not found")
 )
 
 type recoverLoopInCommand struct {
@@ -32,7 +41,8 @@ type recoverLoopInCommand struct {
 	APIURL  string
 	Publish bool
 
-	LoopDbDir string
+	LoopDbDir  string
+	SqliteFile string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -97,6 +107,11 @@ func newRecoverLoopInCommand() *cobra.Command {
 	cc.cmd.Flags().Uint64Var(
 		&cc.OutputAmt, "output_amt", 0, "amount of the output to sweep",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.SqliteFile, "sqlite_file", "", "optional path to the loop "+
+			"sqlite database file, if not specified, the default "+
+			"location will be loaded from --loop_db_dir",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "deriving starting key")
 
@@ -130,32 +145,62 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	api := newExplorerAPI(c.APIURL)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
 
-	// Try to fetch the swap from the database.
-	store, err := loopdb.NewBoltSwapStore(c.LoopDbDir, chainParams)
-	if err != nil {
-		return err
-	}
-	defer store.Close()
+	// Try to fetch the swap from the boltdb.
+	var (
+		store  loopdb.SwapStore
+		loopIn *loopdb.LoopIn
+	)
 
-	swaps, err := store.FetchLoopInSwaps()
-	if err != nil {
-		return err
-	}
+	// First check if a boltdb file exists.
+	if lnrpc.FileExists(filepath.Join(c.LoopDbDir, "loop.db")) {
+		store, err = loopdb.NewBoltSwapStore(c.LoopDbDir, chainParams)
+		if err != nil {
+			return err
+		}
+		defer store.Close()
 
-	var loopIn *loopdb.LoopIn
-	for _, s := range swaps {
-		if s.Hash.String() == c.SwapHash {
-			loopIn = s
-			break
+		loopIn, err = findLoopInSwap(ctx, store, c.SwapHash)
+		if err != nil && !errors.Is(err, errSwapNotFound) {
+			return err
 		}
 	}
+
+	// If the loopin is not found yet, try to fetch it from the sqlite db.
 	if loopIn == nil {
-		return fmt.Errorf("swap not found")
+		if c.SqliteFile == "" {
+			c.SqliteFile = filepath.Join(
+				c.LoopDbDir, "loop_sqlite.db",
+			)
+		}
+
+		sqliteDb, err := loopdb.NewSqliteStore(
+			&loopdb.SqliteConfig{
+				DatabaseFileName: c.SqliteFile,
+				SkipMigrations:   true,
+			}, chainParams,
+		)
+		if err != nil {
+			return err
+		}
+		defer sqliteDb.Close()
+
+		loopIn, err = findLoopInSwap(ctx, sqliteDb, c.SwapHash)
+		if err != nil && !errors.Is(err, errSwapNotFound) {
+			return err
+		}
+	}
+
+	// If the loopin is still not found, return an error.
+	if loopIn == nil {
+		return errSwapNotFound
 	}
 
 	// If the swap is an external htlc, we require the output amount to be
@@ -348,6 +393,23 @@ func getSignedTx(signer *lnd.Signer, sweepTx *wire.MsgTx, htlc *swap.Htlc,
 	}
 
 	return rawTx, nil
+}
+
+func findLoopInSwap(ctx context.Context, store loopdb.SwapStore,
+	swapHash string) (*loopdb.LoopIn, error) {
+
+	swaps, err := store.FetchLoopInSwaps(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, s := range swaps {
+		if s.Hash.String() == swapHash {
+			return s, nil
+		}
+	}
+
+	return nil, errSwapNotFound
 }
 
 // encodeTx encodes a tx to raw bytes.
