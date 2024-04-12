@@ -10,6 +10,7 @@ import (
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
@@ -153,16 +154,24 @@ func signPsbt(rootKey *hdkeychain.ExtendedKey,
 		return fmt.Errorf("could not derive local key: %w", err)
 	}
 
-	if len(packet.Inputs[inputIndex].WitnessScript) == 0 {
-		return fmt.Errorf("invalid PSBT, input %d is missing witness "+
-			"script", inputIndex)
-	}
-	witnessScript := packet.Inputs[inputIndex].WitnessScript
 	if packet.Inputs[inputIndex].WitnessUtxo == nil {
 		return fmt.Errorf("invalid PSBT, input %d is missing witness "+
 			"UTXO", inputIndex)
 	}
 	utxo := packet.Inputs[inputIndex].WitnessUtxo
+
+	// The signing is a bit different for P2WPKH, we need to specify the
+	// pk script as the witness script.
+	var witnessScript []byte
+	if txscript.IsPayToWitnessPubKeyHash(utxo.PkScript) {
+		witnessScript = utxo.PkScript
+	} else {
+		if len(packet.Inputs[inputIndex].WitnessScript) == 0 {
+			return fmt.Errorf("invalid PSBT, input %d is missing "+
+				"witness script", inputIndex)
+		}
+		witnessScript = packet.Inputs[inputIndex].WitnessScript
+	}
 
 	localPrivateKey, err := localKey.ECPrivKey()
 	if err != nil {

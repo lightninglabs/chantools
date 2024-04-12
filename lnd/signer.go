@@ -210,6 +210,14 @@ func (s *Signer) AddPartialSignatureForPrivateKey(packet *psbt.Packet,
 	if err != nil {
 		return fmt.Errorf("error creating PSBT updater: %w", err)
 	}
+
+	// If the witness script is the pk script for a P2WPKH output, then we
+	// need to blank it out for the PSBT code, otherwise it interprets it as
+	// a P2WSH.
+	if txscript.IsPayToWitnessPubKeyHash(utxo.PkScript) {
+		witnessScript = nil
+	}
+
 	status, err := updater.Sign(
 		inputIndex, ourSig, privateKey.PubKey().SerializeCompressed(),
 		nil, witnessScript,
