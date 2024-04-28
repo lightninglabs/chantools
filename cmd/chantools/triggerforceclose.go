@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/connmgr"
 	"github.com/btcsuite/btcd/wire"
@@ -37,13 +38,13 @@ func newTriggerForceCloseCommand() *cobra.Command {
 	cc := &triggerForceCloseCommand{}
 	cc.cmd = &cobra.Command{
 		Use: "triggerforceclose",
-		Short: "Connect to a CLN peer and send a custom message to " +
-			"trigger a force close of the specified channel",
-		Long: `Certain versions of CLN didn't properly react to error
-messages sent by peers and therefore didn't follow the DLP protocol to recover
-channel funds using SCB. This command can be used to trigger a force close with
-those earlier versions of CLN (this command will not work for lnd peers or CLN
-peers of a different version).`,
+		Short: "Connect to a Lightning Network peer and send " +
+			"specific messages to trigger a force close of the " +
+			"specified channel",
+		Long: `Asks the specified remote peer to force close a specific
+channel by first sending a channel re-establish message, and if that doesn't
+work, a custom error message (in case the peer is a specific version of CLN that
+does not properly respond to a Data Loss Protection re-establish message).'`,
 		Example: `chantools triggerforceclose \
 	--peer 03abce...@xx.yy.zz.aa:9735 \
 	--channel_point abcdef01234...:x`,
@@ -88,64 +89,14 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		PrivKey: identityPriv,
 	}
 
-	peerAddr, err := lncfg.ParseLNAddressString(
-		c.Peer, "9735", net.ResolveTCPAddr,
-	)
-	if err != nil {
-		return fmt.Errorf("error parsing peer address: %w", err)
-	}
-
 	outPoint, err := parseOutPoint(c.ChannelPoint)
 	if err != nil {
 		return fmt.Errorf("error parsing channel point: %w", err)
 	}
-	channelID := lnwire.NewChanIDFromOutPoint(outPoint)
 
-	conn, err := noiseDial(
-		identityECDH, peerAddr, &tor.ClearNet{}, dialTimeout,
-	)
+	err = requestForceClose(c.Peer, pubKey, outPoint, identityECDH)
 	if err != nil {
-		return fmt.Errorf("error dialing peer: %w", err)
-	}
-
-	log.Infof("Attempting to connect to peer %x, dial timeout is %v",
-		pubKey.SerializeCompressed(), dialTimeout)
-	req := &connmgr.ConnReq{
-		Addr:      peerAddr,
-		Permanent: false,
-	}
-	p, err := lnd.ConnectPeer(conn, req, chainParams, identityECDH)
-	if err != nil {
-		return fmt.Errorf("error connecting to peer: %w", err)
-	}
-
-	log.Infof("Connection established to peer %x",
-		pubKey.SerializeCompressed())
-
-	// We'll wait until the peer is active.
-	select {
-	case <-p.ActiveSignal():
-	case <-p.QuitSignal():
-		return fmt.Errorf("peer %x disconnected",
-			pubKey.SerializeCompressed())
-	}
-
-	// Channel ID (32 byte) + u16 for the data length (which will be 0).
-	data := make([]byte, 34)
-	copy(data[:32], channelID[:])
-
-	log.Infof("Sending channel error message to peer to trigger force "+
-		"close of channel %v", c.ChannelPoint)
-
-	_ = lnwire.SetCustomOverrides([]uint16{lnwire.MsgError})
-	msg, err := lnwire.NewCustom(lnwire.MsgError, data)
-	if err != nil {
-		return err
-	}
-
-	err = p.SendMessageLazy(true, msg)
-	if err != nil {
-		return fmt.Errorf("error sending message: %w", err)
+		return fmt.Errorf("error requesting force close: %w", err)
 	}
 
 	log.Infof("Message sent, waiting for force close transaction to " +
@@ -181,6 +132,80 @@ func noiseDial(idKey keychain.SingleKeyECDH, lnAddr *lnwire.NetAddress,
 	netCfg tor.Net, timeout time.Duration) (*brontide.Conn, error) {
 
 	return brontide.Dial(idKey, lnAddr, timeout, netCfg.Dial)
+}
+
+func requestForceClose(peerHost string, peerPubKey *btcec.PublicKey,
+	channelPoint *wire.OutPoint, identity keychain.SingleKeyECDH) error {
+
+	peerAddr, err := lncfg.ParseLNAddressString(
+		peerHost, "9735", net.ResolveTCPAddr,
+	)
+	if err != nil {
+		return fmt.Errorf("error parsing peer address: %w", err)
+	}
+
+	channelID := lnwire.NewChanIDFromOutPoint(channelPoint)
+
+	conn, err := noiseDial(
+		identity, peerAddr, &tor.ClearNet{}, dialTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("error dialing peer: %w", err)
+	}
+
+	log.Infof("Attempting to connect to peer %x, dial timeout is %v",
+		peerPubKey.SerializeCompressed(), dialTimeout)
+	req := &connmgr.ConnReq{
+		Addr:      peerAddr,
+		Permanent: false,
+	}
+	p, err := lnd.ConnectPeer(conn, req, chainParams, identity)
+	if err != nil {
+		return fmt.Errorf("error connecting to peer: %w", err)
+	}
+
+	log.Infof("Connection established to peer %x",
+		peerPubKey.SerializeCompressed())
+
+	// We'll wait until the peer is active.
+	select {
+	case <-p.ActiveSignal():
+	case <-p.QuitSignal():
+		return fmt.Errorf("peer %x disconnected",
+			peerPubKey.SerializeCompressed())
+	}
+
+	// Channel ID (32 byte) + u16 for the data length (which will be 0).
+	data := make([]byte, 34)
+	copy(data[:32], channelID[:])
+
+	log.Infof("Sending channel re-establish to peer to trigger force "+
+		"close of channel %v", channelPoint)
+
+	err = p.SendMessageLazy(true, &lnwire.ChannelReestablish{
+		ChanID: channelID,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Sending channel error message to peer to trigger force "+
+		"close of channel %v", channelPoint)
+
+	_ = lnwire.SetCustomOverrides([]uint16{
+		lnwire.MsgError, lnwire.MsgChannelReestablish,
+	})
+	msg, err := lnwire.NewCustom(lnwire.MsgError, data)
+	if err != nil {
+		return err
+	}
+
+	err = p.SendMessageLazy(true, msg)
+	if err != nil {
+		return fmt.Errorf("error sending message: %w", err)
+	}
+
+	return nil
 }
 
 func parseOutPoint(s string) (*wire.OutPoint, error) {

@@ -107,7 +107,8 @@ Scenarios:
   Another reason might be that the peer is a CLN node with a specific version
   that doesn't react to force close requests normally. You can use the
   [`chantools triggerforceclose` command](doc/chantools_triggerforceclose.md) in
-  that case (ONLY works with CLN peers of a certain version).
+  that case (should work with CLN peers of a certain version that don't respond
+  to normal force close requests).
 
 ## What should I NEVER do?
 
@@ -437,7 +438,7 @@ Available Commands:
   sweeptimelock       Sweep the force-closed state after the time lock has expired
   sweeptimelockmanual Sweep the force-closed state of a single channel manually if only a channel backup file is available
   sweepremoteclosed   Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
-  triggerforceclose   Connect to a peer and send a custom message to trigger a force close of the specified channel
+  triggerforceclose   Connect to a peer and send request to trigger a force close of the specified channel
   vanitygen           Generate a seed with a custom lnd node identity public key that starts with the given prefix
   walletinfo          Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
   zombierecovery      Try rescuing funds stuck in channels with zombie nodes
@@ -499,7 +500,7 @@ Legend:
 | [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)     | :pencil: Find channel funds from remotely force closed channels and sweep them                                                           |
 | [sweeptimelock](doc/chantools_sweeptimelock.md)             | :pencil: Sweep funds in locally force closed channels once time lock has expired (requires `channel.db`)                                 |
 | [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md) | :pencil: Manually sweep funds in a locally force closed channel where no `channel.db` file is available                                  |
-| [triggerforceclose](doc/chantools_triggerforceclose.md)     | :pencil: (:pushpin:) Request certain CLN peers to force close a channel that don't react to normal SCB recovery requests                 |
+| [triggerforceclose](doc/chantools_triggerforceclose.md)     | :pencil: (:pushpin:) Request a peer to force close a channel                                                                             |
 | [vanitygen](doc/chantools_vanitygen.md)                     | Generate an `lnd` seed for a node public key that starts with a certain sequence of hex digits                                           |
 | [walletinfo](doc/chantools_walletinfo.md)                   | Show information from a `wallet.db` file, requires access to the wallet password                                                         |
 | [zombierecovery](doc/chantools_zombierecovery.md)           | :pencil: Cooperatively rescue funds from channels where normal recovery is not possible (see [full guide here][zombie-recovery])         |

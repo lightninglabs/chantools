@@ -30,6 +30,7 @@ chantools recoverloopin \
       --output_amt uint       amount of the output to sweep
       --publish               publish sweep TX to the chain API instead of just printing the TX
       --rootkey string        BIP32 HD root key of the wallet to use for deriving starting key; leave empty to prompt for lnd 24 word aezeed
+      --sqlite_file string    optional path to the loop sqlite database file, if not specified, the default location will be loaded from --loop_db_dir
       --start_key_index int   start key index to try to find the correct key index
       --swap_hash string      swap hash of the loop in swap
       --sweepaddr string      address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
