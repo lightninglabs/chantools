@@ -110,6 +110,7 @@ func main() {
 		newDocCommand(),
 		newFakeChanBackupCommand(),
 		newFilterBackupCommand(),
+		newFindLostChannelCommand(),
 		newFixOldBackupCommand(),
 		newForceCloseCommand(),
 		newGenImportScriptCommand(),
