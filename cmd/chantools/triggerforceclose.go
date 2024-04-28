@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -16,12 +15,15 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/peer"
 	"github.com/lightningnetwork/lnd/tor"
 	"github.com/spf13/cobra"
 )
 
 var (
 	dialTimeout = time.Minute
+
+	defaultTorDNSHostPort = "soa.nodes.lightning.directory:53"
 )
 
 type triggerForceCloseCommand struct {
@@ -29,6 +31,8 @@ type triggerForceCloseCommand struct {
 	ChannelPoint string
 
 	APIURL string
+
+	TorProxy string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -63,6 +67,10 @@ does not properly respond to a Data Loss Protection re-establish message).'`,
 		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.TorProxy, "torproxy", "", "SOCKS5 proxy to use for Tor "+
+			"connections (to .onion addresses)",
+	)
 	cc.rootKey = newRootKey(cc.cmd, "deriving the identity key")
 
 	return cc.cmd
@@ -94,7 +102,9 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error parsing channel point: %w", err)
 	}
 
-	err = requestForceClose(c.Peer, pubKey, outPoint, identityECDH)
+	err = requestForceClose(
+		c.Peer, c.TorProxy, pubKey, outPoint, identityECDH,
+	)
 	if err != nil {
 		return fmt.Errorf("error requesting force close: %w", err)
 	}
@@ -134,34 +144,44 @@ func noiseDial(idKey keychain.SingleKeyECDH, lnAddr *lnwire.NetAddress,
 	return brontide.Dial(idKey, lnAddr, timeout, netCfg.Dial)
 }
 
-func requestForceClose(peerHost string, peerPubKey *btcec.PublicKey,
-	channelPoint *wire.OutPoint, identity keychain.SingleKeyECDH) error {
+func connectPeer(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
+	identity keychain.SingleKeyECDH,
+	dialTimeout time.Duration) (*peer.Brontide, error) {
 
+	var dialNet tor.Net = &tor.ClearNet{}
+	if torProxy != "" {
+		dialNet = &tor.ProxyNet{
+			SOCKS:                       torProxy,
+			DNS:                         defaultTorDNSHostPort,
+			StreamIsolation:             false,
+			SkipProxyForClearNetTargets: true,
+		}
+	}
+
+	log.Debugf("Attempting to resolve peer address %v", peerHost)
 	peerAddr, err := lncfg.ParseLNAddressString(
-		peerHost, "9735", net.ResolveTCPAddr,
+		peerHost, "9735", dialNet.ResolveTCPAddr,
 	)
 	if err != nil {
-		return fmt.Errorf("error parsing peer address: %w", err)
+		return nil, fmt.Errorf("error parsing peer address: %w", err)
 	}
 
-	channelID := lnwire.NewChanIDFromOutPoint(channelPoint)
-
-	conn, err := noiseDial(
-		identity, peerAddr, &tor.ClearNet{}, dialTimeout,
-	)
+	log.Debugf("Attempting to dial resolved peer address %v",
+		peerAddr.String())
+	conn, err := noiseDial(identity, peerAddr, dialNet, dialTimeout)
 	if err != nil {
-		return fmt.Errorf("error dialing peer: %w", err)
+		return nil, fmt.Errorf("error dialing peer: %w", err)
 	}
 
-	log.Infof("Attempting to connect to peer %x, dial timeout is %v",
-		peerPubKey.SerializeCompressed(), dialTimeout)
+	log.Infof("Attempting to establish p2p connection to peer %x, dial"+
+		"timeout is %v", peerPubKey.SerializeCompressed(), dialTimeout)
 	req := &connmgr.ConnReq{
 		Addr:      peerAddr,
 		Permanent: false,
 	}
 	p, err := lnd.ConnectPeer(conn, req, chainParams, identity)
 	if err != nil {
-		return fmt.Errorf("error connecting to peer: %w", err)
+		return nil, fmt.Errorf("error connecting to peer: %w", err)
 	}
 
 	log.Infof("Connection established to peer %x",
@@ -171,9 +191,24 @@ func requestForceClose(peerHost string, peerPubKey *btcec.PublicKey,
 	select {
 	case <-p.ActiveSignal():
 	case <-p.QuitSignal():
-		return fmt.Errorf("peer %x disconnected",
+		return nil, fmt.Errorf("peer %x disconnected",
 			peerPubKey.SerializeCompressed())
 	}
+
+	return p, nil
+}
+
+func requestForceClose(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
+	channelPoint *wire.OutPoint, identity keychain.SingleKeyECDH) error {
+
+	p, err := connectPeer(
+		peerHost, torProxy, peerPubKey, identity, dialTimeout,
+	)
+	if err != nil {
+		return fmt.Errorf("error connecting to peer: %w", err)
+	}
+
+	channelID := lnwire.NewChanIDFromOutPoint(channelPoint)
 
 	// Channel ID (32 byte) + u16 for the data length (which will be 0).
 	data := make([]byte, 34)
