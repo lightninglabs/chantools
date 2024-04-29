@@ -1,14 +1,13 @@
 ## chantools triggerforceclose
 
-Connect to a CLN peer and send a custom message to trigger a force close of the specified channel
+Connect to a Lightning Network peer and send specific messages to trigger a force close of the specified channel
 
 ### Synopsis
 
-Certain versions of CLN didn't properly react to error
-messages sent by peers and therefore didn't follow the DLP protocol to recover
-channel funds using SCB. This command can be used to trigger a force close with
-those earlier versions of CLN (this command will not work for lnd peers or CLN
-peers of a different version).
+Asks the specified remote peer to force close a specific
+channel by first sending a channel re-establish message, and if that doesn't
+work, a custom error message (in case the peer is a specific version of CLN that
+does not properly respond to a Data Loss Protection re-establish message).'
 
 ```
 chantools triggerforceclose [flags]
@@ -31,6 +30,7 @@ chantools triggerforceclose \
   -h, --help                   help for triggerforceclose
       --peer string            remote peer address (<pubkey>@<host>[:<port>])
       --rootkey string         BIP32 HD root key of the wallet to use for deriving the identity key; leave empty to prompt for lnd 24 word aezeed
+      --torproxy string        SOCKS5 proxy to use for Tor connections (to .onion addresses)
       --walletdb string        read the seed/master root key to use fro deriving the identity key from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 

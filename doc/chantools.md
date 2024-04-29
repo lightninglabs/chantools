@@ -51,7 +51,7 @@ https://github.com/lightninglabs/chantools/.
 * [chantools sweepremoteclosed](chantools_sweepremoteclosed.md)	 - Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
 * [chantools sweeptimelock](chantools_sweeptimelock.md)	 - Sweep the force-closed state after the time lock has expired
 * [chantools sweeptimelockmanual](chantools_sweeptimelockmanual.md)	 - Sweep the force-closed state of a single channel manually if only a channel backup file is available
-* [chantools triggerforceclose](chantools_triggerforceclose.md)	 - Connect to a CLN peer and send a custom message to trigger a force close of the specified channel
+* [chantools triggerforceclose](chantools_triggerforceclose.md)	 - Connect to a Lightning Network peer and send specific messages to trigger a force close of the specified channel
 * [chantools vanitygen](chantools_vanitygen.md)	 - Generate a seed with a custom lnd node identity public key that starts with the given prefix
 * [chantools walletinfo](chantools_walletinfo.md)	 - Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
 * [chantools zombierecovery](chantools_zombierecovery.md)	 - Try rescuing funds stuck in channels with zombie nodes
