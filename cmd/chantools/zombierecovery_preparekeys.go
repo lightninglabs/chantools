@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"time"
 
@@ -76,7 +75,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 		return errors.New("invalid payout address, must be P2WPKH")
 	}
 
-	matchFileBytes, err := ioutil.ReadFile(c.MatchFile)
+	matchFileBytes, err := os.ReadFile(c.MatchFile)
 	if err != nil {
 		return fmt.Errorf("error reading match file %s: %w",
 			c.MatchFile, err)
