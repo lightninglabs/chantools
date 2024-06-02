@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -58,7 +59,7 @@ funds locked in lnd channels in case lnd itself cannot run properly anymore.
 Complete documentation is available at
 https://github.com/lightninglabs/chantools/.`,
 	Version: fmt.Sprintf("v%s, commit %s", version, Commit),
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		switch {
 		case Testnet:
 			chainParams = &chaincfg.TestNet3Params
@@ -282,7 +283,7 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 		return target.AsSummaryEntries()
 
 	default:
-		return nil, fmt.Errorf("an input file must be specified")
+		return nil, errors.New("an input file must be specified")
 	}
 
 	if err != nil {

@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -103,14 +104,14 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 	gossiper := discovery.New(discovery.Config{
 		ChainHash: *netParams.GenesisHash,
-		Broadcast: func(skips map[route.Vertex]struct{},
-			msg ...lnwire.Message) error {
+		Broadcast: func(_ map[route.Vertex]struct{},
+			_ ...lnwire.Message) error {
 
 			return nil
 		},
 		NotifyWhenOnline: func([33]byte, chan<- lnpeer.Peer) {
 		},
-		NotifyWhenOffline: func(peerPubKey [33]byte) <-chan struct{} {
+		NotifyWhenOffline: func(_ [33]byte) <-chan struct{} {
 			return make(chan struct{})
 		},
 		FetchSelfAnnouncement: func() lnwire.NodeAnnouncement {
@@ -137,24 +138,24 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		SignAliasUpdate: func(
 			*lnwire.ChannelUpdate) (*ecdsa.Signature, error) {
 
-			return nil, fmt.Errorf("unimplemented")
+			return nil, errors.New("unimplemented")
 		},
 		FindBaseByAlias: func(
 			lnwire.ShortChannelID) (lnwire.ShortChannelID, error) {
 
 			return lnwire.ShortChannelID{},
-				fmt.Errorf("unimplemented")
+				errors.New("unimplemented")
 		},
-		GetAlias: func(id lnwire.ChannelID) (lnwire.ShortChannelID,
+		GetAlias: func(_ lnwire.ChannelID) (lnwire.ShortChannelID,
 			error) {
 
 			return lnwire.ShortChannelID{},
-				fmt.Errorf("unimplemented")
+				errors.New("unimplemented")
 		},
 		FindChannel: func(*btcec.PublicKey,
 			lnwire.ChannelID) (*channeldb.OpenChannel, error) {
 
-			return nil, fmt.Errorf("unimplemented")
+			return nil, errors.New("unimplemented")
 		},
 	}, &keychain.KeyDescriptor{
 		KeyLocator: keychain.KeyLocator{},
@@ -181,22 +182,21 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 				key.SerializeCompressed())
 			return nil
 		},
-		GenNodeAnnouncement: func(
-			modifier ...netann.NodeAnnModifier) (
+		GenNodeAnnouncement: func(_ ...netann.NodeAnnModifier) (
 			lnwire.NodeAnnouncement, error) {
 
 			return lnwire.NodeAnnouncement{},
-				fmt.Errorf("unimplemented")
+				errors.New("unimplemented")
 		},
 
 		PongBuf: pongBuf,
 
-		PrunePersistentPeerConnection: func(bytes [33]byte) {},
+		PrunePersistentPeerConnection: func(_ [33]byte) {},
 
-		FetchLastChanUpdate: func(id lnwire.ShortChannelID) (
+		FetchLastChanUpdate: func(_ lnwire.ShortChannelID) (
 			*lnwire.ChannelUpdate, error) {
 
-			return nil, fmt.Errorf("unimplemented")
+			return nil, errors.New("unimplemented")
 		},
 
 		Hodl:                    &hodl.Config{},
@@ -216,16 +216,14 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 			return nil
 		},
 		GetAliases: func(
-			base lnwire.ShortChannelID) []lnwire.ShortChannelID {
+			_ lnwire.ShortChannelID) []lnwire.ShortChannelID {
 
 			return nil
 		},
 		RequestAlias: func() (lnwire.ShortChannelID, error) {
 			return lnwire.ShortChannelID{}, nil
 		},
-		AddLocalAlias: func(alias, base lnwire.ShortChannelID,
-			gossip bool) error {
-
+		AddLocalAlias: func(_, _ lnwire.ShortChannelID, _ bool) error {
 			return nil
 		},
 		Quit: make(chan struct{}),

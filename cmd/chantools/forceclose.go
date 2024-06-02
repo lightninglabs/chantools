@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -79,7 +80,7 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("rescue DB is required")
+		return errors.New("rescue DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {

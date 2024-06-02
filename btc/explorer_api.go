@@ -103,7 +103,7 @@ func (a *ExplorerAPI) Outpoint(addr string) (*TX, int, error) {
 		}
 	}
 
-	return nil, 0, fmt.Errorf("no tx found")
+	return nil, 0, errors.New("no tx found")
 }
 
 func (a *ExplorerAPI) Spends(addr string) ([]*TX, error) {
@@ -193,7 +193,7 @@ func (a *ExplorerAPI) Address(outpoint string) (string, error) {
 }
 
 func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
-	url := fmt.Sprintf("%s/tx", a.BaseURL)
+	url := a.BaseURL + "/tx"
 	resp, err := http.Post(url, "text/plain", strings.NewReader(rawTxHex))
 	if err != nil {
 		return "", fmt.Errorf("error posting data to API '%s', "+

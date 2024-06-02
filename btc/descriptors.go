@@ -19,7 +19,7 @@ func descriptorSumPolymod(symbols []uint64) uint64 {
 	for _, value := range symbols {
 		top := chk >> 35
 		chk = (chk&0x7ffffffff)<<5 ^ value
-		for i := 0; i < 5; i++ {
+		for i := range 5 {
 			if (top>>i)&1 != 0 {
 				chk ^= generator[i]
 			}
@@ -57,7 +57,7 @@ func DescriptorSumCreate(s string) string {
 	symbols := append(descriptorSumExpand(s), 0, 0, 0, 0, 0, 0, 0, 0)
 	checksum := descriptorSumPolymod(symbols) ^ 1
 	builder := strings.Builder{}
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		builder.WriteByte(checksumCharset[(checksum>>(5*(7-i)))&31])
 	}
 	return s + "#" + builder.String()

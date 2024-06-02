@@ -3,8 +3,8 @@
 package bip39
 
 import (
-	"fmt"
 	"hash/crc32"
+	"strconv"
 	"strings"
 )
 
@@ -14,7 +14,7 @@ func init() { //nolint:gochecknoinits
 	// $ crc32 english.txt
 	// c1dbd296
 	checksum := crc32.ChecksumIEEE([]byte(english))
-	if fmt.Sprintf("%x", checksum) != "c1dbd296" {
+	if strconv.FormatUint(uint64(checksum), 16) != "c1dbd296" {
 		panic("english checksum invalid")
 	}
 }

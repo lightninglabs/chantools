@@ -55,7 +55,7 @@ given lnd channel.db gile in a human readable format.`,
 func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
+		return errors.New("channel DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
@@ -67,7 +67,7 @@ func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 		(c.Pending && c.WaitingClose) ||
 		(c.Closed && c.Pending && c.WaitingClose) {
 
-		return fmt.Errorf("can only specify one flag at a time")
+		return errors.New("can only specify one flag at a time")
 	}
 
 	if c.Closed {

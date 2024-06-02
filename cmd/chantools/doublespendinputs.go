@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -96,7 +97,7 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 
 	// Make sure we have at least one input.
 	if len(c.InputOutpoints) == 0 {
-		return fmt.Errorf("inputoutpoints are required")
+		return errors.New("inputoutpoints are required")
 	}
 
 	api := newExplorerAPI(c.APIURL)
@@ -308,7 +309,7 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 func iterateOverPath(baseKey *hdkeychain.ExtendedKey, addr btcutil.Address,
 	path []uint32, maxTries uint32) (*hdkeychain.ExtendedKey, error) {
 
-	for i := uint32(0); i < maxTries; i++ {
+	for i := range maxTries {
 		// Check for both the external and internal branch.
 		for _, branch := range []uint32{0, 1} {
 			// Create the path to derive the key.

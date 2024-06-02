@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -79,10 +80,10 @@ func DeriveChildren(key *hdkeychain.ExtendedKey, path []uint32) (
 func ParsePath(path string) ([]uint32, error) {
 	path = strings.TrimSpace(path)
 	if len(path) == 0 {
-		return nil, fmt.Errorf("path cannot be empty")
+		return nil, errors.New("path cannot be empty")
 	}
 	if !strings.HasPrefix(path, "m/") {
-		return nil, fmt.Errorf("path must start with m/")
+		return nil, errors.New("path must start with m/")
 	}
 	parts := strings.Split(path, "/")
 	indices := make([]uint32, len(parts)-1)
@@ -250,7 +251,7 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 		targetHash = targetAddr.ScriptAddress()
 
 	default:
-		return nil, false, fmt.Errorf("address: must be a bech32 " +
+		return nil, false, errors.New("address: must be a bech32 " +
 			"P2WPKH or P2WSH address")
 	}
 	return targetHash, isScriptHash, nil
@@ -589,7 +590,7 @@ func (r *HDKeyRing) CheckDescriptor(
 
 	// A check doesn't make sense if there is no public key set.
 	if keyDesc.PubKey == nil {
-		return fmt.Errorf("no public key provided to check")
+		return errors.New("no public key provided to check")
 	}
 
 	// Performance fix, derive static path only once.
@@ -604,7 +605,7 @@ func (r *HDKeyRing) CheckDescriptor(
 	}
 
 	// Scan the same key range as lnd would do on channel restore.
-	for i := 0; i < keychain.MaxKeyRangeScan; i++ {
+	for i := range keychain.MaxKeyRangeScan {
 		child, err := DeriveChildren(familyKey, []uint32{uint32(i)})
 		if err != nil {
 			return err

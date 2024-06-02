@@ -10,7 +10,7 @@ func newDocCommand() *cobra.Command {
 		Use:    "doc",
 		Short:  "Generate the markdown documentation of all commands",
 		Hidden: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return doc.GenMarkdownTree(rootCmd, "./doc")
 		},
 	}

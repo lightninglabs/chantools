@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 
@@ -87,10 +88,10 @@ func (c *pullAnchorCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Make sure all input is provided.
 	if c.SponsorInput == "" {
-		return fmt.Errorf("sponsor input is required")
+		return errors.New("sponsor input is required")
 	}
 	if len(c.AnchorAddrs) == 0 {
-		return fmt.Errorf("at least one anchor addr is required")
+		return errors.New("at least one anchor addr is required")
 	}
 	for _, anchorAddr := range c.AnchorAddrs {
 		err = lnd.CheckAddress(
@@ -430,7 +431,7 @@ func findAnchorKey(rootKey *hdkeychain.ExtendedKey,
 
 	// Loop through the local multisig keys to find the target anchor
 	// script.
-	for index := uint32(0); index < math.MaxInt16; index++ {
+	for index := range uint32(math.MaxInt16) {
 		currentKey, err := localMultisig.DeriveNonStandard(index)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error deriving child "+
@@ -468,7 +469,7 @@ func findAnchorKey(rootKey *hdkeychain.ExtendedKey,
 		}, script, nil
 	}
 
-	return nil, nil, fmt.Errorf("no matching pubkeys found")
+	return nil, nil, errors.New("no matching pubkeys found")
 }
 
 func findTaprootAnchorKey(rootKey *hdkeychain.ExtendedKey,
@@ -489,7 +490,7 @@ func findTaprootAnchorKey(rootKey *hdkeychain.ExtendedKey,
 
 	// Loop through the local multisig keys to find the target anchor
 	// script.
-	for index := uint32(0); index < math.MaxInt16; index++ {
+	for index := range uint32(math.MaxInt16) {
 		currentKey, err := localPayment.DeriveNonStandard(index)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error deriving child "+
@@ -526,5 +527,5 @@ func findTaprootAnchorKey(rootKey *hdkeychain.ExtendedKey,
 		}, scriptTree, nil
 	}
 
-	return nil, nil, fmt.Errorf("no matching pubkeys found")
+	return nil, nil, errors.New("no matching pubkeys found")
 }

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -72,7 +73,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 
 	_, err = lnd.GetP2WPKHScript(c.PayoutAddr, chainParams)
 	if err != nil {
-		return fmt.Errorf("invalid payout address, must be P2WPKH")
+		return errors.New("invalid payout address, must be P2WPKH")
 	}
 
 	matchFileBytes, err := ioutil.ReadFile(c.MatchFile)
@@ -90,7 +91,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 
 	// Make sure the match file was filled correctly.
 	if match.Node1 == nil || match.Node2 == nil {
-		return fmt.Errorf("invalid match file, node info missing")
+		return errors.New("invalid match file, node info missing")
 	}
 
 	_, pubKey, _, err := lnd.DeriveKey(
@@ -116,7 +117,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 	}
 
 	// Derive all 2500 keys now, this might take a while.
-	for index := uint32(0); index < c.NumKeys; index++ {
+	for index := range c.NumKeys {
 		_, pubKey, _, err := lnd.DeriveKey(
 			extendedKey, lnd.MultisigPath(chainParams, int(index)),
 			chainParams,

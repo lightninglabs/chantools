@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -153,7 +154,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 	case (c.ChannelDB == "" || c.DBChannelPoint == "") &&
 		c.RemotePubKey == "":
 
-		return fmt.Errorf("need to specify either channel DB and " +
+		return errors.New("need to specify either channel DB and " +
 			"channel point or both local and remote pubkey")
 
 	case c.ChannelDB != "" && c.DBChannelPoint != "":
@@ -179,11 +180,11 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		if pendingChan.LocalChanCfg.MultiSigKey.PubKey == nil {
-			return fmt.Errorf("invalid channel data in DB, local " +
+			return errors.New("invalid channel data in DB, local " +
 				"multisig pubkey is nil")
 		}
 		if pendingChan.LocalChanCfg.MultiSigKey.PubKey == nil {
-			return fmt.Errorf("invalid channel data in DB, remote " +
+			return errors.New("invalid channel data in DB, remote " +
 				"multisig pubkey is nil")
 		}
 
@@ -297,7 +298,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 
 	// Some last sanity check that we're working with the correct data.
 	if !bytes.Equal(fundingTxOut.PkScript, utxo.PkScript) {
-		return fmt.Errorf("funding output script does not match UTXO")
+		return errors.New("funding output script does not match UTXO")
 	}
 
 	// Now the rest of the known data for the PSBT.

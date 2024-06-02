@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 
@@ -151,12 +152,12 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 				"%w", err)
 		}
 		if len(packet.Inputs[idx].WitnessScript) == 0 {
-			return fmt.Errorf("invalid PSBT, missing witness " +
+			return errors.New("invalid PSBT, missing witness " +
 				"script")
 		}
 		witnessScript := packet.Inputs[idx].WitnessScript
 		if packet.Inputs[idx].WitnessUtxo == nil {
-			return fmt.Errorf("invalid PSBT, witness UTXO missing")
+			return errors.New("invalid PSBT, witness UTXO missing")
 		}
 		utxo := packet.Inputs[idx].WitnessUtxo
 

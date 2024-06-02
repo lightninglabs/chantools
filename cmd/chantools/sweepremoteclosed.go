@@ -145,7 +145,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		targets []*targetAddr
 		api     = newExplorerAPI(apiURL)
 	)
-	for index := uint32(0); index < recoveryWindow; index++ {
+	for index := range recoveryWindow {
 		path := fmt.Sprintf("m/1017'/%d'/%d'/0/%d",
 			chainParams.HDCoinType, keychain.KeyFamilyPaymentBase,
 			index)

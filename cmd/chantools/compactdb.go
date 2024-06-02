@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/coreos/bbolt"
@@ -52,10 +53,10 @@ to create a copy of it to a destination file, compacting it in the process.`,
 func (c *compactDBCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a source and destination channel DB.
 	if c.SourceDB == "" {
-		return fmt.Errorf("source channel DB is required")
+		return errors.New("source channel DB is required")
 	}
 	if c.DestDB == "" {
-		return fmt.Errorf("destination channel DB is required")
+		return errors.New("destination channel DB is required")
 	}
 	if c.TxMaxSize <= 0 {
 		c.TxMaxSize = defaultTxMaxSize

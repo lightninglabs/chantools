@@ -173,7 +173,7 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		return rescueClosedChannels(extendedKey, entries, commitPoints)
 
 	default:
-		return fmt.Errorf("you either need to specify --channeldb and " +
+		return errors.New("you either need to specify --channeldb and " +
 			"--fromsummary or --force_close_addr and " +
 			"--commit_point but not a mixture of them")
 	}
@@ -333,7 +333,7 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 			"hash %x\n", addr.ScriptAddress())
 
 	default:
-		return fmt.Errorf("address: must be a bech32 P2WPKH address")
+		return errors.New("address: must be a bech32 P2WPKH address")
 	}
 
 	err := fillCache(extendedKey)
@@ -380,13 +380,13 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 		return "", fmt.Errorf("error parsing addr: %w", err)
 	}
 	if scriptHash {
-		return "", fmt.Errorf("address must be a P2WPKH address")
+		return "", errors.New("address must be a P2WPKH address")
 	}
 
 	// If the commit point is nil, we try with plain private keys to match
 	// static_remote_key outputs.
 	if perCommitPoint == nil {
-		for i := 0; i < cacheSize; i++ {
+		for i := range cacheSize {
 			cacheEntry := cache[i]
 			hashedPubKey := btcutil.Hash160(
 				cacheEntry.pubKey.SerializeCompressed(),
@@ -415,7 +415,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	// Loop through all cached payment base point keys, tweak each of it
 	// with the per_commit_point and see if the hashed public key
 	// corresponds to the target pubKeyHash of the given address.
-	for i := 0; i < cacheSize; i++ {
+	for i := range cacheSize {
 		cacheEntry := cache[i]
 		basePoint := cacheEntry.pubKey
 		tweakedPubKey := input.TweakPubKey(basePoint, perCommitPoint)
@@ -449,7 +449,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 	cache = make([]*cacheEntry, cacheSize)
 
-	for i := 0; i < cacheSize; i++ {
+	for i := range cacheSize {
 		key, err := lnd.DeriveChildren(extendedKey, []uint32{
 			lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
 			lnd.HardenedKeyStart + chainParams.HDCoinType,

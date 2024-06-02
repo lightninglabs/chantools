@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	errNoPathFound = fmt.Errorf("no matching derivation path found")
+	errNoPathFound = errors.New("no matching derivation path found")
 )
 
 type signPSBTCommand struct {
@@ -98,7 +98,7 @@ func (c *signPSBTCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 	default:
-		return fmt.Errorf("either the PSBT or the raw PSBT file " +
+		return errors.New("either the PSBT or the raw PSBT file " +
 			"must be set")
 	}
 

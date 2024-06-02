@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -82,7 +83,7 @@ chantools dropchannelgraph \
 func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
+		return errors.New("channel DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
@@ -91,7 +92,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	defer func() { _ = db.Close() }()
 
 	if c.NodeIdentityKey == "" {
-		return fmt.Errorf("node identity key is required")
+		return errors.New("node identity key is required")
 	}
 
 	idKeyBytes, err := hex.DecodeString(c.NodeIdentityKey)
