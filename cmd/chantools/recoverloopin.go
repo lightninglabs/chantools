@@ -14,9 +14,9 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightninglabs/loop"
 	"github.com/lightninglabs/loop/loopdb"
 	"github.com/lightninglabs/loop/swap"
+	"github.com/lightninglabs/loop/utils"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -218,7 +218,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Get the swaps htlc.
-	htlc, err := loop.GetHtlc(
+	htlc, err := utils.GetHtlc(
 		loopIn.Hash, &loopIn.Contract.SwapContract, chainParams,
 	)
 	if err != nil {
@@ -243,7 +243,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	feeRateKWeight := chainfee.SatPerKVByte(
 		1000 * c.FeeRate,
 	).FeePerKWeight()
-	fee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	fee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	txID, err := chainhash.NewHashFromStr(c.TxID)
 	if err != nil {

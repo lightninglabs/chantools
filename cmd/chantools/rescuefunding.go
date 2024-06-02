@@ -316,7 +316,7 @@ func rescueFunding(localKeyDesc *keychain.KeyDescriptor,
 	// Estimate the transaction weight, so we can do the fee estimation.
 	estimator.AddWitnessInput(MultiSigWitnessSize)
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 	txOut.Value = utxo.Value - int64(totalFee)
 
 	// Let's now create the PSBT as we have everything we need so far.

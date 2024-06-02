@@ -292,7 +292,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		estimator.AddWitnessInput(input.MultiSigWitnessSize)
 	}
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * c.FeeRate).FeePerKWeight()
-	totalFee := int64(feeRateKWeight.FeeForWeight(int64(estimator.Weight())))
+	totalFee := int64(feeRateKWeight.FeeForWeight(estimator.Weight()))
 
 	fmt.Printf("Current tally (before fees):\n\t"+
 		"To our address (%s): %d sats\n\t"+

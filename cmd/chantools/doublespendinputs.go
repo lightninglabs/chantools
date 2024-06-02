@@ -226,7 +226,7 @@ func (c *doubleSpendInputs) Execute(_ *cobra.Command, _ []string) error {
 
 	// Calculate the fee.
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * c.FeeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	// Create the transaction.
 	tx := wire.NewMsgTx(2)

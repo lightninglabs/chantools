@@ -299,7 +299,7 @@ func sweepTimeLock(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	log.Infof("Fee %d sats of %d total amount (estimated weight %d)",
 		totalFee, totalOutputValue, estimator.Weight())

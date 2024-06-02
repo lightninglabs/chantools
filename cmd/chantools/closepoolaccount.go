@@ -292,7 +292,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		signDesc.SignMethod = input.TaprootScriptSpendSignMethod
 	}
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	// Add our sweep destination output.
 	sweepTx.TxOut = []*wire.TxOut{{

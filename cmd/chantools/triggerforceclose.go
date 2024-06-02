@@ -103,7 +103,7 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	err = requestForceClose(
-		c.Peer, c.TorProxy, pubKey, outPoint, identityECDH,
+		c.Peer, c.TorProxy, pubKey, *outPoint, identityECDH,
 	)
 	if err != nil {
 		return fmt.Errorf("error requesting force close: %w", err)
@@ -199,7 +199,7 @@ func connectPeer(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
 }
 
 func requestForceClose(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
-	channelPoint *wire.OutPoint, identity keychain.SingleKeyECDH) error {
+	channelPoint wire.OutPoint, identity keychain.SingleKeyECDH) error {
 
 	p, err := connectPeer(
 		peerHost, torProxy, peerPubKey, identity, dialTimeout,

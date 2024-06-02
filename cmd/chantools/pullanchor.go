@@ -216,7 +216,7 @@ func createPullTransactionTemplate(rootKey *hdkeychain.ExtendedKey,
 	anchorAmt := uint64(len(anchorAddrs)) * 330
 	totalOutputValue := btcutil.Amount(sponsorTxOut.Value + anchorAmt)
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	log.Infof("Fee %d sats of %d total amount (estimated weight %d)",
 		totalFee, totalOutputValue, estimator.Weight())

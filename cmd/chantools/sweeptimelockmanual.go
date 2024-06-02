@@ -352,7 +352,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// estimation.
 	estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	// Add our sweep destination output.
 	sweepTx.TxOut = []*wire.TxOut{{
