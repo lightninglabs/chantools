@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -103,7 +104,20 @@ func (h *harness) testdataFile(name string) string {
 	workingDir, err := os.Getwd()
 	require.NoError(h.t, err)
 
-	return path.Join(workingDir, "testdata", name)
+	origFile := path.Join(workingDir, "testdata", name)
+
+	fileCopy := path.Join(h.t.TempDir(), name)
+
+	src, err := os.Open(origFile)
+	require.NoError(h.t, err)
+	defer src.Close()
+	dst, err := os.Create(fileCopy)
+	require.NoError(h.t, err)
+	defer dst.Close()
+	_, err = io.Copy(dst, src)
+	require.NoError(h.t, err)
+
+	return fileCopy
 }
 
 func (h *harness) tempFile(name string) string {
