@@ -1,17 +1,23 @@
 package lnd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr/musig2"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
+	"github.com/lightningnetwork/lnd/lnwire"
 )
 
 type LightningChannel struct {
@@ -110,4 +116,57 @@ func ParseOutpoint(s string) (*wire.OutPoint, error) {
 		Hash:  *txid,
 		Index: uint32(index),
 	}, nil
+}
+
+// GenerateMuSig2Nonces generates random nonces for a MuSig2 signing session.
+func GenerateMuSig2Nonces(extendedKey *hdkeychain.ExtendedKey,
+	randomness [32]byte, chanPoint *wire.OutPoint,
+	chainParams *chaincfg.Params,
+	signingKey *btcec.PrivateKey) (*musig2.Nonces, error) {
+
+	privKey, err := DeriveMuSig2NoncePrivKey(extendedKey, chainParams)
+	if err != nil {
+		return nil, err
+	}
+
+	chanID := lnwire.NewChanIDFromOutPoint(*chanPoint)
+	nonces, err := musig2.GenNonces(
+		musig2.WithPublicKey(privKey.PubKey()),
+		musig2.WithNonceSecretKeyAux(privKey),
+		musig2.WithCustomRand(bytes.NewReader(randomness[:])),
+		musig2.WithNonceAuxInput(chanID[:]),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// If we actually know the final signing key, we need to update it in
+	// the secret nonce to bypass a check in the MuSig2 library.
+	if signingKey != nil {
+		copy(
+			nonces.SecNonce[btcec.PrivKeyBytesLen*2:],
+			signingKey.PubKey().SerializeCompressed(),
+		)
+	}
+
+	return nonces, nil
+}
+
+// DeriveMuSig2NoncePrivKey derives a private key to be used as a nonce in a
+// MuSig2 signing session.
+func DeriveMuSig2NoncePrivKey(extendedKey *hdkeychain.ExtendedKey,
+	chainParams *chaincfg.Params) (*btcec.PrivateKey, error) {
+
+	// We use a derivation path that is not used by lnd, to make sure we
+	// don't put any keys at risk.
+	path := fmt.Sprintf(
+		LndDerivationPath+"/0/%d", chainParams.HDCoinType, 1337, 1337,
+	)
+
+	key, _, _, err := DeriveKey(extendedKey, path, chainParams)
+	if err != nil {
+		return nil, err
+	}
+
+	return key.ECPrivKey()
 }

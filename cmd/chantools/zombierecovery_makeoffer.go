@@ -3,6 +3,8 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -12,13 +14,19 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr"
+	"github.com/btcsuite/btcd/btcec/v2/schnorr/musig2"
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/btcsuite/btcwallet/wallet/txrules"
+	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
@@ -157,6 +165,20 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 			return errors.New("invalid files, channel address " +
 				"missing")
 		}
+
+		if len(keys2.Channels[idx].MuSig2Nonces) !=
+			len(node1Channel.MuSig2Nonces) {
+
+			return errors.New("invalid files, MuSig2 nonce " +
+				"lengths don't match")
+		}
+
+		if len(keys2.Channels[idx].MuSig2NonceRandomness) !=
+			len(node1Channel.MuSig2NonceRandomness) {
+
+			return errors.New("invalid files, MuSig2 randomness " +
+				"lengths don't match")
+		}
 	}
 
 	// If we're only matching, we can stop here.
@@ -194,32 +216,42 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 	var (
 		ourKeys         []string
 		ourPayoutAddr   string
+		ourChannels     []*channel
 		theirKeys       []string
 		theirPayoutAddr string
+		theirChannels   []*channel
 	)
 	if keys1.Node1.PubKey == pubKeyStr && len(keys1.Node1.MultisigKeys) > 0 {
 		ourKeys = keys1.Node1.MultisigKeys
 		ourPayoutAddr = keys1.Node1.PayoutAddr
+		ourChannels = keys1.Channels
 		theirKeys = keys2.Node2.MultisigKeys
 		theirPayoutAddr = keys2.Node2.PayoutAddr
+		theirChannels = keys2.Channels
 	}
 	if keys1.Node2.PubKey == pubKeyStr && len(keys1.Node2.MultisigKeys) > 0 {
 		ourKeys = keys1.Node2.MultisigKeys
 		ourPayoutAddr = keys1.Node2.PayoutAddr
+		ourChannels = keys1.Channels
 		theirKeys = keys2.Node1.MultisigKeys
 		theirPayoutAddr = keys2.Node1.PayoutAddr
+		theirChannels = keys2.Channels
 	}
 	if keys2.Node1.PubKey == pubKeyStr && len(keys2.Node1.MultisigKeys) > 0 {
 		ourKeys = keys2.Node1.MultisigKeys
 		ourPayoutAddr = keys2.Node1.PayoutAddr
+		ourChannels = keys2.Channels
 		theirKeys = keys1.Node2.MultisigKeys
 		theirPayoutAddr = keys1.Node2.PayoutAddr
+		theirChannels = keys1.Channels
 	}
 	if keys2.Node2.PubKey == pubKeyStr && len(keys2.Node2.MultisigKeys) > 0 {
 		ourKeys = keys2.Node2.MultisigKeys
 		ourPayoutAddr = keys2.Node2.PayoutAddr
+		ourChannels = keys2.Channels
 		theirKeys = keys1.Node1.MultisigKeys
 		theirPayoutAddr = keys1.Node1.PayoutAddr
+		theirChannels = keys1.Channels
 	}
 	if len(ourKeys) == 0 || len(theirKeys) == 0 {
 		return errors.New("couldn't find necessary keys")
@@ -243,14 +275,23 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		return err
 	}
 
+	// Let's prepare the PSBT.
+	packet, err := psbt.NewFromUnsignedTx(wire.NewMsgTx(2))
+	if err != nil {
+		return fmt.Errorf("error creating PSBT from TX: %w", err)
+	}
+
 	// Let's now sum up the tally of how much of the rescued funds should
 	// go to which party.
 	var (
-		inputs   = make([]*wire.TxIn, 0, len(keys1.Channels))
-		ourSum   int64
-		theirSum int64
+		ourSum    int64
+		theirSum  int64
+		estimator input.TxWeightEstimator
+		signDescs = make(
+			[]*input.SignDescriptor, 0, len(keys1.Channels),
+		)
 	)
-	for idx, channel := range keys1.Channels {
+	for idx, channel := range ourChannels {
 		op, err := lnd.ParseOutpoint(channel.ChanPoint)
 		if err != nil {
 			return fmt.Errorf("error parsing channel out point: %w",
@@ -269,30 +310,155 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 
 		ourSum += ourPart
 		theirSum += theirPart
-		inputs = append(inputs, &wire.TxIn{
+		txIn := &wire.TxIn{
 			PreviousOutPoint: *op,
-			// It's not actually an old sig script but a witness
-			// script but we'll move that to the correct place once
-			// we create the PSBT.
-			SignatureScript: channel.witnessScript,
-		})
+		}
+		pIn := psbt.PInput{
+			WitnessScript: channel.witnessScript,
+			WitnessUtxo: &wire.TxOut{
+				PkScript: channel.pkScript,
+				Value:    channel.Capacity,
+			},
+			// We'll be signing with our key, so we can just add the
+			// other party's pubkey as additional info, so it's easy
+			// for them to sign as well.
+			Unknowns: []*psbt.Unknown{{
+				Key:   PsbtKeyTypeOutputMissingSigPubkey,
+				Value: channel.theirKey.SerializeCompressed(),
+			}},
+		}
+
+		channelAddr, err := lnd.ParseAddress(
+			channel.Address, chainParams,
+		)
+		if err != nil {
+			return fmt.Errorf("error parsing channel address: %w",
+				err)
+		}
+
+		prevOutFetcher := txscript.NewCannedPrevOutputFetcher(
+			pIn.WitnessUtxo.PkScript, pIn.WitnessUtxo.Value,
+		)
+		signDesc := &input.SignDescriptor{
+			KeyDesc: keychain.KeyDescriptor{
+				PubKey: channel.ourKey,
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyMultiSig,
+					Index:  channel.ourKeyIndex,
+				},
+			},
+			WitnessScript:     channel.witnessScript,
+			Output:            pIn.WitnessUtxo,
+			InputIndex:        idx,
+			PrevOutputFetcher: prevOutFetcher,
+		}
+
+		switch a := channelAddr.(type) {
+		case *btcutil.AddressWitnessScriptHash:
+			estimator.AddWitnessInput(input.MultiSigWitnessSize)
+			pIn.SighashType = txscript.SigHashAll
+			signDesc.HashType = txscript.SigHashAll
+			signDesc.SignMethod = input.WitnessV0SignMethod
+
+		case *btcutil.AddressTaproot:
+			estimator.AddTaprootKeySpendInput(
+				txscript.SigHashDefault,
+			)
+			pIn.SighashType = txscript.SigHashDefault
+			signDesc.HashType = txscript.SigHashDefault
+			signDesc.SignMethod = input.TaprootKeySpendSignMethod
+
+			err := addMuSig2Data(
+				extendedKey, &pIn, channel, theirChannels[idx],
+				op, a.WitnessProgram(),
+			)
+			if err != nil {
+				return fmt.Errorf("error adding MuSig2 data: "+
+					"%w", err)
+			}
+
+		default:
+			return errors.New("unsupported address type for " +
+				"channel address")
+		}
+
+		packet.UnsignedTx.TxIn = append(packet.UnsignedTx.TxIn, txIn)
+		packet.Inputs = append(packet.Inputs, pIn)
+		signDescs = append(signDescs, signDesc)
 	}
 
-	// Let's create a fee estimator now to give an overview over the
-	// deducted fees.
-	estimator := input.TxWeightEstimator{}
+	// Don't create dust.
+	dustLimit := int64(lnwallet.DustLimitForSize(input.P2WSHSize))
+	if ourSum < dustLimit {
+		ourSum = 0
+	}
+	if theirSum < dustLimit {
+		theirSum = 0
+	}
 
 	// Only add output for us if we should receive something.
+	var ourOutput, theirOutput *wire.TxOut
 	if ourSum > 0 {
-		estimator.AddP2WKHOutput()
+		err = lnd.CheckAddress(
+			ourPayoutAddr, chainParams, false, "our payout",
+			lnd.AddrTypeP2WKH, lnd.AddrTypeP2TR,
+		)
+		if err != nil {
+			return fmt.Errorf("error verifying our payout "+
+				"address: %w", err)
+		}
+
+		pkScript, err := lnd.PrepareWalletAddress(
+			ourPayoutAddr, chainParams, &estimator, nil,
+			"our payout",
+		)
+		if err != nil {
+			return fmt.Errorf("error preparing our payout "+
+				"address: %w", err)
+		}
+
+		ourOutput = &wire.TxOut{
+			PkScript: pkScript,
+			Value:    ourSum,
+		}
+		packet.UnsignedTx.TxOut = append(
+			packet.UnsignedTx.TxOut, ourOutput,
+		)
+		packet.Outputs = append(packet.Outputs, psbt.POutput{})
 	}
+
 	if theirSum > 0 {
-		estimator.AddP2WKHOutput()
+		err = lnd.CheckAddress(
+			theirPayoutAddr, chainParams, false, "their payout",
+			lnd.AddrTypeP2WKH, lnd.AddrTypeP2TR,
+		)
+		if err != nil {
+			return fmt.Errorf("error verifying their payout "+
+				"address: %w", err)
+		}
+
+		pkScript, err := lnd.PrepareWalletAddress(
+			theirPayoutAddr, chainParams, &estimator, nil,
+			"their payout",
+		)
+		if err != nil {
+			return fmt.Errorf("error preparing their payout "+
+				"address: %w", err)
+		}
+
+		theirOutput = &wire.TxOut{
+			PkScript: pkScript,
+			Value:    theirSum,
+		}
+		packet.UnsignedTx.TxOut = append(
+			packet.UnsignedTx.TxOut, theirOutput,
+		)
+		packet.Outputs = append(packet.Outputs, psbt.POutput{})
 	}
-	for range inputs {
-		estimator.AddWitnessInput(input.MultiSigWitnessSize)
-	}
-	feeRateKWeight := chainfee.SatPerKVByte(1000 * c.FeeRate).FeePerKWeight()
+
+	feeRateKWeight := chainfee.SatPerKVByte(
+		1000 * c.FeeRate,
+	).FeePerKWeight()
 	totalFee := int64(feeRateKWeight.FeeForWeight(estimator.Weight()))
 
 	fmt.Printf("Current tally (before fees):\n\t"+
@@ -307,44 +473,20 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 	switch {
 	case ourSum-halfFee > 0 && theirSum-halfFee > 0:
 		ourSum -= halfFee
+		ourOutput.Value -= halfFee
 		theirSum -= halfFee
+		theirOutput.Value -= halfFee
 
 	case ourSum-totalFee > 0:
 		ourSum -= totalFee
+		ourOutput.Value -= totalFee
 
 	case theirSum-totalFee > 0:
 		theirSum -= totalFee
+		theirOutput.Value -= totalFee
 
 	default:
 		return errors.New("error distributing fees, unhandled case")
-	}
-
-	// Our output.
-	pkScript, err := lnd.GetP2WPKHScript(ourPayoutAddr, chainParams)
-	if err != nil {
-		return fmt.Errorf("error parsing our payout address: %w", err)
-	}
-	ourTxOut := &wire.TxOut{
-		PkScript: pkScript,
-		Value:    ourSum,
-	}
-
-	// Their output
-	pkScript, err = lnd.GetP2WPKHScript(theirPayoutAddr, chainParams)
-	if err != nil {
-		return fmt.Errorf("error parsing their payout address: %w", err)
-	}
-	theirTxOut := &wire.TxOut{
-		PkScript: pkScript,
-		Value:    theirSum,
-	}
-
-	// Don't create dust.
-	if txrules.IsDustOutput(ourTxOut, txrules.DefaultRelayFeePerKb) {
-		ourSum = 0
-	}
-	if txrules.IsDustOutput(theirTxOut, txrules.DefaultRelayFeePerKb) {
-		theirSum = 0
 	}
 
 	fmt.Printf("Current tally (after fees):\n\t"+
@@ -352,79 +494,56 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		"To their address (%s): %d sats\n",
 		ourPayoutAddr, ourSum, theirPayoutAddr, theirSum)
 
-	// And now create the PSBT.
-	tx := wire.NewMsgTx(2)
-	if ourSum > 0 {
-		tx.TxOut = append(tx.TxOut, ourTxOut)
-	}
-	if theirSum > 0 {
-		tx.TxOut = append(tx.TxOut, theirTxOut)
-	}
-	for _, txIn := range inputs {
-		tx.TxIn = append(tx.TxIn, &wire.TxIn{
-			PreviousOutPoint: txIn.PreviousOutPoint,
-		})
-	}
-	packet, err := psbt.NewFromUnsignedTx(tx)
-	if err != nil {
-		return fmt.Errorf("error creating PSBT from TX: %w", err)
-	}
-
-	// First we add the necessary information to the psbt package so that
-	// we can sign the transaction with SIGHASH_ALL.
-	for idx, txIn := range inputs {
-		channel := keys1.Channels[idx]
-
-		// We've mis-used this field to transport the witness script,
-		// let's now copy it to the correct place.
-		packet.Inputs[idx].WitnessScript = txIn.SignatureScript
-
-		// Let's prepare the witness UTXO.
-		pkScript, err := input.WitnessScriptHash(channel.witnessScript)
-		if err != nil {
-			return err
-		}
-		packet.Inputs[idx].WitnessUtxo = &wire.TxOut{
-			PkScript: pkScript,
-			Value:    channel.Capacity,
-		}
-
-		// We'll be signing with our key so we can just add the other
-		// party's pubkey as additional info so it's easy for them to
-		// sign as well.
-		packet.Inputs[idx].Unknowns = append(
-			packet.Inputs[idx].Unknowns, &psbt.Unknown{
-				Key:   PsbtKeyTypeOutputMissingSigPubkey,
-				Value: channel.theirKey.SerializeCompressed(),
-			},
-		)
-	}
-
 	// Loop a second time through the inputs and sign each input. We now
-	// have all the witness/nonwitness data filled in the psbt package.
+	// have all the witness/non-witness data filled in the psbt package.
 	signer := &lnd.Signer{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
 	}
-	for idx, txIn := range inputs {
-		channel := keys1.Channels[idx]
+	for idx := range packet.UnsignedTx.TxIn {
+		signDesc := signDescs[idx]
 
-		keyDesc := keychain.KeyDescriptor{
-			PubKey: channel.ourKey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  channel.ourKeyIndex,
-			},
+		// If we're dealing with a taproot channel, we'll need to
+		// create a MuSig2 partial signature.
+		if signDesc.SignMethod == input.TaprootKeySpendSignMethod {
+			err := muSig2PartialSign(
+				signer, &signDesc.KeyDesc, packet, idx,
+			)
+			if err != nil {
+				return fmt.Errorf("error creating MuSig2 "+
+					"partial signature: %w", err)
+			}
+
+			continue
 		}
-		utxo := &wire.TxOut{
-			Value: channel.Capacity,
-		}
-		err = signer.AddPartialSignature(
-			packet, keyDesc, utxo, txIn.SignatureScript, idx,
+
+		ourSigRaw, err := signer.SignOutputRaw(
+			packet.UnsignedTx, signDesc,
 		)
 		if err != nil {
-			return fmt.Errorf("error signing input %d: %w", idx,
+			return fmt.Errorf("error signing with our key: %w", err)
+		}
+		ourSig := append(ourSigRaw.Serialize(), byte(signDesc.HashType))
+
+		// Great, we were able to create our sig, let's add it to the
+		// PSBT.
+		updater, err := psbt.NewUpdater(packet)
+		if err != nil {
+			return fmt.Errorf("error creating PSBT updater: %w",
 				err)
+		}
+		status, err := updater.Sign(
+			idx, ourSig,
+			signDesc.KeyDesc.PubKey.SerializeCompressed(), nil,
+			signDesc.WitnessScript,
+		)
+		if err != nil {
+			return fmt.Errorf("error adding signature to PSBT: %w",
+				err)
+		}
+		if status != 0 {
+			return fmt.Errorf("unexpected status for signature "+
+				"update, got %d wanted 0", status)
 		}
 	}
 
@@ -466,7 +585,7 @@ channelLoop:
 	for _, channel := range channels {
 		for ourKeyIndex, ourKey := range ourPubKeys {
 			for _, theirKey := range theirPubKeys {
-				match, witnessScript, err := matchScript(
+				match, witScript, pkScript, err := matchScript(
 					channel.Address, ourKey, theirKey,
 					chainParams,
 				)
@@ -479,7 +598,8 @@ channelLoop:
 					channel.ourKeyIndex = uint32(ourKeyIndex)
 					channel.ourKey = ourKey
 					channel.theirKey = theirKey
-					channel.witnessScript = witnessScript
+					channel.witnessScript = witScript
+					channel.pkScript = pkScript
 
 					log.Infof("Found keys for channel %s: "+
 						"our key %x, their key %x",
@@ -500,25 +620,47 @@ channelLoop:
 }
 
 func matchScript(address string, key1, key2 *btcec.PublicKey,
-	params *chaincfg.Params) (bool, []byte, error) {
+	params *chaincfg.Params) (bool, []byte, []byte, error) {
 
-	channelScript, err := lnd.GetP2WSHScript(address, params)
+	addr, err := lnd.ParseAddress(address, params)
 	if err != nil {
-		return false, nil, err
+		return false, nil, nil, fmt.Errorf("error parsing channel "+
+			"funding address '%s': %w", address, err)
 	}
 
-	witnessScript, err := input.GenMultiSigScript(
-		key1.SerializeCompressed(), key2.SerializeCompressed(),
-	)
+	channelScript, err := txscript.PayToAddrScript(addr)
 	if err != nil {
-		return false, nil, err
-	}
-	pkScript, err := input.WitnessScriptHash(witnessScript)
-	if err != nil {
-		return false, nil, err
+		return false, nil, nil, err
 	}
 
-	return bytes.Equal(channelScript, pkScript), witnessScript, nil
+	switch addr.(type) {
+	case *btcutil.AddressWitnessScriptHash:
+		witnessScript, err := input.GenMultiSigScript(
+			key1.SerializeCompressed(), key2.SerializeCompressed(),
+		)
+		if err != nil {
+			return false, nil, nil, err
+		}
+		pkScript, err := input.WitnessScriptHash(witnessScript)
+		if err != nil {
+			return false, nil, nil, err
+		}
+
+		return bytes.Equal(channelScript, pkScript), witnessScript,
+			pkScript, nil
+
+	case *btcutil.AddressTaproot:
+		pkScript, _, err := input.GenTaprootFundingScript(key1, key2, 0)
+		if err != nil {
+			return false, nil, nil, err
+		}
+
+		return bytes.Equal(channelScript, pkScript), nil, pkScript, nil
+
+	default:
+		return false, nil, nil, fmt.Errorf("unsupported address type "+
+			"for channel funding address: %T", addr)
+	}
 }
 
 func askAboutChannel(channel *channel, current, total int, ourAddr,
@@ -559,4 +701,199 @@ func askAboutChannel(channel *channel, current, total int, ourAddr,
 		ourAddr, theirPart, theirAddr)
 
 	return int64(ourPart), theirPart, nil
+}
+
+func addMuSig2Data(extendedKey *hdkeychain.ExtendedKey, pIn *psbt.PInput,
+	ourChannel, theirChannel *channel, channelPoint *wire.OutPoint,
+	xOnlyPubKey []byte) error {
+
+	aggKey, err := schnorr.ParsePubKey(xOnlyPubKey)
+	if err != nil {
+		return fmt.Errorf("error parsing x-only pubkey: %w", err)
+	}
+
+	ourRandomnessBytes, err := hex.DecodeString(
+		ourChannel.MuSig2NonceRandomness,
+	)
+	if err != nil {
+		return fmt.Errorf("error decoding nonce randomness: %w", err)
+	}
+
+	theirRandomnessBytes, err := hex.DecodeString(
+		theirChannel.MuSig2NonceRandomness,
+	)
+	if err != nil {
+		return fmt.Errorf("error decoding nonce randomness: %w", err)
+	}
+
+	ourNonceBytes, err := hex.DecodeString(ourChannel.MuSig2Nonces)
+	if err != nil {
+		return fmt.Errorf("error decoding nonce: %w", err)
+	}
+
+	theirNonceBytes, err := hex.DecodeString(theirChannel.MuSig2Nonces)
+	if err != nil {
+		return fmt.Errorf("error decoding nonce: %w", err)
+	}
+
+	// We first make sure that the nonces we got are correct, and we created
+	// them initially, before we create new ones (to avoid security issues
+	// when signing multiple offers).
+	var ourRandomness [32]byte
+	copy(ourRandomness[:], ourRandomnessBytes)
+	ourNonces, err := lnd.GenerateMuSig2Nonces(
+		extendedKey, ourRandomness, channelPoint, chainParams, nil,
+	)
+	if err != nil {
+		return fmt.Errorf("error generating MuSig2 nonces: %w", err)
+	}
+
+	if !bytes.Equal(ourNonces.PubNonce[:], ourNonceBytes) {
+		return errors.New("MuSig2 nonces don't match")
+	}
+
+	// Because at this point we're going to create a partial signature, we
+	// create a new nonce pair for the session. This is to make sure that
+	// the nonce is unique for each session, in case we're signing multiple
+	// offers.
+	if _, err := rand.Read(ourRandomness[:]); err != nil {
+		return fmt.Errorf("error generating randomness: %w", err)
+	}
+
+	ourNonces, err = lnd.GenerateMuSig2Nonces(
+		extendedKey, ourRandomness, channelPoint, chainParams, nil,
+	)
+	if err != nil {
+		return fmt.Errorf("error generating MuSig2 nonces: %w", err)
+	}
+
+	var theirNonces [musig2.PubNonceSize]byte
+	copy(theirNonces[:], theirNonceBytes)
+
+	pIn.MuSig2PubNonces = append(pIn.MuSig2PubNonces, &psbt.MuSig2PubNonce{
+		PubKey:       ourChannel.ourKey,
+		AggregateKey: aggKey,
+		TapLeafHash:  ourRandomness[:],
+		PubNonce:     ourNonces.PubNonce,
+	}, &psbt.MuSig2PubNonce{
+		PubKey:       ourChannel.theirKey,
+		AggregateKey: aggKey,
+		TapLeafHash:  theirRandomnessBytes,
+		PubNonce:     theirNonces,
+	})
+
+	return nil
+}
+
+func muSig2PartialSign(signer *lnd.Signer, keyDesc *keychain.KeyDescriptor,
+	packet *psbt.Packet, idx int) error {
+
+	signingKey, err := signer.FetchPrivateKey(keyDesc)
+	if err != nil {
+		return fmt.Errorf("error fetching private key: %w", err)
+	}
+
+	pIn := packet.Inputs[idx]
+	if len(pIn.MuSig2PubNonces) != 2 {
+		return fmt.Errorf("expected 2 MuSig2 nonces in packet input, "+
+			"got %d", len(pIn.MuSig2PubNonces))
+	}
+	channelPoint := &packet.UnsignedTx.TxIn[idx].PreviousOutPoint
+
+	var ourNonces, theirNonces *psbt.MuSig2PubNonce
+	for idx := range pIn.MuSig2PubNonces {
+		nonce := pIn.MuSig2PubNonces[idx]
+		if nonce.PubKey.IsEqual(keyDesc.PubKey) {
+			ourNonces = nonce
+		} else {
+			theirNonces = nonce
+		}
+	}
+	if ourNonces == nil || theirNonces == nil {
+		return errors.New("couldn't find our or their nonce")
+	}
+
+	keys := []*btcec.PublicKey{ourNonces.PubKey, theirNonces.PubKey}
+	aggKey, _, _, err := musig2.AggregateKeys(
+		keys, true, musig2.WithBIP86KeyTweak(),
+	)
+	if err != nil {
+		return fmt.Errorf("error aggregating keys: %w", err)
+	}
+
+	ctx, err := musig2.NewContext(
+		signingKey, true, musig2.WithBip86TweakCtx(),
+		musig2.WithKnownSigners(keys),
+	)
+	if err != nil {
+		return fmt.Errorf("error creating MuSig2 context: %w", err)
+	}
+
+	// Check that the randomness in the tap leaf hash is correct. We'll then
+	// later check that it also corresponds to the public nonces.
+	var emptyHash [32]byte
+	if len(ourNonces.TapLeafHash) != sha256.Size ||
+		bytes.Equal(ourNonces.TapLeafHash, emptyHash[:]) {
+
+		return errors.New("invalid nonce randomness in tap leaf hash")
+	}
+
+	// Generate the secure nonces from the information we got. We use the
+	// tap leaf hash to transport our randomness.
+	var ourRandomness [32]byte
+	copy(ourRandomness[:], ourNonces.TapLeafHash)
+	ourSecNonces, err := lnd.GenerateMuSig2Nonces(
+		signer.ExtendedKey, ourRandomness, channelPoint, chainParams,
+		signingKey,
+	)
+	if err != nil {
+		return fmt.Errorf("error generating MuSig2 nonces: %w", err)
+	}
+
+	// Make sure the re-derived nonces match the public nonces in the PSBT.
+	if !bytes.Equal(ourSecNonces.PubNonce[:], ourNonces.PubNonce[:]) {
+		return errors.New("re-derived public nonce doesn't match")
+	}
+
+	sess, err := ctx.NewSession(musig2.WithPreGeneratedNonce(ourSecNonces))
+	if err != nil {
+		return fmt.Errorf("error creating MuSig2 session: %w", err)
+	}
+
+	haveAll, err := sess.RegisterPubNonce(theirNonces.PubNonce)
+	if err != nil {
+		return fmt.Errorf("error registering remote nonce: %w", err)
+	}
+
+	if !haveAll {
+		return errors.New("didn't receive all nonces")
+	}
+
+	prevOutFetcher := wallet.PsbtPrevOutputFetcher(packet)
+	sigHashes := txscript.NewTxSigHashes(packet.UnsignedTx, prevOutFetcher)
+	sigHash, err := txscript.CalcTaprootSignatureHash(
+		sigHashes, packet.Inputs[idx].SighashType, packet.UnsignedTx,
+		idx, prevOutFetcher,
+	)
+	if err != nil {
+		return fmt.Errorf("error calculating signature hash: %w", err)
+	}
+
+	var sigHashMsg [32]byte
+	copy(sigHashMsg[:], sigHash)
+	partialSig, err := sess.Sign(sigHashMsg, musig2.WithSortedKeys())
+	if err != nil {
+		return fmt.Errorf("error signing with MuSig2: %w", err)
+	}
+
+	psbtPartialSig := &psbt.MuSig2PartialSig{
+		PubKey:       ourNonces.PubKey,
+		AggregateKey: aggKey.PreTweakedKey,
+		PartialSig:   *partialSig,
+	}
+	packet.Inputs[idx].MuSig2PartialSigs = append(
+		packet.Inputs[idx].MuSig2PartialSigs, psbtPartialSig,
+	)
+
+	return nil
 }
