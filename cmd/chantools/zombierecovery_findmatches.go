@@ -95,16 +95,19 @@ type nodeInfo struct {
 }
 
 type channel struct {
-	ChannelID     string `json:"short_channel_id"`
-	ChanPoint     string `json:"chan_point"`
-	Address       string `json:"address"`
-	Capacity      int64  `json:"capacity"`
-	txid          string
-	vout          uint32
-	ourKeyIndex   uint32
-	ourKey        *btcec.PublicKey
-	theirKey      *btcec.PublicKey
-	witnessScript []byte
+	ChannelID             string `json:"short_channel_id"`
+	ChanPoint             string `json:"chan_point"`
+	Address               string `json:"address"`
+	Capacity              int64  `json:"capacity"`
+	MuSig2NonceRandomness string `json:"musig2_nonce_randomness,omitempty"`
+	MuSig2Nonces          string `json:"musig2_nonces,omitempty"`
+	txid                  string
+	vout                  uint32
+	ourKeyIndex           uint32
+	ourKey                *btcec.PublicKey
+	theirKey              *btcec.PublicKey
+	pkScript              []byte
+	witnessScript         []byte
 }
 
 type match struct {
