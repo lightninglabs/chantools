@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -115,11 +116,11 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 		return fmt.Errorf("could not find local multisig key: %w", err)
 	}
 	if len(packet.Inputs[0].WitnessScript) == 0 {
-		return fmt.Errorf("invalid PSBT, missing witness script")
+		return errors.New("invalid PSBT, missing witness script")
 	}
 	witnessScript := packet.Inputs[0].WitnessScript
 	if packet.Inputs[0].WitnessUtxo == nil {
-		return fmt.Errorf("invalid PSBT, witness UTXO missing")
+		return errors.New("invalid PSBT, witness UTXO missing")
 	}
 	utxo := packet.Inputs[0].WitnessUtxo
 
@@ -157,7 +158,7 @@ func findLocalMultisigKey(multisigBranch *hdkeychain.ExtendedKey,
 	targetPubkey *btcec.PublicKey) (*keychain.KeyDescriptor, error) {
 
 	// Loop through the local multisig keys to find the target key.
-	for index := uint32(0); index < MaxChannelLookup; index++ {
+	for index := range uint32(MaxChannelLookup) {
 		currentKey, err := multisigBranch.DeriveNonStandard(index)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving child key: %w",
@@ -183,5 +184,5 @@ func findLocalMultisigKey(multisigBranch *hdkeychain.ExtendedKey,
 		}, nil
 	}
 
-	return nil, fmt.Errorf("no matching pubkeys found")
+	return nil, errors.New("no matching pubkeys found")
 }

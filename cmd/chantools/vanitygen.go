@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math"
 	"runtime"
@@ -71,14 +72,14 @@ func (c *vanityGenCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	if len(prefixBytes) < 2 {
-		return fmt.Errorf("prefix must be at least 2 bytes")
+		return errors.New("prefix must be at least 2 bytes")
 	}
 	if len(prefixBytes) > 8 {
-		return fmt.Errorf("prefix too long, unlikely to find a key " +
+		return errors.New("prefix too long, unlikely to find a key " +
 			"within billions of years")
 	}
 	if !(prefixBytes[0] == 0x02 || prefixBytes[0] == 0x03) {
-		return fmt.Errorf("prefix must start with 02 or 03 because " +
+		return errors.New("prefix must start with 02 or 03 because " +
 			"it's an EC public key")
 	}
 
@@ -103,7 +104,7 @@ func (c *vanityGenCommand) Execute(_ *cobra.Command, _ []string) error {
 		start       = time.Now()
 	)
 
-	for i := uint8(0); i < c.Threads; i++ {
+	for range c.Threads {
 		go func() {
 			var (
 				entropy [16]byte

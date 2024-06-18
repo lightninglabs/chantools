@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -15,7 +16,7 @@ import (
 )
 
 var (
-	ErrAddrNotFound = fmt.Errorf("address not found")
+	ErrAddrNotFound = errors.New("address not found")
 )
 
 type rescueTweakedKeyCommand struct {
@@ -66,7 +67,7 @@ func (c *rescueTweakedKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	if c.Path == "" {
-		return fmt.Errorf("path is required")
+		return errors.New("path is required")
 	}
 
 	childKey, _, _, err := lnd.DeriveKey(extendedKey, c.Path, chainParams)

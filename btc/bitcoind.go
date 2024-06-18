@@ -25,9 +25,9 @@ const (
 
 type KeyExporter interface {
 	Header() string
-	Format(*hdkeychain.ExtendedKey, *chaincfg.Params, string, uint32,
-		uint32) (string, error)
-	Trailer(uint32) string
+	Format(hdKey *hdkeychain.ExtendedKey, params *chaincfg.Params,
+		path string, branch, index uint32) (string, error)
+	Trailer(birthdayBlock uint32) string
 }
 
 // ParseFormat parses the given format name and returns its associated print
@@ -67,7 +67,7 @@ func ExportKeys(extendedKey *hdkeychain.ExtendedKey, strPaths []string,
 		path := paths[idx]
 
 		// External branch first (<DerivationPath>/0/i).
-		for i := uint32(0); i < recoveryWindow; i++ {
+		for i := range recoveryWindow {
 			path := append(path, 0, i)
 			derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 			if err != nil {
@@ -83,7 +83,7 @@ func ExportKeys(extendedKey *hdkeychain.ExtendedKey, strPaths []string,
 		}
 
 		// Now the internal branch (<DerivationPath>/1/i).
-		for i := uint32(0); i < recoveryWindow; i++ {
+		for i := range recoveryWindow {
 			path := append(path, 1, i)
 			derivedKey, err := lnd.DeriveChildren(extendedKey, path)
 			if err != nil {
@@ -254,7 +254,7 @@ func (p *Electrum) Header() string {
 }
 
 func (p *Electrum) Format(hdKey *hdkeychain.ExtendedKey,
-	params *chaincfg.Params, path string, branch, index uint32) (string,
+	params *chaincfg.Params, path string, _, _ uint32) (string,
 	error) {
 
 	privKey, err := hdKey.ECPrivKey()
@@ -285,7 +285,7 @@ func (d *Descriptors) Header() string {
 }
 
 func (d *Descriptors) Format(hdKey *hdkeychain.ExtendedKey,
-	params *chaincfg.Params, path string, branch, index uint32) (string,
+	params *chaincfg.Params, _ string, _, _ uint32) (string,
 	error) {
 
 	privKey, err := hdKey.ECPrivKey()

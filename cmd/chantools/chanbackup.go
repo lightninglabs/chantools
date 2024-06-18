@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/lightninglabs/chantools/lnd"
@@ -50,12 +51,12 @@ func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Check that we have a backup file.
 	if c.MultiFile == "" {
-		return fmt.Errorf("backup file is required")
+		return errors.New("backup file is required")
 	}
 
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
+		return errors.New("channel DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {

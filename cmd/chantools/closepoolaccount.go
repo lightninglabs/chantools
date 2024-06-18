@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -292,7 +293,7 @@ func closePoolAccount(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		signDesc.SignMethod = input.TaprootScriptSpendSignMethod
 	}
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	// Add our sweep destination output.
 	sweepTx.TxOut = []*wire.TxOut{{
@@ -367,7 +368,7 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 	maxNumBatchKeys uint32, targetScript []byte) (*poolAccount, error) {
 
 	// The outermost loop is over the possible accounts.
-	for i := uint32(0); i < maxNumAccounts; i++ {
+	for i := range maxNumAccounts {
 		accountExtendedKey, err := accountBaseKey.DeriveNonStandard(i)
 		if err != nil {
 			return nil, fmt.Errorf("error deriving account key: "+
@@ -430,7 +431,7 @@ func bruteForceAccountScript(accountBaseKey *hdkeychain.ExtendedKey,
 		log.Debugf("Tried account index %d of %d", i, maxNumAccounts)
 	}
 
-	return nil, fmt.Errorf("account script not derived")
+	return nil, errors.New("account script not derived")
 }
 
 func fastScript(keyIndex, expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
@@ -442,7 +443,7 @@ func fastScript(keyIndex, expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
 		return nil, err
 	}
 	if script.Class() != txscript.WitnessV0ScriptHashTy {
-		return nil, fmt.Errorf("incompatible script class")
+		return nil, errors.New("incompatible script class")
 	}
 
 	traderKeyTweak := poolscript.TraderKeyTweak(batchKey, secret, traderKey)
@@ -492,7 +493,7 @@ func fastScript(keyIndex, expiryFrom, expiryTo uint32, traderKey, auctioneerKey,
 		}, nil
 	}
 
-	return nil, fmt.Errorf("account script not derived")
+	return nil, errors.New("account script not derived")
 }
 
 func fastScriptTaproot(scriptVersion poolscript.Version, keyIndex, expiryFrom,
@@ -504,7 +505,7 @@ func fastScriptTaproot(scriptVersion poolscript.Version, keyIndex, expiryFrom,
 		return nil, err
 	}
 	if parsedScript.Class() != txscript.WitnessV1TaprootTy {
-		return nil, fmt.Errorf("incompatible script class")
+		return nil, errors.New("incompatible script class")
 	}
 
 	traderKeyTweak := poolscript.TraderKeyTweak(batchKey, secret, traderKey)
@@ -601,5 +602,5 @@ func fastScriptTaproot(scriptVersion poolscript.Version, keyIndex, expiryFrom,
 		}, nil
 	}
 
-	return nil, fmt.Errorf("account script not derived")
+	return nil, errors.New("account script not derived")
 }

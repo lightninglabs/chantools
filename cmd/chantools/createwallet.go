@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -63,7 +64,7 @@ func (c *createWalletCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Check that we have a wallet DB.
 	if c.WalletDBDir == "" {
-		return fmt.Errorf("wallet DB directory is required")
+		return errors.New("wallet DB directory is required")
 	}
 
 	// Make sure the directory (and parents) exists.
@@ -143,7 +144,7 @@ func (c *createWalletCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		if !bytes.Equal(pw, pw2) {
-			return fmt.Errorf("passwords don't match")
+			return errors.New("passwords don't match")
 		}
 
 		if len(pw) > 0 {

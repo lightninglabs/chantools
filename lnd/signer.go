@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"crypto/sha256"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -119,7 +120,7 @@ func (s *Signer) SignOutputRawWithPrivateKey(tx *wire.MsgTx,
 func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
 	*input.Script, error) {
 
-	return nil, fmt.Errorf("unimplemented")
+	return nil, errors.New("unimplemented")
 }
 
 func (s *Signer) FetchPrivateKey(descriptor *keychain.KeyDescriptor) (

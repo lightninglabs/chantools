@@ -58,8 +58,6 @@ func ExtractChannel(extendedKey *hdkeychain.ExtendedKey,
 
 	channels := dump.BackupDump(multi, chainParams)
 	for _, channel := range channels {
-		channel := channel
-
 		if channel.FundingOutpoint == channelPoint {
 			return &channel, nil
 		}

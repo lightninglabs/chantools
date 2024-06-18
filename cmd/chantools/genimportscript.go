@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -145,7 +146,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 		paths = [][]uint32{derivationPath}
 
 	case c.LndPaths && c.DerivationPath != "":
-		return fmt.Errorf("cannot use --lndpaths and --derivationpath " +
+		return errors.New("cannot use --lndpaths and --derivationpath " +
 			"at the same time")
 
 	case c.LndPaths:

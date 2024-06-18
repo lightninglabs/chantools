@@ -49,7 +49,7 @@ var (
 )
 
 func noConsole() ([]byte, error) {
-	return nil, fmt.Errorf("wallet db requires console access")
+	return nil, errors.New("wallet db requires console access")
 }
 
 // ReadAezeed reads an aezeed from the console or the environment variable.
@@ -112,7 +112,7 @@ func ReadAezeed(params *chaincfg.Params) (*hdkeychain.ExtendedKey, time.Time,
 	}
 	rootKey, err := hdkeychain.NewMaster(cipherSeed.Entropy[:], params)
 	if err != nil {
-		return nil, time.Unix(0, 0), fmt.Errorf("failed to derive " +
+		return nil, time.Unix(0, 0), errors.New("failed to derive " +
 			"master extended key")
 	}
 	return rootKey, cipherSeed.BirthdayTime(), nil
@@ -229,7 +229,7 @@ func OpenWallet(walletDbPath string,
 		DefaultOpenTimeout,
 	)
 	if errors.Is(err, bbolt.ErrTimeout) {
-		return nil, nil, nil, fmt.Errorf("error opening wallet " +
+		return nil, nil, nil, errors.New("error opening wallet " +
 			"database, make sure lnd is not running and holding " +
 			"the exclusive lock on the wallet")
 	}

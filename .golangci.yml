@@ -1,6 +1,6 @@
 run:
   # timeout for analysis
-  deadline: 4m
+  timeout: 4m
 
 linters-settings:
   govet:
@@ -12,7 +12,7 @@ linters-settings:
   whitespace:
     multi-func: true
     multi-if: true
-  tagliatelle: 
+  tagliatelle:
     case:
       rules:
         json: snake
@@ -31,17 +31,15 @@ linters:
     - gochecknoglobals
     - gosec
     - funlen
-    - maligned
     - varnamelen
     - wrapcheck
     - testpackage
     - gomnd
-    - goerr113
+    - err113
     - exhaustruct
     - forbidigo
     - gocognit
     - nestif
-    - ifshort
     - wsl
     - cyclop
     - gocyclo
@@ -53,16 +51,9 @@ linters:
     - noctx
     - gofumpt
     - exhaustive
-    
-    # deprecated
-    - interfacer
-    - scopelint
-    - golint
-    - exhaustivestruct
-    - nosnakecase
-    - deadcode
-    - structcheck
-    - varcheck
+    - protogetter
+    - depguard
+    - mnd
 
 issues:
   exclude-rules:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/lightninglabs/chantools/lnd"
@@ -52,7 +53,7 @@ run lnd ` + lndVersion + ` or later after using this command!'`,
 func (c *dropGraphZombiesCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
+		return errors.New("channel DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {

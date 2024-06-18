@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -90,7 +91,7 @@ func (lc *LightningChannel) SignedCommitTx() (*wire.MsgTx, error) {
 func ParseOutpoint(s string) (*wire.OutPoint, error) {
 	split := strings.Split(s, ":")
 	if len(split) != 2 {
-		return nil, fmt.Errorf("expecting channel point to be in " +
+		return nil, errors.New("expecting channel point to be in " +
 			"format of: txid:index")
 	}
 

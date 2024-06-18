@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -59,7 +60,7 @@ func (c *filterBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Check that we have a backup file.
 	if c.MultiFile == "" {
-		return fmt.Errorf("backup file is required")
+		return errors.New("backup file is required")
 	}
 	multiFile := chanbackup.NewMultiFile(c.MultiFile)
 	keyRing := &lnd.HDKeyRing{

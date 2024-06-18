@@ -145,7 +145,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		targets []*targetAddr
 		api     = newExplorerAPI(apiURL)
 	)
-	for index := uint32(0); index < recoveryWindow; index++ {
+	for index := range recoveryWindow {
 		path := fmt.Sprintf("m/1017'/%d'/%d'/0/%d",
 			chainParams.HDCoinType, keychain.KeyFamilyPaymentBase,
 			index)
@@ -302,7 +302,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	// Calculate the fee based on the given fee rate and our weight
 	// estimation.
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	log.Infof("Fee %d sats of %d total amount (estimated weight %d)",
 		totalFee, totalOutputValue, estimator.Weight())

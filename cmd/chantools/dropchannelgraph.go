@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chainreg"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/channeldb/models"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/spf13/cobra"
@@ -81,7 +83,7 @@ chantools dropchannelgraph \
 func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a channel DB.
 	if c.ChannelDB == "" {
-		return fmt.Errorf("channel DB is required")
+		return errors.New("channel DB is required")
 	}
 	db, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
@@ -90,7 +92,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	defer func() { _ = db.Close() }()
 
 	if c.NodeIdentityKey == "" {
-		return fmt.Errorf("node identity key is required")
+		return errors.New("node identity key is required")
 	}
 
 	idKeyBytes, err := hex.DecodeString(c.NodeIdentityKey)
@@ -174,8 +176,8 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 	localFundingKey *keychain.KeyDescriptor,
 	remoteFundingKey *btcec.PublicKey, shortChanID lnwire.ShortChannelID,
 	fwdMinHTLC, fwdMaxHTLC lnwire.MilliSatoshi, capacity btcutil.Amount,
-	channelPoint wire.OutPoint) (*channeldb.ChannelEdgeInfo,
-	*channeldb.ChannelEdgePolicy, error) {
+	channelPoint wire.OutPoint) (*models.ChannelEdgeInfo,
+	*models.ChannelEdgePolicy, error) {
 
 	chainHash := *chainParams.GenesisHash
 
@@ -226,7 +228,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 		return nil, nil, err
 	}
 
-	edge := &channeldb.ChannelEdgeInfo{
+	edge := &models.ChannelEdgeInfo{
 		ChannelID:        chanAnn.ShortChannelID.ToUint64(),
 		ChainHash:        chanAnn.ChainHash,
 		NodeKey1Bytes:    chanAnn.NodeID1,
@@ -264,7 +266,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 		FeeRate: uint32(chainreg.DefaultBitcoinFeeRate),
 	}
 
-	update := &channeldb.ChannelEdgePolicy{
+	update := &models.ChannelEdgePolicy{
 		SigBytes:      chanUpdateAnn.Signature.ToSignatureBytes(),
 		ChannelID:     chanAnn.ShortChannelID.ToUint64(),
 		LastUpdate:    time.Now(),

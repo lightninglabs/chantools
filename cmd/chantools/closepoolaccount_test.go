@@ -70,8 +70,6 @@ func TestClosePoolAccount(t *testing.T) {
 	)
 
 	for _, tc := range testAccounts {
-		tc := tc
-
 		t.Run(tc.name, func(tt *testing.T) {
 			tt.Parallel()
 

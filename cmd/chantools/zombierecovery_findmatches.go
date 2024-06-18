@@ -298,7 +298,7 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 			Node1:   node1,
 		}
 
-		folder := fmt.Sprintf("results/match-%s", node1)
+		folder := "results/match-" + node1
 		today := time.Now().Format("2006-01-02")
 		for node2, match := range node1map {
 			err = os.MkdirAll(folder, 0755)

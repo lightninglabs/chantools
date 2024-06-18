@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -79,7 +80,7 @@ or simply press <enter> without entering a password when being prompted.`,
 func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Check that we have a wallet DB.
 	if c.WalletDB == "" {
-		return fmt.Errorf("wallet DB is required")
+		return errors.New("wallet DB is required")
 	}
 
 	w, privateWalletPw, cleanup, err := lnd.OpenWallet(
@@ -163,7 +164,7 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 		printAddr := func(a waddrmgr.ManagedAddress) error {
 			pka, ok := a.(waddrmgr.ManagedPubKeyAddress)
 			if !ok {
-				return fmt.Errorf("key is not a managed pubkey")
+				return errors.New("key is not a managed pubkey")
 			}
 
 			privKey, err := pka.PrivKey()

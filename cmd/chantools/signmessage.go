@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	chantools_lnd "github.com/lightninglabs/chantools/lnd"
@@ -41,7 +42,7 @@ func newSignMessageCommand() *cobra.Command {
 
 func (c *signMessageCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.Msg == "" {
-		return fmt.Errorf("please enter a valid msg")
+		return errors.New("please enter a valid msg")
 	}
 
 	extendedKey, err := c.rootKey.read()

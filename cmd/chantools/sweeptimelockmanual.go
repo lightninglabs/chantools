@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -179,7 +180,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 	case c.ChannelBackup != "":
 		if c.ChannelPoint == "" {
-			return fmt.Errorf("channel point is required with " +
+			return errors.New("channel point is required with " +
 				"--frombackup")
 		}
 
@@ -211,11 +212,11 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 		maxNumChannelsTotal = startNumChannelsTotal + 1
 
 	case c.ChannelBackup != "" && c.RemoteRevocationBasePoint != "":
-		return fmt.Errorf("cannot use both --frombackup and " +
+		return errors.New("cannot use both --frombackup and " +
 			"--remoterevbasepoint at the same time")
 
 	default:
-		return fmt.Errorf("either --frombackup or " +
+		return errors.New("either --frombackup or " +
 			"--remoterevbasepoint is required")
 	}
 
@@ -318,7 +319,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// Did we find what we looked for or did we just exhaust all
 	// possibilities?
 	if script == nil || delayDesc == nil {
-		return fmt.Errorf("target script not derived")
+		return errors.New("target script not derived")
 	}
 
 	// We now know everything we need to construct the sweep transaction,
@@ -352,7 +353,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// estimation.
 	estimator.AddWitnessInput(input.ToLocalTimeoutWitnessSize)
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * feeRate).FeePerKWeight()
-	totalFee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	totalFee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	// Add our sweep destination output.
 	sweepTx.TxOut = []*wire.TxOut{{
@@ -564,7 +565,7 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 			}, nil
 	}
 
-	return 0, nil, nil, nil, nil, fmt.Errorf("target script not derived")
+	return 0, nil, nil, nil, nil, errors.New("target script not derived")
 }
 
 func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
@@ -572,7 +573,7 @@ func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
 	startCsvTimeout, maxCsvTimeout uint16, maxChanUpdates uint64) (int32,
 	[]byte, []byte, *btcec.PublicKey, error) {
 
-	for i := uint64(0); i < maxChanUpdates; i++ {
+	for i := range maxChanUpdates {
 		revPreimage, err := revRoot.AtIndex(i)
 		if err != nil {
 			return 0, nil, nil, nil, err
@@ -592,5 +593,5 @@ func bruteForceDelayPoint(delayBase, revBase *btcec.PublicKey,
 		return csvTimeout, script, scriptHash, commitPoint, nil
 	}
 
-	return 0, nil, nil, nil, fmt.Errorf("target script not derived")
+	return 0, nil, nil, nil, errors.New("target script not derived")
 }

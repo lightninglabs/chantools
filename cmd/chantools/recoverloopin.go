@@ -14,9 +14,9 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightninglabs/loop"
 	"github.com/lightninglabs/loop/loopdb"
 	"github.com/lightninglabs/loop/swap"
+	"github.com/lightninglabs/loop/utils"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnrpc"
@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	errSwapNotFound = fmt.Errorf("loop in swap not found")
+	errSwapNotFound = errors.New("loop in swap not found")
 )
 
 type recoverLoopInCommand struct {
@@ -125,15 +125,15 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	if c.TxID == "" {
-		return fmt.Errorf("txid is required")
+		return errors.New("txid is required")
 	}
 
 	if c.SwapHash == "" {
-		return fmt.Errorf("swap_hash is required")
+		return errors.New("swap_hash is required")
 	}
 
 	if c.LoopDbDir == "" {
-		return fmt.Errorf("loop_db_dir is required")
+		return errors.New("loop_db_dir is required")
 	}
 
 	err = lnd.CheckAddress(
@@ -207,7 +207,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	// set, as a lot of failure cases steam from the output amount being
 	// wrong.
 	if loopIn.Contract.ExternalHtlc && c.OutputAmt == 0 {
-		return fmt.Errorf("output_amt is required for external htlc")
+		return errors.New("output_amt is required for external htlc")
 	}
 
 	fmt.Println("Loop expires at block height", loopIn.Contract.CltvExpiry)
@@ -218,7 +218,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Get the swaps htlc.
-	htlc, err := loop.GetHtlc(
+	htlc, err := utils.GetHtlc(
 		loopIn.Hash, &loopIn.Contract.SwapContract, chainParams,
 	)
 	if err != nil {
@@ -243,7 +243,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 	feeRateKWeight := chainfee.SatPerKVByte(
 		1000 * c.FeeRate,
 	).FeePerKWeight()
-	fee := feeRateKWeight.FeeForWeight(int64(estimator.Weight()))
+	fee := feeRateKWeight.FeeForWeight(estimator.Weight())
 
 	txID, err := chainhash.NewHashFromStr(c.TxID)
 	if err != nil {
@@ -289,7 +289,7 @@ func (c *recoverLoopInCommand) Execute(_ *cobra.Command, _ []string) error {
 			}
 		}
 		if rawTx == nil {
-			return fmt.Errorf("failed to brute force key index, " +
+			return errors.New("failed to brute force key index, " +
 				"please try again with a higher start key " +
 				"index")
 		}

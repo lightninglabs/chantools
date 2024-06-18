@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -156,7 +157,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Now parse the remote node info.
 	splitNodeInfo := strings.Split(c.NodeAddr, "@")
 	if len(splitNodeInfo) != 2 {
-		return fmt.Errorf("--remote_node_addr expected in format: " +
+		return errors.New("--remote_node_addr expected in format: " +
 			"pubkey@host:port")
 	}
 	pubKeyBytes, err := hex.DecodeString(splitNodeInfo[0])
@@ -192,7 +193,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	// Parse the short channel ID.
 	splitChanID := strings.Split(c.ShortChanID, "x")
 	if len(splitChanID) != 3 {
-		return fmt.Errorf("--short_channel_id expected in format: " +
+		return errors.New("--short_channel_id expected in format: " +
 			"<blockheight>x<transactionindex>x<outputindex>",
 		)
 	}
@@ -216,7 +217,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Is the outpoint and/or short channel ID correct?
 	if uint32(chanOutputIdx) != chanOp.Index {
-		return fmt.Errorf("output index of --short_channel_id must " +
+		return errors.New("output index of --short_channel_id must " +
 			"be equal to index on --channelpoint")
 	}
 

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -111,49 +112,49 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 
 	// Make sure the key files were filled correctly.
 	if keys1.Node1 == nil || keys1.Node2 == nil {
-		return fmt.Errorf("invalid node1 file, node info missing")
+		return errors.New("invalid node1 file, node info missing")
 	}
 	if keys2.Node1 == nil || keys2.Node2 == nil {
-		return fmt.Errorf("invalid node2 file, node info missing")
+		return errors.New("invalid node2 file, node info missing")
 	}
 	if keys1.Node1.PubKey != keys2.Node1.PubKey {
-		return fmt.Errorf("invalid files, node 1 pubkey doesn't match")
+		return errors.New("invalid files, node 1 pubkey doesn't match")
 	}
 	if keys1.Node2.PubKey != keys2.Node2.PubKey {
-		return fmt.Errorf("invalid files, node 2 pubkey doesn't match")
+		return errors.New("invalid files, node 2 pubkey doesn't match")
 	}
 	if len(keys1.Node1.MultisigKeys) == 0 &&
 		len(keys1.Node2.MultisigKeys) == 0 {
 
-		return fmt.Errorf("invalid node1 file, missing multisig keys")
+		return errors.New("invalid node1 file, missing multisig keys")
 	}
 	if len(keys2.Node1.MultisigKeys) == 0 &&
 		len(keys2.Node2.MultisigKeys) == 0 {
 
-		return fmt.Errorf("invalid node2 file, missing multisig keys")
+		return errors.New("invalid node2 file, missing multisig keys")
 	}
 	if len(keys1.Node1.MultisigKeys) == len(keys2.Node1.MultisigKeys) {
-		return fmt.Errorf("invalid files, channel info incorrect")
+		return errors.New("invalid files, channel info incorrect")
 	}
 	if len(keys1.Node2.MultisigKeys) == len(keys2.Node2.MultisigKeys) {
-		return fmt.Errorf("invalid files, channel info incorrect")
+		return errors.New("invalid files, channel info incorrect")
 	}
 	if len(keys1.Channels) != len(keys2.Channels) {
-		return fmt.Errorf("invalid files, channels don't match")
+		return errors.New("invalid files, channels don't match")
 	}
 	for idx, node1Channel := range keys1.Channels {
 		if keys2.Channels[idx].ChanPoint != node1Channel.ChanPoint {
-			return fmt.Errorf("invalid files, channels don't match")
+			return errors.New("invalid files, channels don't match")
 		}
 
 		if keys2.Channels[idx].Address != node1Channel.Address {
-			return fmt.Errorf("invalid files, channels don't match")
+			return errors.New("invalid files, channels don't match")
 		}
 
 		if keys2.Channels[idx].Address == "" ||
 			node1Channel.Address == "" {
 
-			return fmt.Errorf("invalid files, channel address " +
+			return errors.New("invalid files, channel address " +
 				"missing")
 		}
 	}
@@ -221,10 +222,10 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		theirPayoutAddr = keys1.Node1.PayoutAddr
 	}
 	if len(ourKeys) == 0 || len(theirKeys) == 0 {
-		return fmt.Errorf("couldn't find necessary keys")
+		return errors.New("couldn't find necessary keys")
 	}
 	if ourPayoutAddr == "" || theirPayoutAddr == "" {
-		return fmt.Errorf("payout address missing")
+		return errors.New("payout address missing")
 	}
 
 	ourPubKeys, err := parseKeys(ourKeys)
@@ -292,7 +293,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		estimator.AddWitnessInput(input.MultiSigWitnessSize)
 	}
 	feeRateKWeight := chainfee.SatPerKVByte(1000 * c.FeeRate).FeePerKWeight()
-	totalFee := int64(feeRateKWeight.FeeForWeight(int64(estimator.Weight())))
+	totalFee := int64(feeRateKWeight.FeeForWeight(estimator.Weight()))
 
 	fmt.Printf("Current tally (before fees):\n\t"+
 		"To our address (%s): %d sats\n\t"+
@@ -315,7 +316,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		theirSum -= totalFee
 
 	default:
-		return fmt.Errorf("error distributing fees, unhandled case")
+		return errors.New("error distributing fees, unhandled case")
 	}
 
 	// Our output.
