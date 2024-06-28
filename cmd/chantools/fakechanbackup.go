@@ -5,8 +5,8 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -133,7 +133,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	if c.FromChannelGraph != "" {
-		graphBytes, err := ioutil.ReadFile(c.FromChannelGraph)
+		graphBytes, err := os.ReadFile(c.FromChannelGraph)
 		if err != nil {
 			return fmt.Errorf("error reading graph JSON file %s: "+
 				"%v", c.FromChannelGraph, err)

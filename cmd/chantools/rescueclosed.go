@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"regexp"
 	"time"
 
@@ -204,7 +204,7 @@ func commitPointsFromDB(chanDb *channeldb.ChannelStateDB) ([]*btcec.PublicKey,
 }
 
 func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
-	logFileBytes, err := ioutil.ReadFile(lndLog)
+	logFileBytes, err := os.ReadFile(lndLog)
 	if err != nil {
 		return nil, fmt.Errorf("error reading log file %s: %w", lndLog,
 			err)
@@ -313,7 +313,7 @@ outer:
 	fileName := fmt.Sprintf("results/rescueclosed-%s.json",
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
-	return ioutil.WriteFile(fileName, summaryBytes, 0644)
+	return os.WriteFile(fileName, summaryBytes, 0644)
 }
 
 func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
