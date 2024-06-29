@@ -106,6 +106,7 @@ func main() {
 		newDoubleSpendInputsCommand(),
 		newDropChannelGraphCommand(),
 		newDropGraphZombiesCommand(),
+		newDropHeightHintCacheCommand(),
 		newDumpBackupCommand(),
 		newDumpChannelsCommand(),
 		newDocCommand(),
