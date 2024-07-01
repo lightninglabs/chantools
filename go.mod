@@ -114,7 +114,7 @@ require (
 	github.com/lightninglabs/pool/auctioneerrpc v1.1.2 // indirect
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20230823005744-06182b1d7d2f // indirect
 	github.com/lightningnetwork/lnd/clock v1.1.1 // indirect
-	github.com/lightningnetwork/lnd/fn v1.0.8 // indirect
+	github.com/lightningnetwork/lnd/fn v1.0.9 // indirect
 	github.com/lightningnetwork/lnd/healthcheck v1.2.4 // indirect
 	github.com/lightningnetwork/lnd/sqldb v1.0.2 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.2.6 // indirect
@@ -211,3 +211,5 @@ require (
 // allows us to specify that as an option. This is required for the
 // taproot-assets dependency to function properly.
 replace google.golang.org/protobuf => github.com/lightninglabs/protobuf-go-hex-display v1.33.0-hex-display
+
+replace github.com/lightningnetwork/lnd => github.com/starius/lnd v0.18.0-beta-close-tx2
