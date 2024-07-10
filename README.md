@@ -402,7 +402,8 @@ run them on a computer with a firewall that blocks outgoing connections.
 ```text
 This tool provides helper functions that can be used rescue
 funds locked in lnd channels in case lnd itself cannot run properly anymore.
-Complete documentation is available at https://github.com/lightninglabs/chantools/.
+Complete documentation is available at
+https://github.com/lightninglabs/chantools/.
 
 Usage:
   chantools [command]
@@ -410,11 +411,11 @@ Usage:
 Available Commands:
   chanbackup          Create a channel.backup file from a channel database
   closepoolaccount    Tries to close a Pool account that has expired
-  compactdb           Create a copy of a channel.db file in safe/read-only mode
   createwallet        Create a new lnd compatible wallet.db file from an existing seed or by generating a new one
+  compactdb           Create a copy of a channel.db file in safe/read-only mode
   deletepayments      Remove all (failed) payments from a channel DB
   derivekey           Derive a key with a specific derivation path
-  doublespendinputs   Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address. This can only be used with inputs that belong to an lnd wallet.
+  doublespendinputs   Replace a transaction by double spending its input
   dropchannelgraph    Remove all graph related data from a channel DB
   dropgraphzombies    Remove all channels identified as zombies from the graph to force a re-sync of the graph
   dumpbackup          Dump the content of a channel.backup file
@@ -426,19 +427,20 @@ Available Commands:
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
   migratedb           Apply all recent lnd channel database migrations
   pullanchor          Attempt to CPFP an anchor output of a channel
+  recoverloopin       Recover a loop in swap that the loop daemon is not able to sweep
   removechannel       Remove a single channel from the given channel DB
   rescueclosed        Try finding the private keys for funds that are in outputs of remotely force-closed channels
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
   rescuetweakedkey    Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
   showrootkey         Extract and show the BIP32 HD root key from the 24 word lnd aezeed
-  signmessage         Sign a message with the nodes identity pubkey.
-  signpsbt            Sign a Partially Signed Bitcoin Transaction (PSBT)
+  signmessage         Sign a message with the node's private key.
   signrescuefunding   Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the remote node (the non-initiator) of the channel needs to run
+  signpsbt            Sign a Partially Signed Bitcoin Transaction (PSBT)
   summary             Compile a summary about the current state of channels
   sweeptimelock       Sweep the force-closed state after the time lock has expired
   sweeptimelockmanual Sweep the force-closed state of a single channel manually if only a channel backup file is available
   sweepremoteclosed   Go through all the addresses that could have funds of channels that were force-closed by the remote party. A public block explorer is queried for each address and if any balance is found, all funds are swept to a given address
-  triggerforceclose   Connect to a peer and send request to trigger a force close of the specified channel
+  triggerforceclose   Connect to a Lightning Network peer and send specific messages to trigger a force close of the specified channel
   vanitygen           Generate a seed with a custom lnd node identity public key that starts with the given prefix
   walletinfo          Shows info about an lnd wallet.db file and optionally extracts the BIP32 HD root key
   zombierecovery      Try rescuing funds stuck in channels with zombie nodes
@@ -447,7 +449,9 @@ Available Commands:
 Flags:
   -h, --help      help for chantools
   -r, --regtest   Indicates if regtest parameters should be used
+  -s, --signet    Indicates if the public signet parameters should be used
   -t, --testnet   Indicates if testnet parameters should be used
+  -v, --version   version for chantools
 
 Use "chantools [command] --help" for more information about a command.
 ```
