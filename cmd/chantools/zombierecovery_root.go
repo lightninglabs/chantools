@@ -16,7 +16,7 @@ func newZombieRecoveryCommand() *cobra.Command {
 		Use:   "zombierecovery",
 		Short: "Try rescuing funds stuck in channels with zombie nodes",
 		Long: `A sub command that hosts a set of further sub commands
-to help with recovering funds tuck in zombie channels.
+to help with recovering funds stuck in zombie channels.
 
 Please visit https://github.com/lightninglabs/chantools/blob/master/doc/zombierecovery.md
 for more information on how to use these commands.`,
