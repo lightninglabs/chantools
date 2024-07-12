@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	cacheSize = 5000
-	cache     []*cacheEntry
+	defaultNumKeys uint32 = 5000
+	cache          []*cacheEntry
 
 	errAddrNotFound = errors.New("addr not found")
 
@@ -40,6 +40,7 @@ type rescueClosedCommand struct {
 	Addr        string
 	CommitPoint string
 	LndLog      string
+	NumKeys     uint32
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -103,7 +104,12 @@ chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
 	cc.cmd.Flags().StringVar(
 		&cc.LndLog, "lnd_log", "", "the lnd log file to read to get "+
 			"the commit_point values when rescuing multiple "+
-			"channels at the same time")
+			"channels at the same time",
+	)
+	cc.cmd.Flags().Uint32Var(
+		&cc.NumKeys, "num_keys", defaultNumKeys, "the number of keys "+
+			"to derive for the brute force attack",
+	)
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
 	cc.inputs = newInputFlags(cc.cmd)
 
@@ -136,7 +142,9 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error reading commit points from "+
 				"db: %w", err)
 		}
-		return rescueClosedChannels(extendedKey, entries, commitPoints)
+		return rescueClosedChannels(
+			c.NumKeys, extendedKey, entries, commitPoints,
+		)
 
 	case c.Addr != "":
 		// First parse address to get targetPubKeyHash from it later.
@@ -156,7 +164,9 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error parsing commit point: %w", err)
 		}
 
-		return rescueClosedChannel(extendedKey, targetAddr, commitPoint)
+		return rescueClosedChannel(
+			c.NumKeys, extendedKey, targetAddr, commitPoint,
+		)
 
 	case c.LndLog != "":
 		// Parse channel entries from any of the possible input files.
@@ -170,7 +180,9 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			return fmt.Errorf("error parsing commit points from "+
 				"log file: %w", err)
 		}
-		return rescueClosedChannels(extendedKey, entries, commitPoints)
+		return rescueClosedChannels(
+			c.NumKeys, extendedKey, entries, commitPoints,
+		)
 
 	default:
 		return errors.New("you either need to specify --channeldb and " +
@@ -241,11 +253,11 @@ func commitPointsFromLogFile(lndLog string) ([]*btcec.PublicKey, error) {
 	return result, nil
 }
 
-func rescueClosedChannels(extendedKey *hdkeychain.ExtendedKey,
+func rescueClosedChannels(numKeys uint32, extendedKey *hdkeychain.ExtendedKey,
 	entries []*dataformat.SummaryEntry,
 	possibleCommitPoints []*btcec.PublicKey) error {
 
-	err := fillCache(extendedKey)
+	err := fillCache(numKeys, extendedKey)
 	if err != nil {
 		return err
 	}
@@ -279,7 +291,7 @@ outer:
 				addr = entry.ClosingTX.ToRemoteAddr
 			}
 
-			wif, err := addrInCache(addr, commitPoint)
+			wif, err := addrInCache(numKeys, addr, commitPoint)
 			switch {
 			case err == nil:
 				entry.ClosingTX.SweepPrivkey = wif
@@ -316,7 +328,7 @@ outer:
 	return os.WriteFile(fileName, summaryBytes, 0644)
 }
 
-func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
+func rescueClosedChannel(numKeys uint32, extendedKey *hdkeychain.ExtendedKey,
 	addr btcutil.Address, commitPoint *btcec.PublicKey) error {
 
 	// Make the check on the decoded address according to the active
@@ -336,12 +348,12 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 		return errors.New("address: must be a bech32 P2WPKH address")
 	}
 
-	err := fillCache(extendedKey)
+	err := fillCache(numKeys, extendedKey)
 	if err != nil {
 		return err
 	}
 
-	wif, err := addrInCache(addr.String(), commitPoint)
+	wif, err := addrInCache(numKeys, addr.String(), commitPoint)
 	switch {
 	case err == nil:
 		log.Infof("Found private key %s for address %v!", wif, addr)
@@ -356,7 +368,7 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 	}
 
 	// Try again as a static_remote_key address.
-	wif, err = addrInCache(addr.String(), nil)
+	wif, err = addrInCache(numKeys, addr.String(), nil)
 	switch {
 	case err == nil:
 		log.Infof("Found private key %s for address %v!", wif, addr)
@@ -372,7 +384,9 @@ func rescueClosedChannel(extendedKey *hdkeychain.ExtendedKey,
 	}
 }
 
-func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
+func addrInCache(numKeys uint32, addr string,
+	perCommitPoint *btcec.PublicKey) (string, error) {
+
 	targetPubKeyHash, scriptHash, err := lnd.DecodeAddressHash(
 		addr, chainParams,
 	)
@@ -386,7 +400,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	// If the commit point is nil, we try with plain private keys to match
 	// static_remote_key outputs.
 	if perCommitPoint == nil {
-		for i := range cacheSize {
+		for i := range numKeys {
 			cacheEntry := cache[i]
 			hashedPubKey := btcutil.Hash160(
 				cacheEntry.pubKey.SerializeCompressed(),
@@ -415,7 +429,7 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	// Loop through all cached payment base point keys, tweak each of it
 	// with the per_commit_point and see if the hashed public key
 	// corresponds to the target pubKeyHash of the given address.
-	for i := range cacheSize {
+	for i := range numKeys {
 		cacheEntry := cache[i]
 		basePoint := cacheEntry.pubKey
 		tweakedPubKey := input.TweakPubKey(basePoint, perCommitPoint)
@@ -446,17 +460,16 @@ func addrInCache(addr string, perCommitPoint *btcec.PublicKey) (string, error) {
 	return "", errAddrNotFound
 }
 
-func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
-	cache = make([]*cacheEntry, cacheSize)
+func fillCache(numKeys uint32, extendedKey *hdkeychain.ExtendedKey) error {
+	cache = make([]*cacheEntry, numKeys)
 
-	for i := range cacheSize {
+	for i := range numKeys {
 		key, err := lnd.DeriveChildren(extendedKey, []uint32{
 			lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
 			lnd.HardenedKeyStart + chainParams.HDCoinType,
-			lnd.HardenedKeyStart +
-				uint32(keychain.KeyFamilyPaymentBase),
-			0,
-			uint32(i),
+			lnd.HardenedKeyStart + uint32(
+				keychain.KeyFamilyPaymentBase,
+			), 0, i,
 		})
 		if err != nil {
 			return err
@@ -476,7 +489,7 @@ func fillCache(extendedKey *hdkeychain.ExtendedKey) error {
 
 		if i > 0 && i%10000 == 0 {
 			fmt.Printf("Filled cache with %d of %d keys.\n",
-				i, cacheSize)
+				i, numKeys)
 		}
 	}
 	return nil
