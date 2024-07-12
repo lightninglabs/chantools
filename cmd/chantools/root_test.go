@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -53,14 +52,12 @@ func newHarness(t *testing.T) *harness {
 
 	buf := &bytes.Buffer{}
 	logBackend := btclog.NewBackend(buf)
-	tempDir, err := ioutil.TempDir("", "chantools")
-	require.NoError(t, err)
 
 	h := &harness{
 		t:         t,
 		logBuffer: buf,
 		logger:    logBackend.Logger("CHAN"),
-		tempDir:   tempDir,
+		tempDir:   t.TempDir(),
 	}
 
 	h.logger.SetLevel(btclog.LevelTrace)
