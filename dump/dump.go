@@ -44,6 +44,15 @@ type BackupSingle struct {
 	LocalChanCfg     ChannelConfig
 	RemoteChanCfg    ChannelConfig
 	ShaChainRootDesc KeyDescriptor
+	CloseTxInputs    *CloseTxInputs
+}
+
+// CloseTxInputs is a struct that contains data needed to produce a force close
+// transaction from a channel backup as a last resort recovery method.
+type CloseTxInputs struct {
+	CommitTx     string
+	CommitSig    string
+	CommitHeight uint64
 }
 
 // OpenChannel is the information we want to dump from an open channel in lnd's
@@ -392,7 +401,25 @@ func BackupDump(multi *chanbackup.Multi,
 				params, single.ShaChainRootDesc,
 			),
 		}
+
+		if single.CloseTxInputs != nil {
+			var buf bytes.Buffer
+			err := single.CloseTxInputs.CommitTx.Serialize(&buf)
+			if err != nil {
+				buf.WriteString("error serializing commit " +
+					"tx: " + err.Error())
+			}
+
+			dumpSingles[idx].CloseTxInputs = &CloseTxInputs{
+				CommitTx: hex.EncodeToString(buf.Bytes()),
+				CommitSig: hex.EncodeToString(
+					single.CloseTxInputs.CommitSig,
+				),
+				CommitHeight: single.CloseTxInputs.CommitHeight,
+			}
+		}
 	}
+
 	return dumpSingles
 }
 
