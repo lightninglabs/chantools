@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/lightninglabs/chantools/btc"
@@ -88,5 +88,5 @@ func summarizeChannels(apiURL string,
 	fileName := fmt.Sprintf("results/summary-%s.json",
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
-	return ioutil.WriteFile(fileName, summaryBytes, 0644)
+	return os.WriteFile(fileName, summaryBytes, 0644)
 }

@@ -168,10 +168,10 @@ func (a *ExplorerAPI) Unspent(addr string) ([]*Vout, error) {
 	// Now filter those that are really unspent, because above we get all
 	// outputs that are sent to the address.
 	var unspent []*Vout
-	for idx, vout := range outputs {
+	for _, vout := range outputs {
 		url := fmt.Sprintf(
 			"%s/tx/%s/outspend/%d", a.BaseURL, vout.Outspend.Txid,
-			idx,
+			vout.Outspend.Vin,
 		)
 		outspend := Outspend{}
 		err := fetchJSON(url, &outspend)

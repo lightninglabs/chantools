@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -299,9 +299,9 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 
 func readInput(input string) ([]byte, error) {
 	if strings.TrimSpace(input) == "-" {
-		return ioutil.ReadAll(os.Stdin)
+		return io.ReadAll(os.Stdin)
 	}
-	return ioutil.ReadFile(input)
+	return os.ReadFile(input)
 }
 
 func setupLogging() {
