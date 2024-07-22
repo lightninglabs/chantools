@@ -20,9 +20,11 @@ import (
 )
 
 type forceCloseCommand struct {
-	APIURL    string
-	ChannelDB string
-	Publish   bool
+	APIURL        string
+	SingleChannel string
+	UpdateNum     int64
+	ChannelDB     string
+	Publish       bool
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -50,6 +52,11 @@ blocks) transaction *or* they have a watch tower looking out for them.
 		Example: `chantools forceclose \
 	--fromsummary results/summary-xxxx-yyyy.json
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
+	--publish
+
+chantools forceclose \
+	--singlechannel aabb00...:0 \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--publish`,
 		RunE: cc.Execute,
 	}
@@ -58,8 +65,21 @@ blocks) transaction *or* they have a watch tower looking out for them.
 			"be esplora compatible)",
 	)
 	cc.cmd.Flags().StringVar(
+		&cc.SingleChannel, "singlechannel", "", "force-close a "+
+			"single channel by providing the channel point "+
+			"instead of specifying any of the --fromchanneldb, "+
+			"--fromsummary --listchannels or --pendingchannels "+
+			"flags",
+	)
+	cc.cmd.Flags().StringVar(
 		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to use "+
 			"for force-closing channels",
+	)
+	cc.cmd.Flags().Int64Var(
+		&cc.UpdateNum, "updatenum", -1, "attempt to publish a "+
+			"specific commitment transaction at the given height, "+
+			"leave at -1 to publish the latest state available in "+
+			"the channel DB",
 	)
 	cc.cmd.Flags().BoolVar(
 		&cc.Publish, "publish", false, "publish force-closing TX to "+
@@ -87,19 +107,28 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 
-	// Parse channel entries from any of the possible input files.
-	entries, err := c.inputs.parseInputType()
-	if err != nil {
-		return err
+	// Parse channel entries from any of the possible input files, unless
+	// a single channel is specified.
+	var entries []*dataformat.SummaryEntry
+	if c.SingleChannel != "" {
+		entries = []*dataformat.SummaryEntry{{
+			ChannelPoint: c.SingleChannel,
+		}}
+	} else {
+		entries, err = c.inputs.parseInputType()
+		if err != nil {
+			return err
+		}
 	}
 	return forceCloseChannels(
 		c.APIURL, extendedKey, entries, db.ChannelStateDB(), c.Publish,
+		c.UpdateNum,
 	)
 }
 
 func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 	entries []*dataformat.SummaryEntry, chanDb *channeldb.ChannelStateDB,
-	publish bool) error {
+	publish bool, updateNum int64) error {
 
 	channels, err := chanDb.FetchAllChannels()
 	if err != nil {
@@ -134,6 +163,29 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 				"for channel %s", channelEntry.ChannelPoint)
 
 			continue
+		}
+
+		// Attempt to publish a specific height?
+		if updateNum != -1 {
+			_, commit, err := channel.FindPreviousState(
+				uint64(updateNum),
+			)
+			if err != nil {
+				return fmt.Errorf("unable to find commit at "+
+					"height %d: %w", updateNum, err)
+			}
+
+			if commit == nil {
+				return fmt.Errorf("commit at height %d not "+
+					"available in channel DB", updateNum)
+			}
+
+			if commit.CommitTx == nil {
+				return fmt.Errorf("commit at height %d has no "+
+					"commit TX", updateNum)
+			}
+
+			channel.LocalCommitment = *commit
 		}
 
 		// Create signed transaction.
