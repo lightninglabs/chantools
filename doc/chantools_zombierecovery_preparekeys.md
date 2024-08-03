@@ -27,6 +27,7 @@ chantools zombierecovery preparekeys \
 ```
       --bip39                read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
   -h, --help                 help for preparekeys
+      --hsm_secret string    the hex encoded HSM secret to use for deriving the multisig keys for a CLN node; obtain by running 'xxd -p -c32 ~/.lightning/bitcoin/hsm_secret'
       --match_file string    the match JSON file that was sent to both nodes by the match maker
       --num_keys uint32      the number of multisig keys to derive (default 2500)
       --payout_addr string   the address where this node's rescued funds should be sent to, must be a P2WPKH (native SegWit) or P2TR (Taproot) address
