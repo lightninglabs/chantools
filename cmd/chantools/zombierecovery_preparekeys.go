@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
@@ -50,7 +52,7 @@ correct ones for the matched channels.`,
 	cc.cmd.Flags().StringVar(
 		&cc.PayoutAddr, "payout_addr", "", "the address where this "+
 			"node's rescued funds should be sent to, must be a "+
-			"P2WPKH (native SegWit) address",
+			"P2WPKH (native SegWit) or P2TR (Taproot) address",
 	)
 	cc.cmd.Flags().Uint32Var(
 		&cc.NumKeys, "num_keys", numMultisigKeys, "the number of "+
@@ -70,9 +72,13 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 		return fmt.Errorf("error reading root key: %w", err)
 	}
 
-	_, err = lnd.GetP2WPKHScript(c.PayoutAddr, chainParams)
+	err = lnd.CheckAddress(
+		c.PayoutAddr, chainParams, false, "payout", lnd.AddrTypeP2WKH,
+		lnd.AddrTypeP2TR,
+	)
 	if err != nil {
-		return errors.New("invalid payout address, must be P2WPKH")
+		return errors.New("invalid payout address, must be P2WPKH or " +
+			"P2TR")
 	}
 
 	matchFileBytes, err := os.ReadFile(c.MatchFile)
@@ -81,9 +87,8 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 			c.MatchFile, err)
 	}
 
-	decoder := json.NewDecoder(bytes.NewReader(matchFileBytes))
-	match := &match{}
-	if err := decoder.Decode(&match); err != nil {
+	var match match
+	if err := json.Unmarshal(matchFileBytes, &match); err != nil {
 		return fmt.Errorf("error decoding match file %s: %w",
 			c.MatchFile, err)
 	}
@@ -113,6 +118,50 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 
 	default:
 		nodeInfo = match.Node2
+	}
+
+	// If there are any Simple Taproot channels, we need to generate some
+	// randomness and nonces from that randomness for each channel.
+	for idx := range match.Channels {
+		matchChannel := match.Channels[idx]
+		addr, err := lnd.ParseAddress(matchChannel.Address, chainParams)
+		if err != nil {
+			return fmt.Errorf("error parsing channel funding "+
+				"address '%s': %w", matchChannel.Address, err)
+		}
+
+		_, isP2TR := addr.(*btcutil.AddressTaproot)
+		if isP2TR {
+			chanPoint, err := wire.NewOutPointFromString(
+				matchChannel.ChanPoint,
+			)
+			if err != nil {
+				return fmt.Errorf("error parsing channel "+
+					"point %s: %w", matchChannel.ChanPoint,
+					err)
+			}
+
+			var randomness [32]byte
+			if _, err := rand.Read(randomness[:]); err != nil {
+				return err
+			}
+
+			nonces, err := lnd.GenerateMuSig2Nonces(
+				extendedKey, randomness, chanPoint, chainParams,
+				nil,
+			)
+			if err != nil {
+				return fmt.Errorf("error generating MuSig2 "+
+					"nonces: %w", err)
+			}
+
+			matchChannel.MuSig2NonceRandomness = hex.EncodeToString(
+				randomness[:],
+			)
+			matchChannel.MuSig2Nonces = hex.EncodeToString(
+				nonces.PubNonce[:],
+			)
+		}
 	}
 
 	// Derive all 2500 keys now, this might take a while.

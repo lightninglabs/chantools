@@ -25,7 +25,7 @@ var (
 )
 
 func TestMatchScript(t *testing.T) {
-	ok, _, err := matchScript(addr, key1, key2, &chaincfg.MainNetParams)
+	ok, _, _, err := matchScript(addr, key1, key2, &chaincfg.MainNetParams)
 	require.NoError(t, err)
 	require.True(t, ok)
 }

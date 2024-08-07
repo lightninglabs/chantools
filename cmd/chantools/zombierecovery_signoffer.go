@@ -151,6 +151,21 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 			return fmt.Errorf("could not find local multisig key: "+
 				"%w", err)
 		}
+
+		// If this is a Simple Taproot channel, we need to generate a
+		// partial MuSig2 signature instead.
+		if len(packet.Inputs[idx].MuSig2PartialSigs) > 0 {
+			err = muSig2PartialSign(
+				signer, localKeyDesc, packet, idx,
+			)
+			if err != nil {
+				return fmt.Errorf("error adding partial "+
+					"signature: %w", err)
+			}
+
+			continue
+		}
+
 		if len(packet.Inputs[idx].WitnessScript) == 0 {
 			return errors.New("invalid PSBT, missing witness " +
 				"script")

@@ -54,6 +54,7 @@ linters:
     - protogetter
     - depguard
     - mnd
+    - gomoddirectives
 
 issues:
   exclude-rules:
