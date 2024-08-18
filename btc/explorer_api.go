@@ -156,10 +156,31 @@ func (a *ExplorerAPI) Unspent(addr string) ([]*Vout, error) {
 	for _, tx := range txs {
 		for voutIdx, vout := range tx.Vout {
 			if vout.ScriptPubkeyAddr == addr {
-				vout.Outspend = &Outspend{
+				// We need to also make sure that the tx is not
+				// already spent before including it as unspent.
+				//
+				// NOTE: Somehow LND sometimes contructs
+				// channels with the same keyfamily base hence
+				// the same pubkey. Needs to be investigated on
+				// the LND side.
+				outSpend := &Outspend{
 					Txid: tx.TXID,
 					Vin:  voutIdx,
 				}
+				url := fmt.Sprintf(
+					"%s/tx/%s/outspend/%d", a.BaseURL,
+					tx.TXID, voutIdx,
+				)
+				err := fetchJSON(url, outSpend)
+				if err != nil {
+					return nil, err
+				}
+
+				if outSpend.Spent {
+					continue
+				}
+
+				vout.Outspend = outSpend
 				outputs = append(outputs, vout)
 			}
 		}
