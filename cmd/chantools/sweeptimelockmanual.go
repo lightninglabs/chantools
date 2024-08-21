@@ -534,15 +534,6 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 	}
 
 	// Now we try the same with the new revocation producer format.
-	multiSigPath = []uint32{
-		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
-		0, idx,
-	}
-	multiSigPrivKey, err = lnd.PrivKeyFromPath(baseKey, multiSigPath)
-	if err != nil {
-		return 0, nil, nil, nil, nil, err
-	}
-
 	revRoot3, err := lnd.ShaChainFromPath(
 		baseKey, revPath3, multiSigPrivKey.PubKey(),
 	)

@@ -13,6 +13,8 @@ import (
 
 var sweepTimeLockManualCases = []struct {
 	baseKey         string
+	rootKey         string
+	basePath        []uint32
 	keyIndex        uint32
 	timeLockAddr    string
 	remoteRevPubKey string
@@ -58,7 +60,7 @@ var sweepTimeLockManualCases = []struct {
 	// when already the old format was present, this leads to the situation
 	// where the idx for the shachain root (revocation root) is equal to
 	// the delay basepoint index. Normally when starting a node after
-	// lnd with the version v0.13.0-beta onwords, the index is always
+	// lnd with the version v0.13.0-beta onwards, the index is always
 	// +1 compared to the delay basepoint index.
 	baseKey: "tprv8e3Mee42NcUd2MbwxBCJyEEhvKa8KqjiDR76M7ym4DJSfZ" +
 		"kfDyA46XZeA4kTj8YKktWrjGBDThxxcL4HBF89jDKseu24XtugVMNsm3GhHwK",
@@ -67,6 +69,16 @@ var sweepTimeLockManualCases = []struct {
 		"rhetju2srseqrh",
 	remoteRevPubKey: "0341692a025ad552c62689a630ff24d9439e3752d8e0ac5cb4" +
 		"1b5e71ab2bd46d0f",
+}, {
+	// Anchor channel with lnd 0.18.x-beta.
+	rootKey: "tprv8ZgxMBicQKsPdRiEUwMA71fkU9XoiPakhuSAEGCfcpgZxraB" +
+		"eXKCfJSVo2SMAAEENrZU6x4V5gu5at6cpnasaf9oSrUh72zXaEdWDgSFVEf",
+	basePath: []uint32{lnd.HardenedKey(1017), lnd.HardenedKey(1)},
+	keyIndex: 3,
+	timeLockAddr: "bcrt1qqm2u8pyqjc8akatdyap5qsjh7z4fuytwaehsjndt93e50l0" +
+		"sup4qa2384v",
+	remoteRevPubKey: "028a2199d9c64f21b59c01a5d5429fbe78b8709f0270deaf91" +
+		"578f682b87a12796",
 }}
 
 func TestSweepTimeLockManual(t *testing.T) {
@@ -79,8 +91,17 @@ func TestSweepTimeLockManual(t *testing.T) {
 		)
 		require.NoError(t, err)
 
-		baseKey, err := hdkeychain.NewKeyFromString(tc.baseKey)
-		require.NoError(t, err)
+		var baseKey *hdkeychain.ExtendedKey
+		if tc.baseKey != "" {
+			baseKey, err = hdkeychain.NewKeyFromString(tc.baseKey)
+			require.NoError(t, err)
+		} else {
+			rootKey, err := hdkeychain.NewKeyFromString(tc.rootKey)
+			require.NoError(t, err)
+
+			baseKey, err = lnd.DeriveChildren(rootKey, tc.basePath)
+			require.NoError(t, err)
+		}
 
 		revPubKeyBytes, _ := hex.DecodeString(tc.remoteRevPubKey)
 		revPubKey, _ := btcec.ParsePubKey(revPubKeyBytes)
