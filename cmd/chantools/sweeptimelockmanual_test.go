@@ -18,6 +18,7 @@ var sweepTimeLockManualCases = []struct {
 	keyIndex        uint32
 	timeLockAddr    string
 	remoteRevPubKey string
+	params          *chaincfg.Params
 }{{
 	// New format with ECDH revocation root.
 	baseKey: "tprv8dgoXnQWBN4CGGceRYMW495kWcrUZKZVFwMmbzpduFp1D4pi" +
@@ -27,6 +28,7 @@ var sweepTimeLockManualCases = []struct {
 		"lx9xesmcl5qx",
 	remoteRevPubKey: "03235261ed5aaaf9fec0e91d5e1a4d17f1a2c7442f1c43806d" +
 		"32c9bd34abd002a3",
+	params: &chaincfg.RegressionNetParams,
 }, {
 	// Old format with plain private key as revocation root.
 	baseKey: "tprv8dgoXnQWBN4CGGceRYMW495kWcrUZKZVFwMmbzpduFp1D4pi" +
@@ -36,6 +38,7 @@ var sweepTimeLockManualCases = []struct {
 		"hs8xlsfdc3zf",
 	remoteRevPubKey: "03e82cdf164ce5aba253890e066129f134ca8d7e072ce5ad55" +
 		"c721b9a13545ee04",
+	params: &chaincfg.RegressionNetParams,
 }, {
 	// New format with ECDH revocation root.
 	baseKey: "tprv8fCiPGhoYhWESQg3kgubCizcHo21drnP9Fa5j9fFKCmbME" +
@@ -45,6 +48,7 @@ var sweepTimeLockManualCases = []struct {
 		"3rlw45qzmjqrr",
 	remoteRevPubKey: "02dfecdc259a7e1cff36a67328ded3b4dae30369a3035e4f91" +
 		"1ce7ac4a80b28e5d",
+	params: &chaincfg.RegressionNetParams,
 }, {
 	// Old format with plain private key as revocation root. Test data
 	// created with lnd v0.12.0-beta (old shachain root creation)
@@ -55,6 +59,7 @@ var sweepTimeLockManualCases = []struct {
 		"dst0wsk0xags",
 	remoteRevPubKey: "03647afa9c04025e997a5b7ecd2dd949f8f60f6880a94af73a" +
 		"0d4f48f166d127d1",
+	params: &chaincfg.RegressionNetParams,
 }, {
 	// New format with ECDH revocation root but this test data was created
 	// when already the old format was present, this leads to the situation
@@ -69,6 +74,7 @@ var sweepTimeLockManualCases = []struct {
 		"rhetju2srseqrh",
 	remoteRevPubKey: "0341692a025ad552c62689a630ff24d9439e3752d8e0ac5cb4" +
 		"1b5e71ab2bd46d0f",
+	params: &chaincfg.RegressionNetParams,
 }, {
 	// Anchor channel with lnd 0.18.x-beta.
 	rootKey: "tprv8ZgxMBicQKsPdRiEUwMA71fkU9XoiPakhuSAEGCfcpgZxraB" +
@@ -79,6 +85,7 @@ var sweepTimeLockManualCases = []struct {
 		"sup4qa2384v",
 	remoteRevPubKey: "028a2199d9c64f21b59c01a5d5429fbe78b8709f0270deaf91" +
 		"578f682b87a12796",
+	params: &chaincfg.RegressionNetParams,
 }}
 
 func TestSweepTimeLockManual(t *testing.T) {
@@ -87,7 +94,7 @@ func TestSweepTimeLockManual(t *testing.T) {
 		// brute force the script with the information we have. If not,
 		// we can't continue anyway.
 		lockScript, err := lnd.GetP2WSHScript(
-			tc.timeLockAddr, &chaincfg.RegressionNetParams,
+			tc.timeLockAddr, tc.params,
 		)
 		require.NoError(t, err)
 
@@ -108,7 +115,7 @@ func TestSweepTimeLockManual(t *testing.T) {
 
 		_, _, _, _, _, err = tryKey(
 			baseKey, revPubKey, 0, defaultCsvLimit, lockScript,
-			tc.keyIndex, 500,
+			tc.keyIndex, 1000,
 		)
 		require.NoError(t, err)
 	}
