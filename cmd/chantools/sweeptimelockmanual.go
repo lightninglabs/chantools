@@ -22,7 +22,7 @@ import (
 const (
 	keyBasePath = "m/1017'/%d'"
 	maxKeys     = 500
-	maxPoints   = 500
+	maxPoints   = 1000
 )
 
 type sweepTimeLockManualCommand struct {
@@ -263,7 +263,7 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	// brute force the script with the information we have. If not, we can't
 	// continue anyway.
 	lockScript, err := lnd.PrepareWalletAddress(
-		sweepAddr, chainParams, nil, extendedKey, "time lock",
+		timeLockAddr, chainParams, nil, extendedKey, "time lock",
 	)
 	if err != nil {
 		return err
