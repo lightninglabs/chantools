@@ -270,7 +270,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		return fmt.Errorf("error parsing our keys: %w", err)
 	}
 
-	err = matchKeys(keys1.Channels, ourPubKeys, theirPubKeys, chainParams)
+	err = matchKeys(ourChannels, ourPubKeys, theirPubKeys, chainParams)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		channel.vout = op.Index
 
 		ourPart, theirPart, err := askAboutChannel(
-			channel, idx+1, len(keys1.Channels), ourPayoutAddr,
+			channel, idx+1, len(ourChannels), ourPayoutAddr,
 			theirPayoutAddr,
 		)
 		if err != nil {
