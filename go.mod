@@ -3,13 +3,13 @@ module github.com/lightninglabs/chantools
 go 1.22.3
 
 require (
-	github.com/btcsuite/btcd v0.24.2-beta.rc1.0.20240403021926-ae5533602c46
+	github.com/btcsuite/btcd v0.24.2-beta.rc1.0.20240625142744-cc26860b4026
 	github.com/btcsuite/btcd/btcec/v2 v2.3.3
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btcd/btcutil/psbt v1.1.8
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f
-	github.com/btcsuite/btcwallet v0.16.10-0.20240410030101-6fe19a472a62
+	github.com/btcsuite/btcwallet v0.16.10-0.20240718224643-db3a4a2543bd
 	github.com/btcsuite/btcwallet/wallet/txrules v1.2.1 // indirect
 	github.com/btcsuite/btcwallet/walletdb v1.4.2
 	github.com/coreos/bbolt v1.3.3
@@ -22,9 +22,9 @@ require (
 	// The current version of lnd we are compatible with, mostly affects the
 	// commands that touch the channel DB and has an impact on the DB schema.
 	// NOTE: When updating this version, make sure to also update the string in
-	// cmd/chantools/root.go.
-	github.com/lightningnetwork/lnd v0.18.0-beta.1
-	github.com/lightningnetwork/lnd/kvdb v1.4.8
+	// cmd/chantools/root.go and run "make docs".
+	github.com/lightningnetwork/lnd v0.18.3-beta
+	github.com/lightningnetwork/lnd/kvdb v1.4.10
 	github.com/lightningnetwork/lnd/queue v1.1.1
 	github.com/lightningnetwork/lnd/ticker v1.1.1
 	github.com/lightningnetwork/lnd/tor v1.1.3
@@ -97,6 +97,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgtype v1.14.0 // indirect
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
+	github.com/jackc/pgx/v5 v5.3.1 // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/jrick/logrotate v1.0.0 // indirect
@@ -112,11 +113,11 @@ require (
 	github.com/lightninglabs/neutrino v0.16.1-0.20240425105051-602843d34ffd // indirect
 	github.com/lightninglabs/neutrino/cache v1.1.2 // indirect
 	github.com/lightninglabs/pool/auctioneerrpc v1.1.2 // indirect
-	github.com/lightningnetwork/lightning-onion v1.2.1-0.20230823005744-06182b1d7d2f // indirect
+	github.com/lightningnetwork/lightning-onion v1.2.1-0.20240712235311-98bd56499dfb // indirect
 	github.com/lightningnetwork/lnd/clock v1.1.1 // indirect
-	github.com/lightningnetwork/lnd/fn v1.0.8 // indirect
-	github.com/lightningnetwork/lnd/healthcheck v1.2.4 // indirect
-	github.com/lightningnetwork/lnd/sqldb v1.0.2 // indirect
+	github.com/lightningnetwork/lnd/fn v1.2.1 // indirect
+	github.com/lightningnetwork/lnd/healthcheck v1.2.5 // indirect
+	github.com/lightningnetwork/lnd/sqldb v1.0.4 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.2.6 // indirect
 	github.com/ltcsuite/ltcd v0.0.0-20191228044241-92166e412499 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -177,8 +178,8 @@ require (
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/mod v0.16.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/net v0.24.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
@@ -200,7 +201,7 @@ require (
 	modernc.org/libc v1.49.3 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.8.0 // indirect
-	modernc.org/sqlite v1.29.8 // indirect
+	modernc.org/sqlite v1.29.10 // indirect
 	modernc.org/strutil v1.2.0 // indirect
 	modernc.org/token v1.1.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect

@@ -15,6 +15,7 @@ import (
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lntypes"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwire"
 )
@@ -116,7 +117,10 @@ type ClosedChannel struct {
 // configuration. See `channeldb.ChannelConfig` for more information about the
 // fields.
 type ChannelConfig struct {
-	channeldb.ChannelConstraints
+	channeldb.ChannelStateBounds
+
+	channeldb.CommitmentParams
+
 	MultiSigKey         KeyDescriptor
 	RevocationBasePoint KeyDescriptor
 	PaymentBasePoint    KeyDescriptor
@@ -238,8 +242,15 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 	theirChanCfg := &channel.RemoteChanCfg
 	leaseExpiry := channel.ThawHeight
 
+	var whoseCommit lntypes.ChannelParty
+	if ourCommit {
+		whoseCommit = lntypes.Local
+	} else {
+		whoseCommit = lntypes.Remote
+	}
+
 	keyRing := lnwallet.DeriveCommitmentKeys(
-		commitPoint, ourCommit, chanType, ourChanCfg, theirChanCfg,
+		commitPoint, whoseCommit, chanType, ourChanCfg, theirChanCfg,
 	)
 
 	// First, we create the script for the delayed "pay-to-self" output.
@@ -400,7 +411,8 @@ func ToChannelConfig(params *chaincfg.Params,
 	cfg channeldb.ChannelConfig) ChannelConfig {
 
 	return ChannelConfig{
-		ChannelConstraints: cfg.ChannelConstraints,
+		ChannelStateBounds: cfg.ChannelStateBounds,
+		CommitmentParams:   cfg.CommitmentParams,
 		MultiSigKey:        ToKeyDescriptor(params, cfg.MultiSigKey),
 		RevocationBasePoint: ToKeyDescriptor(
 			params, cfg.RevocationBasePoint,

@@ -347,13 +347,15 @@ func newSingle(fundingOutPoint wire.OutPoint, shortChanID lnwire.ShortChannelID,
 
 func fakeChanCfg(nodePubkey *btcec.PublicKey) channeldb.ChannelConfig {
 	return channeldb.ChannelConfig{
-		ChannelConstraints: channeldb.ChannelConstraints{
-			DustLimit:        500,
+		ChannelStateBounds: channeldb.ChannelStateBounds{
 			ChanReserve:      5000,
 			MaxPendingAmount: 1,
 			MinHTLC:          1,
 			MaxAcceptedHtlcs: 200,
-			CsvDelay:         144,
+		},
+		CommitmentParams: channeldb.CommitmentParams{
+			DustLimit: 500,
+			CsvDelay:  144,
 		},
 		MultiSigKey: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
