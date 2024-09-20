@@ -56,7 +56,7 @@ chantools sweeptimelockmanual \
       --listchannels string         channel input is in the format of lncli's listchannels format; specify '-' to read from stdin
       --maxcsvlimit uint16          maximum CSV limit to use (default 2016)
       --maxnumchanstotal uint16     maximum number of keys to try, set to maximum number of channels the local node potentially has or had (default 500)
-      --maxnumchanupdates uint      maximum number of channel updates to try, set to maximum number of times the channel was used (default 500)
+      --maxnumchanupdates uint      maximum number of channel updates to try, set to maximum number of times the channel was used (default 1000)
       --pendingchannels string      channel input is in the format of lncli's pendingchannels format; specify '-' to read from stdin
       --publish                     publish sweep TX to the chain API instead of just printing the TX
       --remoterevbasepoint string   remote node's revocation base point, can be found in a channel.backup file

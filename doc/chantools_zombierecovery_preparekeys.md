@@ -29,7 +29,7 @@ chantools zombierecovery preparekeys \
   -h, --help                 help for preparekeys
       --match_file string    the match JSON file that was sent to both nodes by the match maker
       --num_keys uint32      the number of multisig keys to derive (default 2500)
-      --payout_addr string   the address where this node's rescued funds should be sent to, must be a P2WPKH (native SegWit) address
+      --payout_addr string   the address where this node's rescued funds should be sent to, must be a P2WPKH (native SegWit) or P2TR (Taproot) address
       --rootkey string       BIP32 HD root key of the wallet to use for deriving the multisig keys; leave empty to prompt for lnd 24 word aezeed
       --walletdb string      read the seed/master root key to use fro deriving the multisig keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
