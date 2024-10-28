@@ -33,7 +33,7 @@ chantools forceclose \
 ### Options
 
 ```
-      --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channeldb string         lnd channel.db file to use for force-closing channels
       --fromchanneldb string     channel input is in the format of an lnd channel.db file

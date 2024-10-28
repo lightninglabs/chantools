@@ -39,7 +39,7 @@ chantools rescuefunding \
 ### Options
 
 ```
-      --apiurl string                  API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string                  API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                          read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channeldb string               lnd channel.db file to rescue a channel from; must contain the pending channel specified with --channelpoint
       --confirmedchannelpoint string   channel outpoint that got confirmed on chain (<txid>:<txindex>); normally this is the same as the --dbchannelpoint so it will be set to that value ifthis is left empty

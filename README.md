@@ -30,7 +30,7 @@ Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.12.2/chantools-linux-amd64-v0.12.2.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.13.4/chantools-linux-amd64-v0.13.4.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```
@@ -236,7 +236,7 @@ compacting the DB).
 
 6. **chantools summary**: First, `chantools` needs to find out the state of each
    channel on chain. For this, a blockchain API (by
-   default [blockstream.info](https://blockstream.info))
+   default [node-recovery.com](https://api.node-recovery.com))
    is queried. The result will be written to a file called
    `./results/summary-yyyy-mm-dd.json`. This result file will be needed for the
    next command.

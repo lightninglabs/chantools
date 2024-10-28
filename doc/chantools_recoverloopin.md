@@ -21,7 +21,7 @@ chantools recoverloopin \
 ### Options
 
 ```
-      --apiurl string         API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string         API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                 read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --feerate uint32        fee rate to use for the sweep transaction in sat/vByte
   -h, --help                  help for recoverloopin
