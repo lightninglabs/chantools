@@ -24,14 +24,14 @@ import (
 )
 
 const (
-	defaultAPIURL        = "https://blockstream.info/api"
+	defaultAPIURL        = "https://api.node-recovery.com"
 	defaultTestnetAPIURL = "https://blockstream.info/testnet/api"
 	defaultRegtestAPIURL = "http://localhost:3004"
 
 	// version is the current version of the tool. It is set during build.
 	// NOTE: When changing this, please also update the version in the
 	// download link shown in the README.
-	version = "0.13.3"
+	version = "0.13.4"
 	na      = "n/a"
 
 	// lndVersion is the current version of lnd that we support. This is

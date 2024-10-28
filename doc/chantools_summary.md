@@ -22,7 +22,7 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db
 ### Options
 
 ```
-      --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --fromchanneldb string     channel input is in the format of an lnd channel.db file
       --fromsummary string       channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                     help for summary

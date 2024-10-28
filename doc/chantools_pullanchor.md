@@ -26,7 +26,7 @@ chantools pullanchor \
 
 ```
       --anchoraddr stringArray   the address of the anchor output (p2wsh or p2tr output with 330 satoshis) that should be pulled; can be specified multiple times per command to pull multiple anchors with a single transaction
-      --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --changeaddr string        the change address to send the remaining funds back to; specify 'fromseed' to derive a new address from the seed automatically
       --feerate uint32           fee rate to use for the sweep transaction in sat/vByte (default 30)

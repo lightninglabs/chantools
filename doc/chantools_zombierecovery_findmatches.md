@@ -28,7 +28,7 @@ chantools zombierecovery findmatches \
 ```
       --ambossdelay duration   the delay between each query to the Amboss GraphQL API (default 4s)
       --ambosskey string       the API key for the Amboss GraphQL API
-      --apiurl string          API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string          API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
   -h, --help                   help for findmatches
       --registrations string   the raw data.txt where the registrations are stored in
 ```

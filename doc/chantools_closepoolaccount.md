@@ -29,7 +29,7 @@ chantools closepoolaccount \
 ### Options
 
 ```
-      --apiurl string            API URL to use (must be esplora compatible) (default "https://blockstream.info/api")
+      --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --auctioneerkey string     the auctioneer's static public key (default "028e87bdd134238f8347f845d9ecc827b843d0d1e27cdcb46da704d916613f4fce")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --feerate uint32           fee rate to use for the sweep transaction in sat/vByte (default 30)
