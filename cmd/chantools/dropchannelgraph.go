@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -60,8 +61,8 @@ chantools dropchannelgraph \
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
-		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to drop "+
-			"channels from",
+		&cc.ChannelDB, "channeldb", "", "lnd's channel database file "+
+			"to drop channels from",
 	)
 	cc.cmd.Flags().Uint64Var(
 		&cc.SingleChannel, "single_channel", 0, "the single channel "+
@@ -81,11 +82,16 @@ chantools dropchannelgraph \
 }
 
 func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return errors.New("channel DB is required")
+	dbConfig := GetDBConfig()
+	var opts []lnd.DBOption
+
+	// In case the channel DB is specified, we get the graph dir from it.
+	if c.ChannelDB != "" {
+		graphDir := filepath.Dir(c.ChannelDB)
+		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+
+	db, err := lnd.OpenChannelDB(dbConfig, false, chainParams.Name, opts...)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
