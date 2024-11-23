@@ -37,6 +37,7 @@ type walletInfoCommand struct {
 	WalletDB    string
 	WithRootKey bool
 	DumpAddrs   bool
+	dbConfig    *lnd.DB
 
 	cmd *cobra.Command
 }
@@ -78,13 +79,15 @@ or simply press <enter> without entering a password when being prompted.`,
 }
 
 func (c *walletInfoCommand) Execute(_ *cobra.Command, _ []string) error {
-	// Check that we have a wallet DB.
-	if c.WalletDB == "" {
-		return errors.New("wallet DB is required")
+	var cfg lnd.DB
+	if c.dbConfig == nil {
+		cfg = GetDBConfig()
+	} else {
+		cfg = *c.dbConfig
 	}
 
 	w, privateWalletPw, cleanup, err := lnd.OpenWallet(
-		c.WalletDB, chainParams,
+		cfg, c.WalletDB, chainParams,
 	)
 	if err != nil {
 		return fmt.Errorf("error opening wallet file '%s': %w",

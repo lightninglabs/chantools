@@ -44,6 +44,9 @@ DOCKER_TOOLS = docker run \
 
 TEST_FLAGS = -test.timeout=20m
 
+DEV_TAGS =  kvdb_postgres kvdb_sqlite
+
+
 UNIT := $(GOLIST) | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
 LDFLAGS := -X main.Commit=$(shell git describe --tags)
 RELEASE_LDFLAGS := -s -w -buildid= $(LDFLAGS)
@@ -70,7 +73,7 @@ build:
 
 install:
 	@$(call print, "Installing chantools.")
-	$(GOINSTALL) -ldflags "$(LDFLAGS)" ./...
+	$(GOINSTALL) -tags="$(DEV_TAGS)" -ldflags "$(LDFLAGS)" ./...
 
 release:
 	@$(call print, "Creating release of chantools.")

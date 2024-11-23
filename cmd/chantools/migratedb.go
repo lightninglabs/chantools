@@ -1,8 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
@@ -40,13 +40,19 @@ run lnd ` + lndVersion + ` or later after using this command!'`,
 }
 
 func (c *migrateDBCommand) Execute(_ *cobra.Command, _ []string) error {
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return errors.New("channel DB is required")
+	var opts []lnd.DBOption
+
+	// In case the channel DB is specified, we get the graph dir from it.
+	if c.ChannelDB != "" {
+		graphDir := filepath.Dir(c.ChannelDB)
+		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+
+	dbConfig := GetDBConfig()
+
+	db, err := lnd.OpenChannelDB(dbConfig, false, chainParams.Name, opts...)
 	if err != nil {
-		return fmt.Errorf("error opening DB: %w", err)
+		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
 
 	return db.Close()

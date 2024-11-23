@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/lightninglabs/chantools/dump"
@@ -17,7 +18,8 @@ type dumpChannelsCommand struct {
 	Pending      bool
 	WaitingClose bool
 
-	cmd *cobra.Command
+	cmd      *cobra.Command
+	dbConfig *lnd.DB
 }
 
 func newDumpChannelsCommand() *cobra.Command {
@@ -53,11 +55,21 @@ given lnd channel.db gile in a human readable format.`,
 }
 
 func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return errors.New("channel DB is required")
+	var opts []lnd.DBOption
+
+	// In case the channel DB is specified, we get the graph dir from it.
+	if c.ChannelDB != "" {
+		graphDir := filepath.Dir(c.ChannelDB)
+		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
+	var dbConfig lnd.DB
+	if c.dbConfig == nil {
+		dbConfig = GetDBConfig()
+	} else {
+		dbConfig = *c.dbConfig
+	}
+
+	db, err := lnd.OpenChannelDB(dbConfig, true, chainParams.Name, opts...)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}

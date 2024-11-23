@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -122,30 +123,13 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %w", err)
 	}
 
+	cmdErr := errors.New("you either need to specify --channeldb and " +
+		"--fromsummary or --force_close_addr and " +
+		"--commit_point but not a mixture of them")
+
 	// What way of recovery has the user chosen? From summary and DB or from
 	// address and commit point?
 	switch {
-	case c.ChannelDB != "":
-		db, err := lnd.OpenDB(c.ChannelDB, true)
-		if err != nil {
-			return fmt.Errorf("error opening rescue DB: %w", err)
-		}
-
-		// Parse channel entries from any of the possible input files.
-		entries, err := c.inputs.parseInputType()
-		if err != nil {
-			return err
-		}
-
-		commitPoints, err := commitPointsFromDB(db.ChannelStateDB())
-		if err != nil {
-			return fmt.Errorf("error reading commit points from "+
-				"db: %w", err)
-		}
-		return rescueClosedChannels(
-			c.NumKeys, extendedKey, entries, commitPoints,
-		)
-
 	case c.Addr != "":
 		// First parse address to get targetPubKeyHash from it later.
 		targetAddr, err := btcutil.DecodeAddress(c.Addr, chainParams)
@@ -185,9 +169,39 @@ func (c *rescueClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		)
 
 	default:
-		return errors.New("you either need to specify --channeldb and " +
-			"--fromsummary or --force_close_addr and " +
-			"--commit_point but not a mixture of them")
+		var opts []lnd.DBOption
+
+		// In case the channel DB is specified, we get the graph dir
+		// from it.
+		if c.ChannelDB != "" {
+			graphDir := filepath.Dir(c.ChannelDB)
+			opts = append(opts, lnd.WithCustomGraphDir(graphDir))
+		}
+
+		dbConfig := GetDBConfig()
+
+		db, err := lnd.OpenChannelDB(
+			dbConfig, false, chainParams.Name, opts...,
+		)
+		if err != nil {
+			return fmt.Errorf("error opening rescue DB: %w, %w",
+				err, cmdErr)
+		}
+
+		// Parse channel entries from any of the possible input files.
+		entries, err := c.inputs.parseInputType()
+		if err != nil {
+			return err
+		}
+
+		commitPoints, err := commitPointsFromDB(db.ChannelStateDB())
+		if err != nil {
+			return fmt.Errorf("error reading commit points from "+
+				"db: %w", err)
+		}
+		return rescueClosedChannels(
+			c.NumKeys, extendedKey, entries, commitPoints,
+		)
 	}
 }
 

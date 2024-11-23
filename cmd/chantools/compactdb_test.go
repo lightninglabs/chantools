@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +31,10 @@ func TestCompactDBAndDumpChannels(t *testing.T) {
 	// the logged dump.
 	dump := &dumpChannelsCommand{
 		ChannelDB: compact.SourceDB,
+		dbConfig: &lnd.DB{
+			Backend: "bolt",
+			Bolt:    &lnd.Bolt{},
+		},
 	}
 	h.clearLog()
 	err = dump.Execute(nil, nil)
@@ -38,6 +43,12 @@ func TestCompactDBAndDumpChannels(t *testing.T) {
 
 	h.clearLog()
 	dump.ChannelDB = compact.DestDB
+	dump.dbConfig = &lnd.DB{
+		Backend: "bolt",
+		Bolt: &lnd.Bolt{
+			Name: "compacted.db",
+		},
+	}
 	err = dump.Execute(nil, nil)
 	require.NoError(t, err)
 	destDump := h.getLog()

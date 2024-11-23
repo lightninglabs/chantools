@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
@@ -151,18 +152,28 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	// Check that we have a channel DB or manual keys.
 	switch {
-	case (c.ChannelDB == "" || c.DBChannelPoint == "") &&
-		c.RemotePubKey == "":
+	case c.DBChannelPoint == "" && c.RemotePubKey == "":
+		return errors.New("need to specify either channel point or " +
+			"both local and remote pubkey")
 
-		return errors.New("need to specify either channel DB and " +
-			"channel point or both local and remote pubkey")
+	case c.DBChannelPoint != "":
+		var opts []lnd.DBOption
 
-	case c.ChannelDB != "" && c.DBChannelPoint != "":
-		db, err := lnd.OpenDB(c.ChannelDB, true)
+		// In case the channel DB is specified, we get the graph dir
+		// from it.
+		if c.ChannelDB != "" {
+			graphDir := filepath.Dir(c.ChannelDB)
+			opts = append(opts, lnd.WithCustomGraphDir(graphDir))
+		}
+
+		dbConfig := GetDBConfig()
+
+		db, err := lnd.OpenChannelDB(
+			dbConfig, false, chainParams.Name, opts...,
+		)
 		if err != nil {
 			return fmt.Errorf("error opening rescue DB: %w", err)
 		}
-
 		// Parse channel point of channel to rescue as known to the DB.
 		databaseOp, err = lnd.ParseOutpoint(c.DBChannelPoint)
 		if err != nil {

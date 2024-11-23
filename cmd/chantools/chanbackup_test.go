@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,6 +20,12 @@ func TestChanBackupAndDumpBackup(t *testing.T) {
 		ChannelDB: h.testdataFile("channel.db"),
 		MultiFile: h.tempFile("extracted.backup"),
 		rootKey:   &rootKey{RootKey: rootKeyAezeed},
+		dbConfig: &lnd.DB{
+			Backend: "bolt",
+			Bolt: &lnd.Bolt{
+				DataDir: h.tempDir,
+			},
+		},
 	}
 
 	err := makeBackup.Execute(nil, nil)

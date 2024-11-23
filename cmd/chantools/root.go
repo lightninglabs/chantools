@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btclog"
@@ -19,7 +21,10 @@ import (
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/kvdb/postgres"
+	"github.com/lightningnetwork/lnd/kvdb/sqlite"
 	"github.com/lightningnetwork/lnd/peer"
+	"github.com/ory/viper"
 	"github.com/spf13/cobra"
 )
 
@@ -50,6 +55,9 @@ var (
 	logWriter   = build.NewRotatingLogWriter()
 	log         = build.NewSubLogger("CHAN", genSubLogger(logWriter))
 	chainParams = &chaincfg.MainNetParams
+
+	// defaultDataDir is the default data directory for lnd.
+	defaultDataDir = filepath.Join(btcutil.AppDataDir("lnd", false), "data")
 )
 
 var rootCmd = &cobra.Command{
@@ -96,6 +104,48 @@ func main() {
 		&Signet, "signet", "s", false, "Indicates if the public "+
 			"signet parameters should be used",
 	)
+	rootCmd.PersistentFlags().String("db.backend", "bolt", "The selected "+
+		"database backend (bolt/etcd/postgres/sqlite)",
+	)
+
+	// Bolt settings
+	rootCmd.PersistentFlags().Duration("db.bolt.dbtimeout", 10*time.Second,
+		"Specify the timeout value used when opening the database",
+	)
+	rootCmd.PersistentFlags().String("db.bolt.data-dir", defaultDataDir,
+		"Lnd data dir where bolt dbs are located",
+	)
+	rootCmd.PersistentFlags().String("db.bolt.tower-dir", defaultDataDir,
+		"Lnd watchtower dir where bolt dbs are located",
+	)
+	rootCmd.PersistentFlags().String("db.bolt.name", "", "Name of the bolt"+
+		"db to use",
+	)
+
+	// Sqlite settings
+	rootCmd.PersistentFlags().String("db.sqlite.data-dir", defaultDataDir,
+		"Lnd data dir where sqlite dbs are located",
+	)
+	rootCmd.PersistentFlags().String("db.sqlite.tower-dir", defaultDataDir,
+		"Lnd watchtower dir where sqlite dbs are located",
+	)
+	rootCmd.PersistentFlags().Duration("db.sqlite.timeout", 10*time.Second,
+		"Specify the timeout value used when opening the database",
+	)
+
+	// Postgres settings
+	rootCmd.PersistentFlags().String("db.postgres.dsn", "", "Postgres "+
+		"connection string",
+	)
+	rootCmd.PersistentFlags().Duration("db.postgres.timeout",
+		10*time.Second, "Specify the timeout value used when opening"+
+			"the database",
+	)
+
+	// Bind flags to viper
+	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
+		log.Errorf("error binding flags: %v", err)
+	}
 
 	rootCmd.AddCommand(
 		newChanBackupCommand(),
@@ -189,8 +239,9 @@ func (r *rootKey) readWithBirthday() (*hdkeychain.ExtendedKey, time.Time,
 		return extendedKey, time.Unix(0, 0), err
 
 	case r.WalletDB != "":
+		cfg := GetDBConfig()
 		wallet, pw, cleanup, err := lnd.OpenWallet(
-			r.WalletDB, chainParams,
+			cfg, r.WalletDB, chainParams,
 		)
 		if err != nil {
 			return nil, time.Unix(0, 0), fmt.Errorf("error "+
@@ -275,9 +326,22 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 		target = &dataformat.SummaryEntryFile{}
 
 	case f.FromChannelDB != "":
-		db, err := lnd.OpenDB(f.FromChannelDB, true)
+		var opts []lnd.DBOption
+
+		// In case the channel DB is specified, we get the graph dir
+		// from it.
+		if f.FromChannelDB != "" {
+			graphDir := filepath.Dir(f.FromChannelDB)
+			opts = append(opts, lnd.WithCustomGraphDir(graphDir))
+		}
+
+		dbConfig := GetDBConfig()
+
+		db, err := lnd.OpenChannelDB(
+			dbConfig, true, chainParams.Name, opts...,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("error opening channel DB: %w",
+			return nil, fmt.Errorf("error opening rescue DB: %w",
 				err)
 		}
 		target = &dataformat.ChannelDBFile{DB: db.ChannelStateDB()}
@@ -364,4 +428,30 @@ func newExplorerAPI(apiURL string) *btc.ExplorerAPI {
 
 	// Otherwise use the provided URL.
 	return &btc.ExplorerAPI{BaseURL: apiURL}
+}
+
+// GetDBConfig returns the database configuration from viper/cobra flags.
+func GetDBConfig() lnd.DB {
+	return lnd.DB{
+		Backend: viper.GetString("db.backend"),
+		Bolt: &lnd.Bolt{
+			DBTimeout: viper.GetDuration("db.bolt.dbtimeout"),
+			DataDir:   viper.GetString("db.bolt.data-dir"),
+			TowerDir:  viper.GetString("db.bolt.tower-dir"),
+			Name:      viper.GetString("db.bolt.name"),
+		},
+		Sqlite: &lnd.Sqlite{
+			DataDir:  viper.GetString("db.sqlite.data-dir"),
+			TowerDir: viper.GetString("db.sqlite.tower-dir"),
+			Config: &sqlite.Config{
+				MaxConnections: viper.GetInt("db.sqlite.timeout"),
+			},
+		},
+		Postgres: &postgres.Config{
+			Dsn:            viper.GetString("db.postgres.dsn"),
+			MaxConnections: viper.GetInt("db.postgres.max-connections"),
+			Timeout:        viper.GetDuration("db.postgres.timeout"),
+		},
+		// Add Etcd config if needed
+	}
 }

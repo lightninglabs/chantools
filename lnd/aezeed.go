@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -182,7 +183,7 @@ func PasswordFromConsole(userQuery string) ([]byte, error) {
 
 // OpenWallet opens a lnd compatible wallet and returns it, along with the
 // private wallet password.
-func OpenWallet(walletDbPath string,
+func OpenWallet(cfg DB, walletDbPath string,
 	chainParams *chaincfg.Params) (*wallet.Wallet, []byte, func() error,
 	error) {
 
@@ -223,11 +224,16 @@ func OpenWallet(walletDbPath string,
 		privateWalletPw = pw
 	}
 
+	var opts []DBOption
+
+	if walletDbPath != "" {
+		walletDir := filepath.Dir(walletDbPath)
+		fmt.Printf("Using wallet directory: %s\n", walletDir)
+		opts = append(opts, WithCustomWalletDir(walletDir))
+	}
+
 	// Try to load and open the wallet.
-	db, err := walletdb.Open(
-		"bdb", lncfg.CleanAndExpandPath(walletDbPath), false,
-		DefaultOpenTimeout,
-	)
+	db, err := openWalletDB(cfg, chainParams.Name, opts...)
 	if errors.Is(err, bbolt.ErrTimeout) {
 		return nil, nil, nil, errors.New("error opening wallet " +
 			"database, make sure lnd is not running and holding " +
@@ -263,6 +269,12 @@ func OpenWallet(walletDbPath string,
 	}
 
 	return w, privateWalletPw, cleanup, nil
+}
+
+func openWalletDB(cfg DB, network string,
+	opts ...DBOption) (walletdb.DB, error) {
+
+	return openDB(cfg, lncfg.NSWalletDB, network, opts...)
 }
 
 // DecryptWalletRootKey decrypts a lnd compatible wallet's root key.

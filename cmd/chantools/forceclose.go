@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -78,11 +78,17 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %w", err)
 	}
 
-	// Check that we have a channel DB.
-	if c.ChannelDB == "" {
-		return errors.New("rescue DB is required")
+	var opts []lnd.DBOption
+
+	// In case the channel DB is specified, we get the graph dir from it.
+	if c.ChannelDB != "" {
+		graphDir := filepath.Dir(c.ChannelDB)
+		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
+
+	dbConfig := GetDBConfig()
+
+	db, err := lnd.OpenChannelDB(dbConfig, false, chainParams.Name, opts...)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
