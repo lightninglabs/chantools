@@ -18,7 +18,8 @@ type dumpChannelsCommand struct {
 	Pending      bool
 	WaitingClose bool
 
-	cmd *cobra.Command
+	cmd      *cobra.Command
+	dbConfig *lnd.DB
 }
 
 func newDumpChannelsCommand() *cobra.Command {
@@ -61,10 +62,14 @@ func (c *dumpChannelsCommand) Execute(_ *cobra.Command, _ []string) error {
 		graphDir := filepath.Dir(c.ChannelDB)
 		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
+	var dbConfig lnd.DB
+	if c.dbConfig == nil {
+		dbConfig = GetDBConfig()
+	} else {
+		dbConfig = *c.dbConfig
+	}
 
-	dbConfig := GetDBConfig()
-
-	db, err := lnd.OpenChannelDB(dbConfig, false, chainParams.Name, opts...)
+	db, err := lnd.OpenChannelDB(dbConfig, true, chainParams.Name, opts...)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}

@@ -14,8 +14,9 @@ type chanBackupCommand struct {
 	ChannelDB string
 	MultiFile string
 
-	rootKey *rootKey
-	cmd     *cobra.Command
+	rootKey  *rootKey
+	cmd      *cobra.Command
+	dbConfig *lnd.DB
 }
 
 func newChanBackupCommand() *cobra.Command {
@@ -63,7 +64,12 @@ func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 		opts = append(opts, lnd.WithCustomGraphDir(graphDir))
 	}
 
-	dbConfig := GetDBConfig()
+	var dbConfig lnd.DB
+	if c.dbConfig == nil {
+		dbConfig = GetDBConfig()
+	} else {
+		dbConfig = *c.dbConfig
+	}
 
 	db, err := lnd.OpenChannelDB(dbConfig, true, chainParams.Name, opts...)
 	if err != nil {

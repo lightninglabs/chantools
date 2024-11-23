@@ -22,6 +22,7 @@ type Bolt struct {
 	DBTimeout time.Duration
 	DataDir   string
 	TowerDir  string
+	Name      string
 }
 
 // Sqlite specifies the settings for the sqlite database.
@@ -131,7 +132,11 @@ func openDB(cfg DB, prefix, network string,
 		var path string
 		switch prefix {
 		case lncfg.NSChannelDB:
-			path = filepath.Join(graphDir, lncfg.ChannelDBName)
+			if cfg.Bolt.Name != "" {
+				path = filepath.Join(graphDir, cfg.Bolt.Name)
+			} else {
+				path = filepath.Join(graphDir, lncfg.ChannelDBName)
+			}
 
 		case lncfg.NSMacaroonDB:
 			path = filepath.Join(walletDir, lncfg.MacaroonDBName)
@@ -152,7 +157,7 @@ func openDB(cfg DB, prefix, network string,
 		}
 
 		const (
-			noFreelistSync = true
+			noFreelistSync = false
 			timeout        = time.Minute
 		)
 

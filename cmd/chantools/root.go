@@ -118,6 +118,9 @@ func main() {
 	rootCmd.PersistentFlags().String("db.bolt.tower-dir", defaultDataDir,
 		"Lnd watchtower dir where bolt dbs are located",
 	)
+	rootCmd.PersistentFlags().String("db.bolt.name", "", "Name of the bolt"+
+		"db to use",
+	)
 
 	// Sqlite settings
 	rootCmd.PersistentFlags().String("db.sqlite.data-dir", defaultDataDir,
@@ -435,6 +438,7 @@ func GetDBConfig() lnd.DB {
 			DBTimeout: viper.GetDuration("db.bolt.dbtimeout"),
 			DataDir:   viper.GetString("db.bolt.data-dir"),
 			TowerDir:  viper.GetString("db.bolt.tower-dir"),
+			Name:      viper.GetString("db.bolt.name"),
 		},
 		Sqlite: &lnd.Sqlite{
 			DataDir:  viper.GetString("db.sqlite.data-dir"),

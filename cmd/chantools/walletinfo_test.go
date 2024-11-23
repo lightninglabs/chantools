@@ -19,6 +19,12 @@ func TestWalletInfo(t *testing.T) {
 	info := &walletInfoCommand{
 		WalletDB:    h.testdataFile("wallet.db"),
 		WithRootKey: true,
+		dbConfig: &lnd.DB{
+			Backend: "bolt",
+			Bolt: &lnd.Bolt{
+				DataDir: h.tempDir,
+			},
+		},
 	}
 
 	t.Setenv(lnd.PasswordEnvName, testPassPhrase)
