@@ -172,22 +172,35 @@ func signPsbt(rootKey *hdkeychain.ExtendedKey,
 		}
 		utxo := pIn.WitnessUtxo
 
+		localPrivateKey, err := localKey.ECPrivKey()
+		if err != nil {
+			return fmt.Errorf("error getting private key: %w", err)
+		}
+
 		// The signing is a bit different for P2WPKH, we need to specify
 		// the pk script as the witness script.
 		var witnessScript []byte
-		if txscript.IsPayToWitnessPubKeyHash(utxo.PkScript) {
+		switch {
+		case txscript.IsPayToWitnessPubKeyHash(utxo.PkScript):
 			witnessScript = utxo.PkScript
-		} else {
+
+		case txscript.IsPayToTaproot(utxo.PkScript):
+			err := signer.AddTaprootSignature(
+				packet, inputIndex, utxo, localPrivateKey,
+			)
+			if err != nil {
+				return fmt.Errorf("error adding taproot "+
+					"signature: %w", err)
+			}
+
+			continue
+
+		default:
 			if len(pIn.WitnessScript) == 0 {
 				return fmt.Errorf("invalid PSBT, input %d is "+
 					"missing witness script", inputIndex)
 			}
 			witnessScript = pIn.WitnessScript
-		}
-
-		localPrivateKey, err := localKey.ECPrivKey()
-		if err != nil {
-			return fmt.Errorf("error getting private key: %w", err)
 		}
 
 		// Do we already have a partial signature for our key?
