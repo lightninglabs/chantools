@@ -31,7 +31,7 @@ chantools triggerforceclose \
       --peer string            remote peer address (<pubkey>@<host>[:<port>])
       --rootkey string         BIP32 HD root key of the wallet to use for deriving the identity key; leave empty to prompt for lnd 24 word aezeed
       --torproxy string        SOCKS5 proxy to use for Tor connections (to .onion addresses)
-      --walletdb string        read the seed/master root key to use fro deriving the identity key from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string        read the seed/master root key to use for deriving the identity key from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

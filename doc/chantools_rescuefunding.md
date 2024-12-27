@@ -50,7 +50,7 @@ chantools rescuefunding \
       --remotepubkey string            in case a channel DB is not available (but perhaps a channel backup file), the remote multisig public key can be specified manually
       --rootkey string                 BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string               address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
-      --walletdb string                read the seed/master root key to use fro deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string                read the seed/master root key to use for deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

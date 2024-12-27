@@ -162,7 +162,7 @@ func newRootKey(cmd *cobra.Command, desc string) *rootKey {
 	)
 	cmd.Flags().StringVar(
 		&r.WalletDB, "walletdb", "", "read the seed/master root key "+
-			"to use fro "+desc+" from an lnd wallet.db file "+
+			"to use for "+desc+" from an lnd wallet.db file "+
 			"instead of asking for a seed or providing the "+
 			"--rootkey flag",
 	)

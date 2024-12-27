@@ -27,7 +27,7 @@ chantools chanbackup \
   -h, --help                help for chanbackup
       --multi_file string   lnd channel.backup file to create
       --rootkey string      BIP32 HD root key of the wallet to use for creating the backup; leave empty to prompt for lnd 24 word aezeed
-      --walletdb string     read the seed/master root key to use fro creating the backup from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string     read the seed/master root key to use for creating the backup from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands
