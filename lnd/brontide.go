@@ -223,7 +223,9 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		RequestAlias: func() (lnwire.ShortChannelID, error) {
 			return lnwire.ShortChannelID{}, nil
 		},
-		AddLocalAlias: func(_, _ lnwire.ShortChannelID, _ bool) error {
+		AddLocalAlias: func(_, _ lnwire.ShortChannelID, _,
+			_ bool) error {
+
 			return nil
 		},
 		Quit: make(chan struct{}),

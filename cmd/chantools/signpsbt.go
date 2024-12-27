@@ -172,22 +172,35 @@ func signPsbt(rootKey *hdkeychain.ExtendedKey,
 		}
 		utxo := pIn.WitnessUtxo
 
+		localPrivateKey, err := localKey.ECPrivKey()
+		if err != nil {
+			return fmt.Errorf("error getting private key: %w", err)
+		}
+
 		// The signing is a bit different for P2WPKH, we need to specify
 		// the pk script as the witness script.
 		var witnessScript []byte
-		if txscript.IsPayToWitnessPubKeyHash(utxo.PkScript) {
+		switch {
+		case txscript.IsPayToWitnessPubKeyHash(utxo.PkScript):
 			witnessScript = utxo.PkScript
-		} else {
+
+		case txscript.IsPayToTaproot(utxo.PkScript):
+			err := signer.AddTaprootSignature(
+				packet, inputIndex, utxo, localPrivateKey,
+			)
+			if err != nil {
+				return fmt.Errorf("error adding taproot "+
+					"signature: %w", err)
+			}
+
+			continue
+
+		default:
 			if len(pIn.WitnessScript) == 0 {
 				return fmt.Errorf("invalid PSBT, input %d is "+
 					"missing witness script", inputIndex)
 			}
 			witnessScript = pIn.WitnessScript
-		}
-
-		localPrivateKey, err := localKey.ECPrivKey()
-		if err != nil {
-			return fmt.Errorf("error getting private key: %w", err)
 		}
 
 		// Do we already have a partial signature for our key?
@@ -221,13 +234,10 @@ func signPsbt(rootKey *hdkeychain.ExtendedKey,
 func findMatchingDerivationPath(rootKey *hdkeychain.ExtendedKey,
 	pIn *psbt.PInput) ([]uint32, error) {
 
-	pubKey, err := rootKey.ECPubKey()
+	masterFingerprint, _, err := fingerprint(rootKey)
 	if err != nil {
 		return nil, fmt.Errorf("error getting public key: %w", err)
 	}
-
-	pubKeyHash := btcutil.Hash160(pubKey.SerializeCompressed())
-	fingerprint := binary.LittleEndian.Uint32(pubKeyHash[:4])
 
 	if len(pIn.Bip32Derivation) == 0 {
 		return nil, errNoPathFound
@@ -246,10 +256,21 @@ func findMatchingDerivationPath(rootKey *hdkeychain.ExtendedKey,
 
 		// The normal case, where a derivation path has the master
 		// fingerprint set.
-		if derivation.MasterKeyFingerprint == fingerprint {
+		if derivation.MasterKeyFingerprint == masterFingerprint {
 			return derivation.Bip32Path, nil
 		}
 	}
 
 	return nil, errNoPathFound
+}
+
+func fingerprint(rootKey *hdkeychain.ExtendedKey) (uint32, []byte, error) {
+	pubKey, err := rootKey.ECPubKey()
+	if err != nil {
+		return 0, nil, fmt.Errorf("error getting public key: %w", err)
+	}
+
+	pubKeyHash := btcutil.Hash160(pubKey.SerializeCompressed())
+	fpBytes := pubKeyHash[:4]
+	return binary.LittleEndian.Uint32(fpBytes), fpBytes, nil
 }

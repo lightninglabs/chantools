@@ -41,7 +41,7 @@ chantools sweepremoteclosed \
       --recoverywindow uint32   number of keys to scan per derivation path (default 200)
       --rootkey string          BIP32 HD root key of the wallet to use for sweeping the wallet; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string        address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
-      --walletdb string         read the seed/master root key to use fro sweeping the wallet from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string         read the seed/master root key to use for sweeping the wallet from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

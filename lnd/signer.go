@@ -1,6 +1,7 @@
 package lnd
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -230,6 +231,48 @@ func (s *Signer) AddPartialSignatureForPrivateKey(packet *psbt.Packet,
 		return fmt.Errorf("unexpected status for signature update, "+
 			"got %d wanted 0", status)
 	}
+
+	return nil
+}
+
+func (s *Signer) AddTaprootSignature(packet *psbt.Packet, inputIndex int,
+	utxo *wire.TxOut, privateKey *btcec.PrivateKey) error {
+
+	pIn := &packet.Inputs[inputIndex]
+
+	// Now we add our partial signature.
+	prevOutFetcher := wallet.PsbtPrevOutputFetcher(packet)
+	signDesc := &input.SignDescriptor{
+		Output:            utxo,
+		InputIndex:        inputIndex,
+		HashType:          txscript.SigHashDefault,
+		PrevOutputFetcher: prevOutFetcher,
+		SigHashes: txscript.NewTxSigHashes(
+			packet.UnsignedTx, prevOutFetcher,
+		),
+		SignMethod: input.TaprootKeySpendBIP0086SignMethod,
+	}
+
+	if len(pIn.TaprootMerkleRoot) > 0 {
+		signDesc.SignMethod = input.TaprootKeySpendSignMethod
+		signDesc.TapTweak = pIn.TaprootMerkleRoot
+	}
+
+	ourSigRaw, err := s.SignOutputRawWithPrivateKey(
+		packet.UnsignedTx, signDesc, privateKey,
+	)
+	if err != nil {
+		return fmt.Errorf("error signing with our key: %w", err)
+	}
+
+	witness := wire.TxWitness{ourSigRaw.Serialize()}
+	var witnessBuf bytes.Buffer
+	err = psbt.WriteTxWitness(&witnessBuf, witness)
+	if err != nil {
+		return fmt.Errorf("error serializing witness: %w", err)
+	}
+
+	pIn.FinalScriptWitness = witnessBuf.Bytes()
 
 	return nil
 }

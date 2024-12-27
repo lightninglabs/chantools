@@ -33,7 +33,7 @@ chantools pullanchor \
   -h, --help                     help for pullanchor
       --rootkey string           BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
       --sponsorinput string      the input to use to sponsor the CPFP transaction; must be owned by the lnd node that owns the anchor output
-      --walletdb string          read the seed/master root key to use fro deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string          read the seed/master root key to use for deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

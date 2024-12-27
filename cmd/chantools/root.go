@@ -31,13 +31,13 @@ const (
 	// version is the current version of the tool. It is set during build.
 	// NOTE: When changing this, please also update the version in the
 	// download link shown in the README.
-	version = "0.13.4"
+	version = "0.13.5"
 	na      = "n/a"
 
 	// lndVersion is the current version of lnd that we support. This is
 	// shown in some commands that affect the database and its migrations.
 	// Run "make docs" after changing this value.
-	lndVersion = "v0.18.3-beta"
+	lndVersion = "v0.18.4-beta"
 
 	Commit = ""
 )
@@ -162,7 +162,7 @@ func newRootKey(cmd *cobra.Command, desc string) *rootKey {
 	)
 	cmd.Flags().StringVar(
 		&r.WalletDB, "walletdb", "", "read the seed/master root key "+
-			"to use fro "+desc+" from an lnd wallet.db file "+
+			"to use for "+desc+" from an lnd wallet.db file "+
 			"instead of asking for a seed or providing the "+
 			"--rootkey flag",
 	)

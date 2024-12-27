@@ -63,7 +63,7 @@ chantools sweeptimelockmanual \
       --rootkey string              BIP32 HD root key of the wallet to use for deriving keys; leave empty to prompt for lnd 24 word aezeed
       --sweepaddr string            address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
       --timelockaddr string         address of the time locked commitment output where the funds are stuck in
-      --walletdb string             read the seed/master root key to use fro deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string             read the seed/master root key to use for deriving keys from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

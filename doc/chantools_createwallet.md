@@ -26,7 +26,7 @@ chantools createwallet \
       --generateseed         generate a new seed instead of using an existing one
   -h, --help                 help for createwallet
       --rootkey string       BIP32 HD root key of the wallet to use for creating the new wallet; leave empty to prompt for lnd 24 word aezeed
-      --walletdb string      read the seed/master root key to use fro creating the new wallet from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string      read the seed/master root key to use for creating the new wallet from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
       --walletdbdir string   the folder to create the new wallet.db file in
 ```
 

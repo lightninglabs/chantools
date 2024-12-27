@@ -11,7 +11,7 @@ channel was never confirmed on chain!
 
 CAUTION: Running this command will make it impossible to use the channel DB
 with an older version of lnd. Downgrading is not possible and you'll need to
-run lnd v0.18.3-beta or later after using this command!
+run lnd v0.18.4-beta or later after using this command!
 
 ```
 chantools removechannel [flags]

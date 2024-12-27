@@ -36,7 +36,7 @@ chantools recoverloopin \
       --sweepaddr string      address to recover the funds to; specify 'fromseed' to derive a new address from the seed automatically
       --txid string           transaction id of the on-chain transaction that created the HTLC
       --vout uint32           output index of the on-chain transaction that created the HTLC
-      --walletdb string       read the seed/master root key to use fro deriving starting key from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string       read the seed/master root key to use for deriving starting key from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

@@ -29,7 +29,7 @@ chantools signpsbt --fromrawpsbtfile <file_with_psbt>
       --psbt string              Partially Signed Bitcoin Transaction to sign
       --rootkey string           BIP32 HD root key of the wallet to use for signing the PSBT; leave empty to prompt for lnd 24 word aezeed
       --torawpsbtfile string     the file to write the resulting signed raw, binary encoded PSBT packet to
-      --walletdb string          read the seed/master root key to use fro signing the PSBT from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
+      --walletdb string          read the seed/master root key to use for signing the PSBT from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
 ### Options inherited from parent commands

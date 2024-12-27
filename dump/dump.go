@@ -13,6 +13,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/fn"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lntypes"
@@ -261,6 +262,7 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 	toLocalScript, err := lnwallet.CommitScriptToSelf(
 		chanType, initiator, keyRing.ToLocalKey, keyRing.RevocationKey,
 		uint32(ourChanCfg.CsvDelay), leaseExpiry,
+		fn.None[txscript.TapLeaf](),
 	)
 	if err != nil {
 		return nil, err
@@ -269,6 +271,7 @@ func CollectDebugInfo(channel *channeldb.OpenChannel,
 	// Next, we create the script paying to the remote.
 	toRemoteScript, _, err := lnwallet.CommitScriptToRemote(
 		chanType, initiator, keyRing.ToRemoteKey, leaseExpiry,
+		fn.None[txscript.TapLeaf](),
 	)
 	if err != nil {
 		return nil, err

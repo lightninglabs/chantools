@@ -20,10 +20,12 @@ import (
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightninglabs/chantools/lnd"
+	"github.com/lightningnetwork/lnd/fn"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet"
@@ -650,7 +652,9 @@ func matchScript(address string, key1, key2 *btcec.PublicKey,
 			pkScript, nil
 
 	case *btcutil.AddressTaproot:
-		pkScript, _, err := input.GenTaprootFundingScript(key1, key2, 0)
+		pkScript, _, err := input.GenTaprootFundingScript(
+			key1, key2, 0, fn.None[chainhash.Hash](),
+		)
 		if err != nil {
 			return false, nil, nil, err
 		}
