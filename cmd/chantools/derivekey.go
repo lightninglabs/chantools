@@ -12,6 +12,7 @@ import (
 const deriveKeyFormat = `
 Path:				%s
 Network: 			%s
+Master Fingerprint:             %x
 Public key: 			%x
 Extended public key (xpub): 	%v
 Address: 			%v
@@ -110,8 +111,13 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 		privKey, xPriv = wif.String(), child.String()
 	}
 
+	_, fingerPrintBytes, err := fingerprint(extendedKey)
+	if err != nil {
+		return fmt.Errorf("could not get fingerprint: %w", err)
+	}
+
 	result := fmt.Sprintf(
-		deriveKeyFormat, path, chainParams.Name,
+		deriveKeyFormat, path, chainParams.Name, fingerPrintBytes,
 		pubKey.SerializeCompressed(), neutered, addrP2WKH, addrP2PKH,
 		addrP2TR, privKey, xPriv,
 	)
