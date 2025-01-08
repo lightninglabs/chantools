@@ -114,7 +114,7 @@ require (
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/lightninglabs/gozmq v0.0.0-20191113021534-d20a764486bf // indirect
 	github.com/lightninglabs/lndclient v0.18.4-0 // indirect
-	github.com/lightninglabs/loop/swapserverrpc v1.0.11 // indirect
+	github.com/lightninglabs/loop/swapserverrpc v1.0.12 // indirect
 	github.com/lightninglabs/neutrino v0.16.1-0.20240425105051-602843d34ffd // indirect
 	github.com/lightninglabs/neutrino/cache v1.1.2 // indirect
 	github.com/lightninglabs/pool/auctioneerrpc v1.1.2 // indirect
