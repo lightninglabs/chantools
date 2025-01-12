@@ -110,7 +110,8 @@ func HardenedKey(key uint32) uint32 {
 }
 
 // DeriveKey derives the public key and private key in the WIF format for a
-// given key path of the extended key.
+// given key path from the extended key. If the extendedKey is an xpub, then
+// private key is not generated and the returned WIF will be nil.
 func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	params *chaincfg.Params) (*hdkeychain.ExtendedKey, *btcec.PublicKey,
 	*btcutil.WIF, error) {
@@ -129,6 +130,11 @@ func DeriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("could not derive public "+
 			"key: %w", err)
+	}
+
+	// If the extended key is xpub, we can't generate the private key.
+	if !derivedKey.IsPrivate() {
+		return derivedKey, pubKey, nil, nil
 	}
 
 	privKey, err := derivedKey.ECPrivKey()
