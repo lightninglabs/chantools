@@ -123,3 +123,23 @@ func TestDeriveKeyXpub(t *testing.T) {
 	h.assertLogContains("03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b042571" +
 		"05eb1ab99aa05e01c2a")
 }
+
+func TestDeriveKeyXpubNoNeuter(t *testing.T) {
+	h := newHarness(t)
+
+	// Derive a specific key from xpub.
+	derive := &deriveKeyCommand{
+		Path: "m/5/6",
+		rootKey: &rootKey{
+			RootKey: "xpub661MyMwAqRbcFtXgS5sYJABqqG9YLmC4Q1Rdap" +
+				"9gSE8NqtwybGhePY2gZ29ESFjqJoCu1Rupje8YtGqse" +
+				"fD265TMg7usUDFdp6W1EGMcet8",
+		},
+	}
+
+	err := derive.Execute(nil, nil)
+	require.NoError(t, err)
+
+	h.assertLogContains("03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b042571" +
+		"05eb1ab99aa05e01c2a")
+}

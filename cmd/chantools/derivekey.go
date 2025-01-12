@@ -107,7 +107,7 @@ func deriveKey(extendedKey *hdkeychain.ExtendedKey, path string,
 	}
 
 	privKey, xPriv := na, na
-	if !neuter {
+	if !neuter && wif != nil {
 		privKey, xPriv = wif.String(), child.String()
 	}
 
