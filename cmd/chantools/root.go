@@ -231,6 +231,7 @@ type inputFlags struct {
 	PendingChannels string
 	FromSummary     string
 	FromChannelDB   string
+	FromChannelDump string
 }
 
 func newInputFlags(cmd *cobra.Command) *inputFlags {
@@ -249,6 +250,10 @@ func newInputFlags(cmd *cobra.Command) *inputFlags {
 	)
 	cmd.Flags().StringVar(&f.FromChannelDB, "fromchanneldb", "", "channel "+
 		"input is in the format of an lnd channel.db file",
+	)
+	cmd.Flags().StringVar(
+		&f.FromChannelDump, "fromchanneldump", "", "channel "+
+			"input is in the format of a channel dump file",
 	)
 
 	return f
@@ -282,6 +287,15 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 		}
 		target = &dataformat.ChannelDBFile{DB: db.ChannelStateDB()}
 		return target.AsSummaryEntries()
+
+	case f.FromChannelDump != "":
+		content, err = readInput(f.FromChannelDump)
+		if err != nil {
+			return nil, fmt.Errorf("error reading channel dump: %w",
+				err)
+		}
+
+		return dataformat.ExtractSummaryFromDump(string(content))
 
 	default:
 		return nil, errors.New("an input file must be specified")
