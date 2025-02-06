@@ -6,13 +6,17 @@ import (
 	"os"
 	"time"
 
+	"github.com/btcsuite/btcd/btcutil"
 	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/dataformat"
+	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
 
 type summaryCommand struct {
 	APIURL string
+
+	Ancient bool
 
 	inputs *inputFlags
 	cmd    *cobra.Command
@@ -35,6 +39,10 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db`,
 		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Ancient, "ancient", false, "Create summary of ancient "+
+			"channel closes with un-swept outputs",
+	)
 
 	cc.inputs = newInputFlags(cc.cmd)
 
@@ -47,6 +55,11 @@ func (c *summaryCommand) Execute(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
+
+	if c.Ancient {
+		return summarizeAncientChannels(c.APIURL, entries)
+	}
+
 	return summarizeChannels(c.APIURL, entries)
 }
 
@@ -86,6 +99,88 @@ func summarizeChannels(apiURL string,
 		return err
 	}
 	fileName := fmt.Sprintf("results/summary-%s.json",
+		time.Now().Format("2006-01-02-15-04-05"))
+	log.Infof("Writing result to %s", fileName)
+	return os.WriteFile(fileName, summaryBytes, 0644)
+}
+
+func summarizeAncientChannels(apiURL string,
+	channels []*dataformat.SummaryEntry) error {
+
+	api := newExplorerAPI(apiURL)
+
+	var results []*ancientChannel
+	for _, target := range channels {
+		if target.ClosingTX == nil {
+			continue
+		}
+
+		closeTx := target.ClosingTX
+		if !closeTx.ForceClose {
+			continue
+		}
+
+		if closeTx.AllOutsSpent {
+			continue
+		}
+
+		if closeTx.OurAddr != "" {
+			log.Infof("Channel %s has potential funds: %d in %s",
+				target.ChannelPoint, target.LocalBalance,
+				closeTx.OurAddr)
+		}
+
+		if target.LocalUnrevokedCommitPoint == "" {
+			log.Warnf("Channel %s has no unrevoked commit point",
+				target.ChannelPoint)
+			continue
+		}
+
+		if closeTx.ToRemoteAddr == "" {
+			log.Warnf("Close TX %s has no remote address",
+				closeTx.TXID)
+			continue
+		}
+
+		addr, err := lnd.ParseAddress(closeTx.ToRemoteAddr, chainParams)
+		if err != nil {
+			return fmt.Errorf("error parsing address %s of %s: %w",
+				closeTx.ToRemoteAddr, closeTx.TXID, err)
+		}
+
+		if _, ok := addr.(*btcutil.AddressWitnessPubKeyHash); !ok {
+			log.Infof("Channel close %s has non-p2wkh output: %s",
+				closeTx.TXID, closeTx.ToRemoteAddr)
+			continue
+		}
+
+		tx, err := api.Transaction(closeTx.TXID)
+		if err != nil {
+			return fmt.Errorf("error fetching transaction %s: %w",
+				closeTx.TXID, err)
+		}
+
+		for idx, txOut := range tx.Vout {
+			if txOut.Outspend.Spent {
+				continue
+			}
+
+			if txOut.ScriptPubkeyAddr == closeTx.ToRemoteAddr {
+				results = append(results, &ancientChannel{
+					OP: fmt.Sprintf("%s:%d", closeTx.TXID,
+						idx),
+					Addr: closeTx.ToRemoteAddr,
+					CP:   target.LocalUnrevokedCommitPoint,
+				})
+			}
+		}
+	}
+
+	summaryBytes, err := json.MarshalIndent(results, "", " ")
+	if err != nil {
+		return err
+	}
+	fileName := fmt.Sprintf("results/summary-ancient-%s.json",
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return os.WriteFile(fileName, summaryBytes, 0644)
