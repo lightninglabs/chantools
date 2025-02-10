@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -18,6 +22,9 @@ import (
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
+
+//go:embed sweepremoteclosed_ancient.json
+var ancientChannelPoints []byte
 
 const (
 	sweepRemoteClosedDefaultRecoveryWindow = 200
@@ -121,9 +128,8 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 
 type targetAddr struct {
 	addr       btcutil.Address
-	pubKey     *btcec.PublicKey
-	path       string
 	keyDesc    *keychain.KeyDescriptor
+	tweak      []byte
 	vouts      []*btc.Vout
 	script     []byte
 	scriptTree *input.CommitScriptTree
@@ -154,9 +160,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			return fmt.Errorf("error parsing path: %w", err)
 		}
 
-		hdKey, err := lnd.DeriveChildren(
-			extendedKey, parsedPath,
-		)
+		hdKey, err := lnd.DeriveChildren(extendedKey, parsedPath)
 		if err != nil {
 			return fmt.Errorf("eror deriving children: %w", err)
 		}
@@ -168,7 +172,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		}
 
 		foundTargets, err := queryAddressBalances(
-			privKey.PubKey(), path, &keychain.KeyDescriptor{
+			privKey.PubKey(), &keychain.KeyDescriptor{
 				PubKey: privKey.PubKey(),
 				KeyLocator: keychain.KeyLocator{
 					Family: keychain.KeyFamilyPaymentBase,
@@ -181,6 +185,20 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				"addresses with funds: %w", err)
 		}
 		targets = append(targets, foundTargets...)
+	}
+
+	// Also check if there are any funds in channels with the initial,
+	// tweaked channel type that requires a channel point.
+	ancientChannelTargets, err := checkAncientChannelPoints(
+		api, recoveryWindow, extendedKey,
+	)
+	if err != nil && !errors.Is(err, errAddrNotFound) {
+		return fmt.Errorf("could not check ancient channel points: %w",
+			err)
+	}
+
+	if len(ancientChannelTargets) > 0 {
+		targets = append(targets, ancientChannelTargets...)
 	}
 
 	// Create estimator and transaction template.
@@ -235,6 +253,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 				signDesc = &input.SignDescriptor{
 					KeyDesc:           *target.keyDesc,
 					WitnessScript:     target.script,
+					SingleTweak:       target.tweak,
 					Output:            prevTxOut,
 					HashType:          txscript.SigHashAll,
 					PrevOutputFetcher: prevOutFetcher,
@@ -383,7 +402,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	return nil
 }
 
-func queryAddressBalances(pubKey *btcec.PublicKey, path string,
+func queryAddressBalances(pubKey *btcec.PublicKey,
 	keyDesc *keychain.KeyDescriptor, api *btc.ExplorerAPI) ([]*targetAddr,
 	error) {
 
@@ -401,8 +420,6 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 				len(unspent), address.EncodeAddress())
 			targets = append(targets, &targetAddr{
 				addr:       address,
-				pubKey:     pubKey,
-				path:       path,
 				keyDesc:    keyDesc,
 				vouts:      unspent,
 				script:     script,
@@ -435,6 +452,128 @@ func queryAddressBalances(pubKey *btcec.PublicKey, path string,
 	}
 	if err := queryAddr(p2tr, nil, scriptTree); err != nil {
 		return nil, err
+	}
+
+	return targets, nil
+}
+
+type ancientChannel struct {
+	OP   string `json:"close_outpoint"`
+	Addr string `json:"close_addr"`
+	CP   string `json:"commit_point"`
+}
+
+func findAncientChannels(channels []ancientChannel, numKeys uint32,
+	key *hdkeychain.ExtendedKey) ([]ancientChannel, error) {
+
+	if err := fillCache(numKeys, key); err != nil {
+		return nil, err
+	}
+
+	var foundChannels []ancientChannel
+	for _, channel := range channels {
+		// Decode the commit point.
+		commitPointBytes, err := hex.DecodeString(channel.CP)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode commit "+
+				"point: %w", err)
+		}
+		commitPoint, err := btcec.ParsePubKey(commitPointBytes)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse commit "+
+				"point: %w", err)
+		}
+
+		// Create the address for the commit key. The addresses in the
+		// file are always for mainnet.
+		targetPubKeyHash, _, err := lnd.DecodeAddressHash(
+			channel.Addr, &chaincfg.MainNetParams,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing addr: %w", err)
+		}
+
+		_, _, err = keyInCache(numKeys, targetPubKeyHash, commitPoint)
+		switch {
+		case err == nil:
+			foundChannels = append(foundChannels, channel)
+
+		case errors.Is(err, errAddrNotFound):
+			// Try next address.
+
+		default:
+			return nil, err
+		}
+	}
+
+	return foundChannels, nil
+}
+
+func checkAncientChannelPoints(api *btc.ExplorerAPI, numKeys uint32,
+	key *hdkeychain.ExtendedKey) ([]*targetAddr, error) {
+
+	var channels []ancientChannel
+	err := json.Unmarshal(ancientChannelPoints, &channels)
+	if err != nil {
+		return nil, err
+	}
+
+	ancientChannels, err := findAncientChannels(channels, numKeys, key)
+	if err != nil {
+		return nil, err
+	}
+
+	targets := make([]*targetAddr, 0, len(ancientChannels))
+	for _, ancientChannel := range ancientChannels {
+		// Decode the commit point.
+		commitPointBytes, err := hex.DecodeString(ancientChannel.CP)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode commit "+
+				"point: %w", err)
+		}
+		commitPoint, err := btcec.ParsePubKey(commitPointBytes)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse commit point: "+
+				"%w", err)
+		}
+
+		// Create the address for the commit key. The addresses in the
+		// file are always for mainnet.
+		targetPubKeyHash, _, err := lnd.DecodeAddressHash(
+			ancientChannel.Addr, &chaincfg.MainNetParams,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing addr: %w", err)
+		}
+		addr, err := lnd.ParseAddress(
+			ancientChannel.Addr, &chaincfg.MainNetParams,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing addr: %w", err)
+		}
+
+		log.Infof("Found private key for address %v in list of "+
+			"ancient channels!", addr)
+
+		unspent, err := api.Unspent(addr.EncodeAddress())
+		if err != nil {
+			return nil, fmt.Errorf("could not query unspent: %w",
+				err)
+		}
+
+		keyDesc, tweak, err := keyInCache(
+			numKeys, targetPubKeyHash, commitPoint,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		targets = append(targets, &targetAddr{
+			addr:    addr,
+			keyDesc: keyDesc,
+			tweak:   tweak,
+			vouts:   unspent,
+		})
 	}
 
 	return targets, nil

@@ -32,7 +32,7 @@ var (
 
 type cacheEntry struct {
 	privKey *btcec.PrivateKey
-	pubKey  *btcec.PublicKey
+	keyDesc *keychain.KeyDescriptor
 }
 
 type rescueClosedCommand struct {
@@ -403,7 +403,7 @@ func addrInCache(numKeys uint32, addr string,
 		for i := range numKeys {
 			cacheEntry := cache[i]
 			hashedPubKey := btcutil.Hash160(
-				cacheEntry.pubKey.SerializeCompressed(),
+				cacheEntry.keyDesc.PubKey.SerializeCompressed(),
 			)
 			equal := subtle.ConstantTimeCompare(
 				targetPubKeyHash, hashedPubKey,
@@ -431,7 +431,7 @@ func addrInCache(numKeys uint32, addr string,
 	// corresponds to the target pubKeyHash of the given address.
 	for i := range numKeys {
 		cacheEntry := cache[i]
-		basePoint := cacheEntry.pubKey
+		basePoint := cacheEntry.keyDesc.PubKey
 		tweakedPubKey := input.TweakPubKey(basePoint, perCommitPoint)
 		tweakBytes := input.SingleTweakBytes(perCommitPoint, basePoint)
 		tweakedPrivKey := input.TweakPrivKey(
@@ -460,6 +460,29 @@ func addrInCache(numKeys uint32, addr string,
 	return "", errAddrNotFound
 }
 
+func keyInCache(numKeys uint32, targetPubKeyHash []byte,
+	perCommitPoint *btcec.PublicKey) (*keychain.KeyDescriptor, []byte,
+	error) {
+
+	for i := range numKeys {
+		cacheEntry := cache[i]
+		basePoint := cacheEntry.keyDesc.PubKey
+		tweakedPubKey := input.TweakPubKey(basePoint, perCommitPoint)
+		tweakBytes := input.SingleTweakBytes(perCommitPoint, basePoint)
+		hashedPubKey := btcutil.Hash160(
+			tweakedPubKey.SerializeCompressed(),
+		)
+		equal := subtle.ConstantTimeCompare(
+			targetPubKeyHash, hashedPubKey,
+		)
+		if equal == 1 {
+			return cacheEntry.keyDesc, tweakBytes, nil
+		}
+	}
+
+	return nil, nil, errAddrNotFound
+}
+
 func fillCache(numKeys uint32, extendedKey *hdkeychain.ExtendedKey) error {
 	cache = make([]*cacheEntry, numKeys)
 
@@ -484,7 +507,13 @@ func fillCache(numKeys uint32, extendedKey *hdkeychain.ExtendedKey) error {
 		}
 		cache[i] = &cacheEntry{
 			privKey: privKey,
-			pubKey:  pubKey,
+			keyDesc: &keychain.KeyDescriptor{
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyPaymentBase,
+					Index:  i,
+				},
+				PubKey: pubKey,
+			},
 		}
 
 		if i > 0 && i%10000 == 0 {

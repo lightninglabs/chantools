@@ -54,6 +54,7 @@ chantools rescueclosed --fromsummary results/summary-xxxxxx.json \
       --commit_point string       the commit point that was obtained from the logs after running the fund-recovery branch of guggero/lnd
       --force_close_addr string   the address the channel was force closed to, look up in block explorer by following funding txid
       --fromchanneldb string      channel input is in the format of an lnd channel.db file
+      --fromchanneldump string    channel input is in the format of a channel dump file
       --fromsummary string        channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                      help for rescueclosed
       --listchannels string       channel input is in the format of lncli's listchannels format; specify '-' to read from stdin

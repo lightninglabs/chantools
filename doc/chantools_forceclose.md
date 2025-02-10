@@ -37,6 +37,7 @@ chantools forceclose \
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channeldb string         lnd channel.db file to use for force-closing channels
       --fromchanneldb string     channel input is in the format of an lnd channel.db file
+      --fromchanneldump string   channel input is in the format of a channel dump file
       --fromsummary string       channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                     help for forceclose
       --listchannels string      channel input is in the format of lncli's listchannels format; specify '-' to read from stdin

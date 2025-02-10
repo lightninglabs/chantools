@@ -3,6 +3,9 @@ package dataformat
 import (
 	"encoding/hex"
 	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -62,18 +65,19 @@ type ForceClose struct {
 }
 
 type SummaryEntry struct {
-	RemotePubkey   string      `json:"remote_pubkey"`
-	ChannelPoint   string      `json:"channel_point"`
-	FundingTXID    string      `json:"funding_txid"`
-	FundingTXIndex uint32      `json:"funding_tx_index"`
-	Capacity       uint64      `json:"capacity"`
-	Initiator      bool        `json:"initiator"`
-	LocalBalance   uint64      `json:"local_balance"`
-	RemoteBalance  uint64      `json:"remote_balance"`
-	ChanExists     bool        `json:"chan_exists_onchain"`
-	HasPotential   bool        `json:"has_potential_funds"`
-	ClosingTX      *ClosingTX  `json:"closing_tx,omitempty"`
-	ForceClose     *ForceClose `json:"force_close"`
+	RemotePubkey              string      `json:"remote_pubkey"`
+	ChannelPoint              string      `json:"channel_point"`
+	FundingTXID               string      `json:"funding_txid"`
+	FundingTXIndex            uint32      `json:"funding_tx_index"`
+	Capacity                  uint64      `json:"capacity"`
+	Initiator                 bool        `json:"initiator"`
+	LocalBalance              uint64      `json:"local_balance"`
+	RemoteBalance             uint64      `json:"remote_balance"`
+	ChanExists                bool        `json:"chan_exists_onchain"`
+	HasPotential              bool        `json:"has_potential_funds"`
+	LocalUnrevokedCommitPoint string      `json:"local_unrevoked_commit_point"`
+	ClosingTX                 *ClosingTX  `json:"closing_tx,omitempty"`
+	ForceClose                *ForceClose `json:"force_close"`
 }
 
 type SummaryEntryFile struct {
@@ -90,4 +94,49 @@ type SummaryEntryFile struct {
 	FundsClosedSpent      uint64          `json:"funds_closed_channels_spent"`
 	FundsForceClose       uint64          `json:"funds_force_closed_maybe_ours"`
 	FundsCoopClose        uint64          `json:"funds_coop_closed_maybe_ours"`
+}
+
+func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
+	// Regex to match the data pattern.
+	pattern := `(?ms)  ChanPoint: \(string\) \(len=\d+\) "(.*?)",.*?  ` +
+		`Capacity: \(btcutil\.Amount\) ([\d\.]+) BTC,.*?  ` +
+		`LocalUnrevokedCommitPoint: \(string\) \(len=66\) "(.*?)"`
+	re := regexp.MustCompile(pattern)
+
+	var results []*SummaryEntry
+	matches := re.FindAllStringSubmatch(data, -1)
+	for _, match := range matches {
+		if len(match) == 4 {
+			chanPoint := strings.TrimSpace(match[1])
+			chanPointParts := strings.Split(chanPoint, ":")
+			if len(chanPointParts) != 2 {
+				return nil, fmt.Errorf("invalid chanPoint: %s",
+					chanPoint)
+			}
+			txid := chanPointParts[0]
+			index, err := strconv.Atoi(chanPointParts[1])
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse "+
+					"index: %w", err)
+			}
+
+			capacity, err := strconv.ParseFloat(match[2], 64)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse "+
+					"capacity: %w", err)
+			}
+
+			results = append(results, &SummaryEntry{
+				ChannelPoint:   chanPoint,
+				FundingTXID:    txid,
+				FundingTXIndex: uint32(index),
+				Capacity: uint64(
+					capacity * 1e8,
+				),
+				LocalUnrevokedCommitPoint: match[3],
+			})
+		}
+	}
+
+	return results, nil
 }
