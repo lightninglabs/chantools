@@ -22,8 +22,11 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db
 ### Options
 
 ```
+      --ancient                  Create summary of ancient channel closes with un-swept outputs
+      --ancientstats string      Create summary of ancient channel closes with un-swept outputs and print stats for the given list of channels
       --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --fromchanneldb string     channel input is in the format of an lnd channel.db file
+      --fromchanneldump string   channel input is in the format of a channel dump file
       --fromsummary string       channel input is in the format of chantool's channel summary; specify '-' to read from stdin
   -h, --help                     help for summary
       --listchannels string      channel input is in the format of lncli's listchannels format; specify '-' to read from stdin
