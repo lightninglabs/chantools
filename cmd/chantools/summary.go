@@ -16,7 +16,8 @@ import (
 type summaryCommand struct {
 	APIURL string
 
-	Ancient bool
+	Ancient      bool
+	AncientStats string
 
 	inputs *inputFlags
 	cmd    *cobra.Command
@@ -43,6 +44,11 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db`,
 		&cc.Ancient, "ancient", false, "Create summary of ancient "+
 			"channel closes with un-swept outputs",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.AncientStats, "ancientstats", "", "Create summary of "+
+			"ancient channel closes with un-swept outputs and "+
+			"print stats for the given list of channels",
+	)
 
 	cc.inputs = newInputFlags(cc.cmd)
 
@@ -50,6 +56,10 @@ chantools summary --fromchanneldb ~/.lnd/data/graph/mainnet/channel.db`,
 }
 
 func (c *summaryCommand) Execute(_ *cobra.Command, _ []string) error {
+	if c.AncientStats != "" {
+		return summarizeAncientChannelOutputs(c.APIURL, c.AncientStats)
+	}
+
 	// Parse channel entries from any of the possible input files.
 	entries, err := c.inputs.parseInputType()
 	if err != nil {
@@ -184,4 +194,49 @@ func summarizeAncientChannels(apiURL string,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return os.WriteFile(fileName, summaryBytes, 0644)
+}
+
+func summarizeAncientChannelOutputs(apiURL, ancientFile string) error {
+	jsonBytes, err := os.ReadFile(ancientFile)
+	if err != nil {
+		return fmt.Errorf("error reading file %s: %w", ancientFile, err)
+	}
+
+	var ancients []ancientChannel
+	err = json.Unmarshal(jsonBytes, &ancients)
+	if err != nil {
+		return fmt.Errorf("error unmarshalling ancient channels: %w",
+			err)
+	}
+
+	var (
+		api         = newExplorerAPI(apiURL)
+		numUnspents uint32
+		unspentSats uint64
+	)
+	for _, channel := range ancients {
+		unspents, err := api.Unspent(channel.Addr)
+		if err != nil {
+			return fmt.Errorf("error fetching unspents for %s: %w",
+				channel.Addr, err)
+		}
+
+		if len(unspents) > 1 {
+			log.Infof("Address %s has multiple unspents",
+				channel.Addr)
+		}
+		for _, unspent := range unspents {
+			if unspent.Outspend.Spent {
+				continue
+			}
+
+			numUnspents++
+			unspentSats += unspent.Value
+		}
+	}
+
+	log.Infof("Found %d unspent outputs with %d sats", numUnspents,
+		unspentSats)
+
+	return nil
 }
