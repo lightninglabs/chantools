@@ -371,7 +371,8 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			// output...
 			desc.WitnessScript = desc.Output.PkScript
 			witness, err := input.CommitSpendNoDelay(
-				signer, desc, sweepTx, true,
+				signer, desc, sweepTx,
+				len(desc.SingleTweak) == 0,
 			)
 			if err != nil {
 				return err

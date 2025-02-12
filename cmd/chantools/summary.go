@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/dataformat"
 	"github.com/lightninglabs/chantools/lnd"
@@ -211,14 +212,38 @@ func summarizeAncientChannelOutputs(apiURL, ancientFile string) error {
 
 	var (
 		api         = newExplorerAPI(apiURL)
+		numSpents   uint32
 		numUnspents uint32
 		unspentSats uint64
+		spentSats   uint64
 	)
-	for _, channel := range ancients {
+	for idx, channel := range ancients {
+		// The first entry is for unit tests.
+		if idx == 0 {
+			continue
+		}
+
+		closeOutPoint, err := wire.NewOutPointFromString(channel.OP)
+		if err != nil {
+			return fmt.Errorf("error parsing outpoint %s: %w",
+				channel.OP, err)
+		}
+
 		unspents, err := api.Unspent(channel.Addr)
 		if err != nil {
 			return fmt.Errorf("error fetching unspents for %s: %w",
 				channel.Addr, err)
+		}
+
+		if len(unspents) == 0 {
+			tx, err := api.Transaction(closeOutPoint.Hash.String())
+			if err != nil {
+				return fmt.Errorf("error fetching transaction "+
+					"%s: %w", closeOutPoint.Hash, err)
+			}
+
+			numSpents++
+			spentSats += tx.Vout[closeOutPoint.Index].Value
 		}
 
 		if len(unspents) > 1 {
@@ -237,6 +262,8 @@ func summarizeAncientChannelOutputs(apiURL, ancientFile string) error {
 
 	log.Infof("Found %d unspent outputs with %d sats", numUnspents,
 		unspentSats)
+	log.Infof("%d outputs with %d sats have been spent", numSpents,
+		spentSats)
 
 	return nil
 }

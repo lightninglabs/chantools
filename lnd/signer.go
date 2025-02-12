@@ -283,7 +283,7 @@ func (s *Signer) AddTaprootSignature(packet *psbt.Packet, inputIndex int,
 func maybeTweakPrivKey(signDesc *input.SignDescriptor,
 	privKey *btcec.PrivateKey) *btcec.PrivateKey {
 
-	if signDesc.SingleTweak != nil {
+	if len(signDesc.SingleTweak) > 0 {
 		return input.TweakPrivKey(privKey, signDesc.SingleTweak)
 	}
 	return privKey
