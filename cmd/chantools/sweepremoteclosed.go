@@ -462,6 +462,7 @@ type ancientChannel struct {
 	OP   string `json:"close_outpoint"`
 	Addr string `json:"close_addr"`
 	CP   string `json:"commit_point"`
+	Node string `json:"node"`
 }
 
 func findAncientChannels(channels []ancientChannel, numKeys uint32,
