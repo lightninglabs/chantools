@@ -99,6 +99,7 @@ type SummaryEntryFile struct {
 func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
 	// Regex to match the data pattern.
 	pattern := `(?ms)  ChanPoint: \(string\) \(len=\d+\) "(.*?)",.*?  ` +
+		`RemotePub: \(string\) \(len=66\) "(.*?)",.*?  ` +
 		`Capacity: \(btcutil\.Amount\) ([\d\.]+) BTC,.*?  ` +
 		`LocalUnrevokedCommitPoint: \(string\) \(len=66\) "(.*?)"`
 	re := regexp.MustCompile(pattern)
@@ -106,7 +107,7 @@ func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
 	var results []*SummaryEntry
 	matches := re.FindAllStringSubmatch(data, -1)
 	for _, match := range matches {
-		if len(match) == 4 {
+		if len(match) == 5 {
 			chanPoint := strings.TrimSpace(match[1])
 			chanPointParts := strings.Split(chanPoint, ":")
 			if len(chanPointParts) != 2 {
@@ -120,20 +121,21 @@ func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
 					"index: %w", err)
 			}
 
-			capacity, err := strconv.ParseFloat(match[2], 64)
+			capacity, err := strconv.ParseFloat(match[3], 64)
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse "+
 					"capacity: %w", err)
 			}
 
 			results = append(results, &SummaryEntry{
+				RemotePubkey:   match[2],
 				ChannelPoint:   chanPoint,
 				FundingTXID:    txid,
 				FundingTXIndex: uint32(index),
 				Capacity: uint64(
 					capacity * 1e8,
 				),
-				LocalUnrevokedCommitPoint: match[3],
+				LocalUnrevokedCommitPoint: match[4],
 			})
 		}
 	}

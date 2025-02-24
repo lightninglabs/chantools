@@ -197,6 +197,12 @@ func (c *zombieRecoveryFindMatchesCommand) Execute(_ *cobra.Command,
 		"https://api.amboss.space/graphql", httpClient,
 	)
 
+	// Find ancient channels first.
+	err = ancientChannelsForNodes(registrations)
+	if err != nil {
+		log.Errorf("Error finding ancient channels, ignoring: %v", err)
+	}
+
 	// Loop through all nodes now.
 	matches := make(map[string]map[string]*match)
 	idx := 0
@@ -395,4 +401,28 @@ func identifyPeer(channel *gqChannel, node1 string) string {
 	}
 
 	panic("peer not found")
+}
+
+func ancientChannelsForNodes(registrations map[string]string) error {
+	var channels []ancientChannel
+	err := json.Unmarshal(ancientChannelPoints, &channels)
+	if err != nil {
+		return err
+	}
+
+	for node, contact := range registrations {
+		var numUnspent uint64
+		for _, entry := range channels {
+			if entry.Node == node {
+				numUnspent++
+			}
+		}
+
+		if numUnspent > 0 {
+			log.Infof("Node %s (%s) has %d ancient unspent "+
+				"channels", node, contact, numUnspent)
+		}
+	}
+
+	return nil
 }

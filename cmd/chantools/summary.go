@@ -120,6 +120,24 @@ func summarizeAncientChannels(apiURL string,
 
 	api := newExplorerAPI(apiURL)
 
+	results, err := ancientChannelCandidates(api, channels)
+	if err != nil {
+		return fmt.Errorf("error finding ancient channels: %w", err)
+	}
+
+	summaryBytes, err := json.MarshalIndent(results, "", " ")
+	if err != nil {
+		return err
+	}
+	fileName := fmt.Sprintf("results/summary-ancient-%s.json",
+		time.Now().Format("2006-01-02-15-04-05"))
+	log.Infof("Writing result to %s", fileName)
+	return os.WriteFile(fileName, summaryBytes, 0644)
+}
+
+func ancientChannelCandidates(api *btc.ExplorerAPI,
+	channels []*dataformat.SummaryEntry) ([]*ancientChannel, error) {
+
 	var results []*ancientChannel
 	for _, target := range channels {
 		if target.ClosingTX == nil {
@@ -155,8 +173,9 @@ func summarizeAncientChannels(apiURL string,
 
 		addr, err := lnd.ParseAddress(closeTx.ToRemoteAddr, chainParams)
 		if err != nil {
-			return fmt.Errorf("error parsing address %s of %s: %w",
-				closeTx.ToRemoteAddr, closeTx.TXID, err)
+			return nil, fmt.Errorf("error parsing address %s of "+
+				"%s: %w", closeTx.ToRemoteAddr, closeTx.TXID,
+				err)
 		}
 
 		if _, ok := addr.(*btcutil.AddressWitnessPubKeyHash); !ok {
@@ -167,8 +186,8 @@ func summarizeAncientChannels(apiURL string,
 
 		tx, err := api.Transaction(closeTx.TXID)
 		if err != nil {
-			return fmt.Errorf("error fetching transaction %s: %w",
-				closeTx.TXID, err)
+			return nil, fmt.Errorf("error fetching transaction "+
+				"%s: %w", closeTx.TXID, err)
 		}
 
 		for idx, txOut := range tx.Vout {
@@ -182,19 +201,13 @@ func summarizeAncientChannels(apiURL string,
 						idx),
 					Addr: closeTx.ToRemoteAddr,
 					CP:   target.LocalUnrevokedCommitPoint,
+					Node: target.RemotePubkey,
 				})
 			}
 		}
 	}
 
-	summaryBytes, err := json.MarshalIndent(results, "", " ")
-	if err != nil {
-		return err
-	}
-	fileName := fmt.Sprintf("results/summary-ancient-%s.json",
-		time.Now().Format("2006-01-02-15-04-05"))
-	log.Infof("Writing result to %s", fileName)
-	return os.WriteFile(fileName, summaryBytes, 0644)
+	return results, nil
 }
 
 func summarizeAncientChannelOutputs(apiURL, ancientFile string) error {
