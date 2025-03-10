@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightningnetwork/lnd/channeldb"
+	graphdb "github.com/lightningnetwork/lnd/graph/db"
 	"github.com/spf13/cobra"
 )
 
 var (
+	edgeBucket   = []byte("graph-edge")
 	zombieBucket = []byte("zombie-index")
 )
 
@@ -55,7 +56,7 @@ func (c *dropGraphZombiesCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+	db, _, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
@@ -77,7 +78,7 @@ func (c *dropGraphZombiesCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	edges := rwTx.ReadWriteBucket(edgeBucket)
 	if edges == nil {
-		return channeldb.ErrGraphNoEdgesFound
+		return graphdb.ErrGraphNoEdgesFound
 	}
 
 	if err := edges.DeleteNestedBucket(zombieBucket); err != nil {
@@ -85,5 +86,6 @@ func (c *dropGraphZombiesCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	success = true
+
 	return rwTx.Commit()
 }

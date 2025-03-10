@@ -56,7 +56,7 @@ func (c *removeChannelCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+	db, _, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
 		return fmt.Errorf("error opening channel DB: %w", err)
 	}
@@ -88,7 +88,7 @@ func (c *removeChannelCommand) Execute(_ *cobra.Command, _ []string) error {
 func removeChannel(db *channeldb.ChannelStateDB,
 	chanPoint *wire.OutPoint) error {
 
-	dbChan, err := db.FetchChannel(nil, *chanPoint)
+	dbChan, err := db.FetchChannel(*chanPoint)
 	if err != nil {
 		return err
 	}

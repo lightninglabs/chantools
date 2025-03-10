@@ -9,6 +9,7 @@ import (
 
 	"github.com/btcsuite/btcwallet/walletdb"
 	"github.com/lightningnetwork/lnd/channeldb"
+	graphdb "github.com/lightningnetwork/lnd/graph/db"
 	"github.com/lightningnetwork/lnd/kvdb"
 	"go.etcd.io/bbolt"
 )
@@ -17,21 +18,38 @@ const (
 	DefaultOpenTimeout = time.Second * 10
 )
 
-func OpenDB(dbPath string, readonly bool) (*channeldb.DB, error) {
+func OpenDB(dbPath string,
+	readonly bool) (*channeldb.DB, *graphdb.ChannelGraph, error) {
+
 	backend, err := openDB(dbPath, false, readonly, DefaultOpenTimeout)
 	if errors.Is(err, bbolt.ErrTimeout) {
-		return nil, fmt.Errorf("error opening %s: make sure lnd is "+
-			"not running, database is locked by another process",
+		return nil, nil, fmt.Errorf("error opening %s: make sure lnd "+
+			"is not running, database is locked by another process",
 			dbPath)
 	}
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return channeldb.CreateWithBackend(
-		backend, channeldb.OptionSetUseGraphCache(false),
-		channeldb.OptionNoMigration(readonly),
+	channelDB, err := channeldb.CreateWithBackend(
+		backend, channeldb.OptionNoMigration(readonly),
 	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	graphDB, err := graphdb.NewChannelGraph(
+		backend, func(o *graphdb.Options) {
+			o.NoMigration = readonly
+		},
+	)
+	if err != nil {
+		_ = channelDB.Close()
+
+		return nil, nil, err
+	}
+
+	return channelDB, graphDB, nil
 }
 
 // convertErr converts some bolt errors to the equivalent walletdb error.

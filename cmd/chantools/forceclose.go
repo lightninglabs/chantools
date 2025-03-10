@@ -82,7 +82,7 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("rescue DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
+	db, _, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}

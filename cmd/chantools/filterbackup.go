@@ -62,7 +62,7 @@ func (c *filterBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.MultiFile == "" {
 		return errors.New("backup file is required")
 	}
-	multiFile := chanbackup.NewMultiFile(c.MultiFile)
+	multiFile := chanbackup.NewMultiFile(c.MultiFile, noBackupArchive)
 	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,

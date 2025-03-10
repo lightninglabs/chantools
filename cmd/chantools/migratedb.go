@@ -44,7 +44,7 @@ func (c *migrateDBCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+	db, _, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
 		return fmt.Errorf("error opening DB: %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btclog"
+	"github.com/btcsuite/btclog/v2"
 	"github.com/lightningnetwork/lnd/chanbackup"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/stretchr/testify/require"
@@ -51,12 +51,12 @@ func newHarness(t *testing.T) *harness {
 	t.Helper()
 
 	buf := &bytes.Buffer{}
-	logBackend := btclog.NewBackend(buf)
+	logBackend := btclog.NewDefaultHandler(buf)
 
 	h := &harness{
 		t:         t,
 		logBuffer: buf,
-		logger:    logBackend.Logger("CHAN"),
+		logger:    btclog.NewSLogger(logBackend.SubSystem("CHAN")),
 		tempDir:   t.TempDir(),
 	}
 

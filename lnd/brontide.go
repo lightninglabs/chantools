@@ -18,6 +18,7 @@ import (
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/htlcswitch/hodl"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnpeer"
 	"github.com/lightningnetwork/lnd/lntest/mock"
@@ -97,7 +98,19 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		return nil, fmt.Errorf("unable to start read pool: %w", err)
 	}
 
-	channelDB, err := channeldb.Open(os.TempDir())
+	backend, err := kvdb.GetBoltBackend(&kvdb.BoltBackendConfig{
+		DBPath:            os.TempDir(),
+		DBFileName:        "channel.db",
+		NoFreelistSync:    true,
+		AutoCompact:       false,
+		AutoCompactMinAge: kvdb.DefaultBoltAutoCompactMinAge,
+		DBTimeout:         kvdb.DefaultDBTimeout,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	channelDB, err := channeldb.CreateWithBackend(backend)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +149,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		ChannelUpdateInterval:   discovery.DefaultChannelUpdateInterval,
 		IsAlias:                 aliasmgr.IsAlias,
 		SignAliasUpdate: func(
-			*lnwire.ChannelUpdate) (*ecdsa.Signature, error) {
+			*lnwire.ChannelUpdate1) (*ecdsa.Signature, error) {
 
 			return nil, errors.New("unimplemented")
 		},
@@ -194,7 +207,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		PrunePersistentPeerConnection: func(_ [33]byte) {},
 
 		FetchLastChanUpdate: func(_ lnwire.ShortChannelID) (
-			*lnwire.ChannelUpdate, error) {
+			*lnwire.ChannelUpdate1, error) {
 
 			return nil, errors.New("unimplemented")
 		},

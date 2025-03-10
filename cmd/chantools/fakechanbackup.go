@@ -126,7 +126,7 @@ func (c *fakeChanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error reading root key: %w", err)
 	}
 
-	multiFile := chanbackup.NewMultiFile(c.MultiFile)
+	multiFile := chanbackup.NewMultiFile(c.MultiFile, noBackupArchive)
 	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
