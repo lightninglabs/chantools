@@ -45,7 +45,8 @@ func ExtractChannel(extendedKey *hdkeychain.ExtendedKey,
 	chainParams *chaincfg.Params, multiFilePath,
 	channelPoint string) (*dump.BackupSingle, error) {
 
-	multiFile := chanbackup.NewMultiFile(multiFilePath)
+	const noBackupArchive = false
+	multiFile := chanbackup.NewMultiFile(multiFilePath, noBackupArchive)
 	keyRing := &HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,

@@ -13,16 +13,11 @@ import (
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chainreg"
 	"github.com/lightningnetwork/lnd/channeldb"
-	"github.com/lightningnetwork/lnd/channeldb/models"
+	graphdb "github.com/lightningnetwork/lnd/graph/db"
+	"github.com/lightningnetwork/lnd/graph/db/models"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/spf13/cobra"
-)
-
-var (
-	nodeBucket      = []byte("graph-node")
-	edgeBucket      = []byte("graph-edge")
-	graphMetaBucket = []byte("graph-meta")
 )
 
 type dropChannelGraphCommand struct {
@@ -85,11 +80,11 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, false)
+	channelDB, graphDB, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
-		return fmt.Errorf("error opening rescue DB: %w", err)
+		return fmt.Errorf("error opening channel DB: %w", err)
 	}
-	defer func() { _ = db.Close() }()
+	defer func() { _ = channelDB.Close() }()
 
 	if c.NodeIdentityKey == "" {
 		return errors.New("node identity key is required")
@@ -107,7 +102,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	if c.SingleChannel != 0 {
 		log.Infof("Removing single channel %d", c.SingleChannel)
-		return db.ChannelGraph().DeleteChannelEdges(
+		return graphDB.DeleteChannelEdges(
 			true, false, c.SingleChannel,
 		)
 	}
@@ -116,35 +111,20 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if !c.FixOnly {
 		log.Infof("Dropping all graph related buckets")
 
-		rwTx, err := db.BeginReadWriteTx()
-		if err != nil {
-			return err
-		}
-		if err := rwTx.DeleteTopLevelBucket(nodeBucket); err != nil {
-			return err
-		}
-		if err := rwTx.DeleteTopLevelBucket(edgeBucket); err != nil {
-			return err
-		}
-		if err := rwTx.DeleteTopLevelBucket(graphMetaBucket); err != nil {
-			return err
-		}
-
-		if err := rwTx.Commit(); err != nil {
-			return err
-		}
+		return graphDB.Wipe()
 	}
 
-	return insertOwnNodeAndChannels(idKey, db)
+	return insertOwnNodeAndChannels(idKey, channelDB, graphDB)
 }
 
-func insertOwnNodeAndChannels(idKey *btcec.PublicKey, db *channeldb.DB) error {
-	openChannels, err := db.ChannelStateDB().FetchAllOpenChannels()
+func insertOwnNodeAndChannels(idKey *btcec.PublicKey, channelDB *channeldb.DB,
+	graphDB *graphdb.ChannelGraph) error {
+
+	openChannels, err := channelDB.ChannelStateDB().FetchAllOpenChannels()
 	if err != nil {
 		return fmt.Errorf("error fetching open channels: %w", err)
 	}
 
-	graph := db.ChannelGraph()
 	for _, openChan := range openChannels {
 		edge, update, err := newChanAnnouncement(
 			idKey, openChan.IdentityPub,
@@ -159,11 +139,11 @@ func insertOwnNodeAndChannels(idKey *btcec.PublicKey, db *channeldb.DB) error {
 				err)
 		}
 
-		if err := graph.AddChannelEdge(edge); err != nil {
+		if err := graphDB.AddChannelEdge(edge); err != nil {
 			log.Warnf("Not adding channel edge %v because of "+
 				"error: %v", edge.ChannelPoint, err)
 		}
-		if err := graph.UpdateEdgePolicy(update); err != nil {
+		if err := graphDB.UpdateEdgePolicy(update); err != nil {
 			log.Warnf("Not updating edge policy %v because of "+
 				"error: %v", update.ChannelID, err)
 		}
@@ -184,7 +164,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 	// The unconditional section of the announcement is the ShortChannelID
 	// itself which compactly encodes the location of the funding output
 	// within the blockchain.
-	chanAnn := &lnwire.ChannelAnnouncement{
+	chanAnn := &lnwire.ChannelAnnouncement1{
 		ShortChannelID: shortChanID,
 		Features:       lnwire.NewRawFeatureVector(),
 		ChainHash:      chainHash,
@@ -248,7 +228,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 
 	// We announce the channel with the default values. Some of
 	// these values can later be changed by crafting a new ChannelUpdate.
-	chanUpdateAnn := &lnwire.ChannelUpdate{
+	chanUpdateAnn := &lnwire.ChannelUpdate1{
 		ShortChannelID: shortChanID,
 		ChainHash:      chainHash,
 		Timestamp:      uint32(time.Now().Unix()),

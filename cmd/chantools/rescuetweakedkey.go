@@ -89,10 +89,10 @@ func (c *rescueTweakedKeyCommand) Execute(_ *cobra.Command, _ []string) error {
 }
 
 func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
-	max uint64) error {
+	maxIndex uint64) error {
 
 	currentKey := copyPrivKey(startKey)
-	for idx := uint64(0); idx <= max; idx++ {
+	for idx := uint64(0); idx <= maxIndex; idx++ {
 		match, err := pubKeyMatchesAddr(currentKey.PubKey(), targetAddr)
 		if err != nil {
 			return fmt.Errorf("error matching key to address: %w",
@@ -138,7 +138,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 		}
 
 		if idx != 0 && idx%5000 == 0 {
-			fmt.Printf("Tested %d of %d mutations\n", idx, max)
+			fmt.Printf("Tested %d of %d mutations\n", idx, maxIndex)
 		}
 	}
 
@@ -154,7 +154,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 	}
 
 	return fmt.Errorf("%w: key for address %v not found after %d attempts",
-		ErrAddrNotFound, targetAddr.String(), max)
+		ErrAddrNotFound, targetAddr.String(), maxIndex)
 }
 
 func pubKeyMatchesAddr(pubKey *btcec.PublicKey, addr btcutil.Address) (bool,

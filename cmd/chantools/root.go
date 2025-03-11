@@ -12,7 +12,7 @@ import (
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
-	"github.com/btcsuite/btclog"
+	"github.com/btcsuite/btclog/v2"
 	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/dataformat"
 	"github.com/lightninglabs/chantools/lnd"
@@ -37,9 +37,13 @@ const (
 	// lndVersion is the current version of lnd that we support. This is
 	// shown in some commands that affect the database and its migrations.
 	// Run "make docs" after changing this value.
-	lndVersion = "v0.18.4-beta"
+	lndVersion = "v0.19.0-beta"
 
 	Commit = ""
+
+	// noBackupArchive id disabled, which indicates that old backups should
+	// be archived and not deleted.
+	noBackupArchive = false
 )
 
 var (
@@ -47,8 +51,11 @@ var (
 	Regtest bool
 	Signet  bool
 
-	logWriter   = build.NewRotatingLogWriter()
-	log         = build.NewSubLogger("CHAN", genSubLogger(logWriter))
+	logWriter = build.NewRotatingLogWriter()
+	subLogMgr = build.NewSubLoggerManager(build.NewDefaultLogHandlers(
+		build.DefaultLogConfig(), logWriter,
+	)...)
+	log         = build.NewSubLogger("CHAN", genSubLogger(subLogMgr))
 	chainParams = &chaincfg.MainNetParams
 )
 
@@ -280,7 +287,7 @@ func (f *inputFlags) parseInputType() ([]*dataformat.SummaryEntry, error) {
 		target = &dataformat.SummaryEntryFile{}
 
 	case f.FromChannelDB != "":
-		db, err := lnd.OpenDB(f.FromChannelDB, true)
+		db, _, err := lnd.OpenDB(f.FromChannelDB, true)
 		if err != nil {
 			return nil, fmt.Errorf("error opening channel DB: %w",
 				err)
@@ -324,20 +331,33 @@ func setupLogging() {
 	addSubLogger("CHDB", channeldb.UseLogger)
 	addSubLogger("BCKP", chanbackup.UseLogger)
 	addSubLogger("PEER", peer.UseLogger)
-	err := logWriter.InitLogRotator("./results/chantools.log", 10, 3)
+
+	err := logWriter.InitLogRotator(
+		&build.FileLoggerConfig{
+			Compressor:     build.Gzip,
+			MaxLogFiles:    3,
+			MaxLogFileSize: 10,
+		},
+		"./results/chantools.log",
+	)
 	if err != nil {
 		panic(err)
 	}
-	err = build.ParseAndSetDebugLevels("debug", logWriter)
+
+	subLogMgr := build.NewSubLoggerManager(build.NewDefaultLogHandlers(
+		build.DefaultLogConfig(), logWriter,
+	)...)
+
+	err = build.ParseAndSetDebugLevels("debug", subLogMgr)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // genSubLogger creates a sub logger with an empty shutdown function.
-func genSubLogger(logWriter *build.RotatingLogWriter) func(string) btclog.Logger {
+func genSubLogger(mgr *build.SubLoggerManager) func(string) btclog.Logger {
 	return func(s string) btclog.Logger {
-		return logWriter.GenSubLogger(s, func() {})
+		return mgr.GenSubLogger(s, func() {})
 	}
 }
 
@@ -346,7 +366,7 @@ func genSubLogger(logWriter *build.RotatingLogWriter) func(string) btclog.Logger
 func addSubLogger(subsystem string, useLoggers ...func(btclog.Logger)) {
 	// Create and register just a single logger to prevent them from
 	// overwriting each other internally.
-	logger := build.NewSubLogger(subsystem, genSubLogger(logWriter))
+	logger := build.NewSubLogger(subsystem, genSubLogger(subLogMgr))
 	setSubLogger(subsystem, logger, useLoggers...)
 }
 
@@ -355,7 +375,7 @@ func addSubLogger(subsystem string, useLoggers ...func(btclog.Logger)) {
 func setSubLogger(subsystem string, logger btclog.Logger,
 	useLoggers ...func(btclog.Logger)) {
 
-	logWriter.RegisterSubLogger(subsystem, logger)
+	subLogMgr.RegisterSubLogger(subsystem, logger)
 	for _, useLogger := range useLoggers {
 		useLogger(logger)
 	}

@@ -158,7 +158,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 			"channel point or both local and remote pubkey")
 
 	case c.ChannelDB != "" && c.DBChannelPoint != "":
-		db, err := lnd.OpenDB(c.ChannelDB, true)
+		db, _, err := lnd.OpenDB(c.ChannelDB, true)
 		if err != nil {
 			return fmt.Errorf("error opening rescue DB: %w", err)
 		}
@@ -172,7 +172,7 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 
 		// First, make sure the channel can be found in the DB.
 		pendingChan, err := db.ChannelStateDB().FetchChannel(
-			nil, *databaseOp,
+			*databaseOp,
 		)
 		if err != nil {
 			return fmt.Errorf("error loading pending channel %s "+

@@ -3,7 +3,7 @@ package btc
 import (
 	"errors"
 
-	"github.com/btcsuite/btclog"
+	"github.com/btcsuite/btclog/v2"
 	"github.com/lightninglabs/chantools/dataformat"
 )
 

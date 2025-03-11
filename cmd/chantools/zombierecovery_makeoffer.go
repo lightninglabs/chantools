@@ -25,7 +25,7 @@ import (
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet"
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightningnetwork/lnd/fn"
+	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lnwallet"

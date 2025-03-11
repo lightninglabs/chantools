@@ -58,11 +58,11 @@ func (c *chanBackupCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
-	db, err := lnd.OpenDB(c.ChannelDB, true)
+	db, _, err := lnd.OpenDB(c.ChannelDB, true)
 	if err != nil {
 		return fmt.Errorf("error opening rescue DB: %w", err)
 	}
-	multiFile := chanbackup.NewMultiFile(c.MultiFile)
+	multiFile := chanbackup.NewMultiFile(c.MultiFile, noBackupArchive)
 	keyRing := &lnd.HDKeyRing{
 		ExtendedKey: extendedKey,
 		ChainParams: chainParams,
