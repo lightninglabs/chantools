@@ -8,7 +8,7 @@ require (
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/btcsuite/btcd/btcutil/psbt v1.1.10
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0
-	github.com/btcsuite/btclog v0.0.0-20241003133417-09c4e92e319c
+	github.com/btcsuite/btclog v0.0.0-20241003133417-09c4e92e319c // indirect
 	github.com/btcsuite/btcwallet v0.16.10-0.20241127094224-93c858b2ad63
 	github.com/btcsuite/btcwallet/wallet/txrules v1.2.2 // indirect
 	github.com/btcsuite/btcwallet/walletdb v1.4.4
@@ -31,12 +31,13 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.9.0
 	go.etcd.io/bbolt v1.3.11
-	golang.org/x/crypto v0.31.0
+	golang.org/x/crypto v0.35.0
 	golang.org/x/oauth2 v0.22.0
 )
 
 require (
-	github.com/lightningnetwork/lnd/fn v1.2.3
+	github.com/btcsuite/btclog/v2 v2.0.1-0.20250110154127-3ae4bf1cb318
+	github.com/lightningnetwork/lnd/fn/v2 v2.0.8
 	github.com/tv42/zbase32 v0.0.0-20220222190657-f76a9fc892fa
 )
 
@@ -45,14 +46,11 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/NebulousLabs/fastrand v0.0.0-20181203155948-6fb6489aac4e // indirect
-	github.com/NebulousLabs/go-upnp v0.0.0-20180202185039-29b680b06c82 // indirect
 	github.com/Nvveen/Gotty v0.0.0-20120604004816-cd527374f1e5 // indirect
 	github.com/Yawning/aez v0.0.0-20211027044916-e49e68abd344 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/aead/siphash v1.0.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btclog/v2 v2.0.1-0.20250110154127-3ae4bf1cb318 // indirect
 	github.com/btcsuite/btcwallet/wallet/txauthor v1.3.5 // indirect
 	github.com/btcsuite/btcwallet/wallet/txsizes v1.2.5 // indirect
 	github.com/btcsuite/btcwallet/wtxmgr v1.5.4 // indirect
@@ -63,7 +61,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
-	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
@@ -107,8 +104,6 @@ require (
 	github.com/jackc/pgx/v4 v4.18.2 // indirect
 	github.com/jackc/pgx/v5 v5.6.0 // indirect
 	github.com/jackc/puddle/v2 v2.2.1 // indirect
-	github.com/jackpal/gateway v1.0.5 // indirect
-	github.com/jackpal/go-nat-pmp v0.0.0-20170405195558-28a68d0c24ad // indirect
 	github.com/jessevdk/go-flags v1.4.0 // indirect
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/jrick/logrotate v1.1.2 // indirect
@@ -124,9 +119,7 @@ require (
 	github.com/lightninglabs/neutrino/cache v1.1.2 // indirect
 	github.com/lightninglabs/pool/auctioneerrpc v1.1.2 // indirect
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20240712235311-98bd56499dfb // indirect
-	github.com/lightningnetwork/lnd/cert v1.2.2 // indirect
 	github.com/lightningnetwork/lnd/clock v1.1.1 // indirect
-	github.com/lightningnetwork/lnd/fn/v2 v2.0.8 // indirect
 	github.com/lightningnetwork/lnd/healthcheck v1.2.6 // indirect
 	github.com/lightningnetwork/lnd/sqldb v1.0.7 // indirect
 	github.com/lightningnetwork/lnd/tlv v1.3.0 // indirect
@@ -189,11 +182,11 @@ require (
 	go.uber.org/zap v1.23.0 // indirect
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/mod v0.17.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
-	golang.org/x/term v0.27.0 // indirect
-	golang.org/x/text v0.21.0 // indirect
+	golang.org/x/net v0.36.0 // indirect
+	golang.org/x/sync v0.11.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
+	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.21.1-0.20240508182429-e35e4ccd0d2d // indirect
 	google.golang.org/genproto v0.0.0-20231016165738-49dd2c1f3d0b // indirect
