@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
@@ -109,16 +110,10 @@ func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
 	for _, match := range matches {
 		if len(match) == 5 {
 			chanPoint := strings.TrimSpace(match[1])
-			chanPointParts := strings.Split(chanPoint, ":")
-			if len(chanPointParts) != 2 {
-				return nil, fmt.Errorf("invalid chanPoint: %s",
-					chanPoint)
-			}
-			txid := chanPointParts[0]
-			index, err := strconv.Atoi(chanPointParts[1])
+			parsedOP, err := wire.NewOutPointFromString(chanPoint)
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse "+
-					"index: %w", err)
+					"outpoint: %w", err)
 			}
 
 			capacity, err := strconv.ParseFloat(match[3], 64)
@@ -130,8 +125,8 @@ func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
 			results = append(results, &SummaryEntry{
 				RemotePubkey:   match[2],
 				ChannelPoint:   chanPoint,
-				FundingTXID:    txid,
-				FundingTXIndex: uint32(index),
+				FundingTXID:    parsedOP.Hash.String(),
+				FundingTXIndex: parsedOP.Index,
 				Capacity: uint64(
 					capacity * 1e8,
 				),
