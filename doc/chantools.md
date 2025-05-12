@@ -43,6 +43,7 @@ https://github.com/lightninglabs/chantools/.
 * [chantools rescueclosed](chantools_rescueclosed.md)	 - Try finding the private keys for funds that are in outputs of remotely force-closed channels
 * [chantools rescuefunding](chantools_rescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
 * [chantools rescuetweakedkey](chantools_rescuetweakedkey.md)	 - Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd
+* [chantools scbforceclose](chantools_scbforceclose.md)	 - Force-close the last state that is in the SCB provided
 * [chantools showrootkey](chantools_showrootkey.md)	 - Extract and show the BIP32 HD root key from the 24 word lnd aezeed
 * [chantools signmessage](chantools_signmessage.md)	 - Sign a message with the node's private key.
 * [chantools signpsbt](chantools_signpsbt.md)	 - Sign a Partially Signed Bitcoin Transaction (PSBT)
