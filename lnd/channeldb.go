@@ -18,6 +18,12 @@ const (
 	DefaultOpenTimeout = time.Second * 10
 )
 
+var (
+	withNoMigration = func(o *graphdb.KVStoreOptions) {
+		o.NoMigration = true
+	}
+)
+
 func OpenDB(dbPath string,
 	readonly bool) (*channeldb.DB, *graphdb.ChannelGraph, error) {
 
@@ -38,11 +44,12 @@ func OpenDB(dbPath string,
 		return nil, nil, err
 	}
 
-	graphDB, err := graphdb.NewChannelGraph(
-		backend, func(o *graphdb.Options) {
-			o.NoMigration = readonly
+	graphDB, err := graphdb.NewChannelGraph(&graphdb.Config{
+		KVDB: backend,
+		KVStoreOpts: []graphdb.KVStoreOptionModifier{
+			withNoMigration,
 		},
-	)
+	})
 	if err != nil {
 		_ = channelDB.Close()
 
