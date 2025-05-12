@@ -342,8 +342,8 @@ github.com/grpc-ecosystem/grpc-gateway v1.16.0 h1:gmcG1KaJ57LophUzW0Hy8NmPhnMZb4
 github.com/grpc-ecosystem/grpc-gateway v1.16.0/go.mod h1:BDjrQk3hbvj6Nolgz8mAMFbcEtjT1g+wF4CSlocrBnw=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 h1:asbCHRVmodnJTuQ3qamDwqVOIjwqUPTYmYuemVOx+Ys=
 github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0/go.mod h1:ggCgvZ2r7uOoQjOyu2Y1NhHmEPPzzuhWgcza5M1Ji1I=
-github.com/guggero/btcd/btcutil/psbt v0.0.0-20240615145141-63f97ed9872a h1:8TM7i6cMdvNZWtw6eVVP5wDOvVbc9Cjf/ZIc3+APo34=
-github.com/guggero/btcd/btcutil/psbt v0.0.0-20240615145141-63f97ed9872a/go.mod h1:7+GB/GHXQM8xCb9q1A5sHDT3LNgrK7fZofPddOAgc3U=
+github.com/guggero/btcd/btcutil/psbt v0.0.0-20250512051801-35a277511ec5 h1:YrUjMjcp6rE+VRWaZDxpKeU6EM4+2e4LpOphmsVoA+E=
+github.com/guggero/btcd/btcutil/psbt v0.0.0-20250512051801-35a277511ec5/go.mod h1:XcL+sQuIjRePOZ91XTgpS5MZFcLEK4D2hzHmlqKuPwQ=
 github.com/hashicorp/consul/api v1.1.0/go.mod h1:VmuI/Lkw1nC05EYQWNKwWGbkg+FbDBtguAZLlVdkD9Q=
 github.com/hashicorp/consul/sdk v0.1.1/go.mod h1:VKf9jXwCTEY1QZP2MOLRhb5i/I/ssyNV1vwHyQBF0x8=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
