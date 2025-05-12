@@ -424,6 +424,7 @@ Available Commands:
   filterbackup        Filter an lnd channel.backup file and remove certain channels
   fixoldbackup        Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
   forceclose          Force-close the last state that is in the channel.db provided
+  scbforceclose       Force-close the last state that is in the SCB provided
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
   migratedb           Apply all recent lnd channel database migrations
   pullanchor          Attempt to CPFP an anchor output of a channel
@@ -496,6 +497,7 @@ Legend:
 | [removechannel](doc/chantools_removechannel.md)             | (:skull: :warning:) Remove a single channel from a `channel.db` file                                                                     |
 | [rescueclosed](doc/chantools_rescueclosed.md)               | :pencil: (:pushpin:) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
 | [rescuefunding](doc/chantools_rescuefunding.md)             | :pencil: (:pushpin:) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |
+| [scbforceclose](doc/chantools_scbforceclose.md)             | :pencil: :warning: :skull: Force close a channel using the latest state from a channel backup. EXTREMELY DANGEROUS, read help text!      |
 | [showrootkey](doc/chantools_showrootkey.md)                 | :pencil: Display the master root key (`xprv`) from your seed (DO NOT SHARE WITH ANYONE)                                                  |
 | [signmessage](doc/chantools_signmessage.md)                 | :pencil: Sign a message with the nodes identity pubkey.                                                                                  |
 | [signpsbt](doc/chantools_signpsbt.md)                       | :pencil: Sign a Partially Signed Bitcoin Transaction (PSBT)                                                                              |
