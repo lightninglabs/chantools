@@ -226,7 +226,7 @@ func OpenWallet(walletDbPath string,
 	// Try to load and open the wallet.
 	db, err := walletdb.Open(
 		"bdb", lncfg.CleanAndExpandPath(walletDbPath), false,
-		DefaultOpenTimeout,
+		DefaultOpenTimeout, false,
 	)
 	if errors.Is(err, bbolt.ErrTimeout) {
 		return nil, nil, nil, errors.New("error opening wallet " +

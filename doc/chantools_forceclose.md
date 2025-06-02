@@ -4,9 +4,10 @@ Force-close the last state that is in the channel.db provided
 
 ### Synopsis
 
-If you are certain that a node is offline for good (AFTER
-you've tried SCB!) and a channel is still open, you can use this method to
-force-close your latest state that you have in your channel.db.
+
+If you are certain that a node is offline for good (AFTER you've tried SCB!)
+and a channel is still open, you can use this method to force-close your
+latest state that you have in your channel.db.
 
 **!!! WARNING !!! DANGER !!! WARNING !!!**
 
