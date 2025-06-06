@@ -106,6 +106,7 @@ func main() {
 
 	rootCmd.AddCommand(
 		newChanBackupCommand(),
+		newClnSweepRemoteClosedCommand(),
 		newClosePoolAccountCommand(),
 		newCreateWalletCommand(),
 		newCompactDBCommand(),

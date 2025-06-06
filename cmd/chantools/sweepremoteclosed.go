@@ -187,20 +187,6 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		targets = append(targets, foundTargets...)
 	}
 
-	// Also check if there are any funds in channels with the initial,
-	// tweaked channel type that requires a channel point.
-	ancientChannelTargets, err := checkAncientChannelPoints(
-		api, recoveryWindow, extendedKey,
-	)
-	if err != nil && !errors.Is(err, errAddrNotFound) {
-		return fmt.Errorf("could not check ancient channel points: %w",
-			err)
-	}
-
-	if len(ancientChannelTargets) > 0 {
-		targets = append(targets, ancientChannelTargets...)
-	}
-
 	// Create estimator and transaction template.
 	var (
 		signDescs        []*input.SignDescriptor
