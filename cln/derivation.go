@@ -57,12 +57,59 @@ func FundingKey(hsmSecret [32]byte, peerPubKey *btcec.PublicKey,
 	return pubKey, nil
 }
 
+// PaymentBasePointSecret derives a CLN channel payment base point private key
+// for the given peer and channel number (incrementing database index).
+func PaymentBasePointSecret(hsmSecret [32]byte, peerPubKey *btcec.PublicKey,
+	channelNum uint64) (*btcec.PrivateKey, error) {
+
+	channelBase, err := HkdfSha256(hsmSecret[:], nil, InfoPeerSeed)
+	if err != nil {
+		return nil, err
+	}
+
+	peerAndChannel := make([]byte, 33+8)
+	copy(peerAndChannel[:33], peerPubKey.SerializeCompressed())
+	binary.LittleEndian.PutUint64(peerAndChannel[33:], channelNum)
+
+	channelSeed, err := HkdfSha256(
+		channelBase[:], peerAndChannel[:], InfoPerPeer,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	basePointKey, err := HkdfSha256WithSkip(
+		channelSeed[:], nil, InfoCLightning, 3*32,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	privKey, _ := btcec.PrivKeyFromBytes(basePointKey[:])
+	return privKey, nil
+}
+
 // HkdfSha256 derives a 32-byte key from the given input key material, salt, and
 // info using the HKDF-SHA256 key derivation function.
 func HkdfSha256(key, salt, info []byte) ([32]byte, error) {
-	expander := hkdf.New(sha256.New, key, salt, info)
-	var outputKey [32]byte
+	return HkdfSha256WithSkip(key, salt, info, 0)
+}
 
+// HkdfSha256WithSkip derives a 32-byte key from the given input key material,
+// salt, and info using the HKDF-SHA256 key derivation function and skips the
+// first `skip` bytes of the output.
+func HkdfSha256WithSkip(key, salt, info []byte, skip int) ([32]byte, error) {
+	expander := hkdf.New(sha256.New, key, salt, info)
+
+	if skip > 0 {
+		skippedBytes := make([]byte, skip)
+		_, err := expander.Read(skippedBytes)
+		if err != nil {
+			return [32]byte{}, err
+		}
+	}
+
+	var outputKey [32]byte
 	_, err := expander.Read(outputKey[:])
 	if err != nil {
 		return [32]byte{}, err

@@ -47,3 +47,46 @@ func TestFundingKey(t *testing.T) {
 		t, expectedFundingKeyBytes, fundingKey.SerializeCompressed(),
 	)
 }
+
+func TestPaymentBasePointSecret(t *testing.T) {
+	hsmSecret2, _ := hex.DecodeString(
+		"665b09e6fc86391f0141d957eb14ec30f8f8a58a876842792474cacc2448" +
+			"9456",
+	)
+
+	basePointPeerBytes, _ := hex.DecodeString(
+		"0350aeef9f33a157953d3c3c1ef464bdf421204461959524e52e530c17f1" +
+			"66f541",
+	)
+
+	expectedPaymentBasePointBytes, _ := hex.DecodeString(
+		"0339c93ca896829672510f8a4e51caef4b5f6a26f880acf5a120725a7f02" +
+			"7b56b4",
+	)
+
+	var hsmSecret [32]byte
+	copy(hsmSecret[:], hsmSecret2)
+
+	basepointPeer, err := btcec.ParsePubKey(basePointPeerBytes)
+	require.NoError(t, err)
+
+	nk, err := NodeKey(hsmSecret)
+	require.NoError(t, err)
+
+	t.Logf("Node key: %x", nk.SerializeCompressed())
+
+	fk, err := FundingKey(hsmSecret, basepointPeer, 1)
+	require.NoError(t, err)
+
+	t.Logf("Funding key: %x", fk.SerializeCompressed())
+
+	paymentBasePoint, err := PaymentBasePointSecret(
+		hsmSecret, basepointPeer, 1,
+	)
+	require.NoError(t, err)
+
+	require.Equal(
+		t, expectedPaymentBasePointBytes,
+		paymentBasePoint.PubKey().SerializeCompressed(),
+	)
+}
