@@ -15,7 +15,17 @@ import (
 )
 
 type Signer struct {
+	*input.MusigSessionManager
+
 	HsmSecret [32]byte
+
+	// SwapDescKeyAfterDerive is a boolean that indicates that after
+	// deriving the private key from the key descriptor (which interprets
+	// the public key as the peer's public key), we should swap the public
+	// key in the key descriptor to the actual derived public key. This is
+	// required for P2WKH signatures that need to have the public key in the
+	// witness stack.
+	SwapDescKeyAfterDerive bool
 }
 
 func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
@@ -28,7 +38,20 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 		return nil, err
 	}
 
+	if s.SwapDescKeyAfterDerive {
+		// If we need to swap the public key in the descriptor, we do so
+		// now. This is required for P2WKH signatures that need to have
+		// the public key in the witness stack.
+		signDesc.KeyDesc.PubKey = privKey.PubKey()
+	}
+
 	return lnd.SignOutputRawWithPrivateKey(tx, signDesc, privKey)
+}
+
+func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
+	*input.Script, error) {
+
+	return nil, errors.New("unimplemented")
 }
 
 func (s *Signer) FetchPrivateKey(

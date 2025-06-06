@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
@@ -16,6 +17,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -37,6 +39,9 @@ type sweepRemoteClosedCommand struct {
 	Publish        bool
 	SweepAddr      string
 	FeeRate        uint32
+
+	HsmSecret   string
+	PeerPubKeys string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -92,19 +97,27 @@ Supported remote force-closed channel types are:
 			"use for the sweep transaction in sat/vByte",
 	)
 
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the multisig keys for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.PeerPubKeys, "peers", "", "comma separated list of "+
+			"hex encoded public keys of the remote peers "+
+			"to recover funds from, only required when using "+
+			"--hsm_secret to derive the keys",
+	)
+
 	cc.rootKey = newRootKey(cc.cmd, "sweeping the wallet")
 
 	return cc.cmd
 }
 
 func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
-	extendedKey, err := c.rootKey.read()
-	if err != nil {
-		return fmt.Errorf("error reading root key: %w", err)
-	}
-
 	// Make sure sweep addr is set.
-	err = lnd.CheckAddress(
+	err := lnd.CheckAddress(
 		c.SweepAddr, chainParams, true, "sweep", lnd.AddrTypeP2WKH,
 		lnd.AddrTypeP2TR,
 	)
@@ -120,9 +133,93 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		c.FeeRate = defaultFeeSatPerVByte
 	}
 
+	var (
+		signer      lnd.ChannelSigner
+		estimator   input.TxWeightEstimator
+		sweepScript []byte
+		targets     []*targetAddr
+	)
+	switch {
+	case c.HsmSecret != "":
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		if c.PeerPubKeys == "" {
+			return errors.New("invalid peer public keys, must be " +
+				"a comma separated list of hex encoded " +
+				"public keys")
+		}
+
+		var pubKeys []*btcec.PublicKey
+		for _, pubKeyHex := range strings.Split(c.PeerPubKeys, ",") {
+			pkHex, err := hex.DecodeString(pubKeyHex)
+			if err != nil {
+				return fmt.Errorf("error decoding peer "+
+					"public key hex %s: %w", pubKeyHex, err)
+			}
+
+			pk, err := btcec.ParsePubKey(pkHex)
+			if err != nil {
+				return fmt.Errorf("error parsing peer public "+
+					"key hex %s: %w", pubKeyHex, err)
+			}
+
+			pubKeys = append(pubKeys, pk)
+		}
+
+		signer = &cln.Signer{
+			HsmSecret: hsmSecret,
+		}
+
+		targets, err = findTargetsCln(
+			hsmSecret, pubKeys, c.APIURL, c.RecoveryWindow,
+		)
+		if err != nil {
+			return fmt.Errorf("error finding targets: %w", err)
+		}
+
+		sweepScript, err = lnd.CheckAndEstimateAddress(
+			c.SweepAddr, chainParams, &estimator, "sweep",
+		)
+		if err != nil {
+			return err
+		}
+
+	default:
+		extendedKey, err := c.rootKey.read()
+		if err != nil {
+			return fmt.Errorf("error reading root key: %w", err)
+		}
+
+		signer = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+
+		targets, err = findTargetsLnd(
+			extendedKey, c.APIURL, c.RecoveryWindow,
+		)
+		if err != nil {
+			return fmt.Errorf("error finding targets: %w", err)
+		}
+
+		sweepScript, err = lnd.PrepareWalletAddress(
+			c.SweepAddr, chainParams, &estimator, extendedKey,
+			"sweep",
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	return sweepRemoteClosed(
-		extendedKey, c.APIURL, c.SweepAddr, c.RecoveryWindow, c.FeeRate,
-		c.Publish,
+		signer, &estimator, sweepScript, targets,
+		newExplorerAPI(c.APIURL), c.FeeRate, c.Publish,
 	)
 }
 
@@ -135,17 +232,8 @@ type targetAddr struct {
 	scriptTree *input.CommitScriptTree
 }
 
-func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
-	sweepAddr string, recoveryWindow uint32, feeRate uint32,
-	publish bool) error {
-
-	var estimator input.TxWeightEstimator
-	sweepScript, err := lnd.PrepareWalletAddress(
-		sweepAddr, chainParams, &estimator, extendedKey, "sweep",
-	)
-	if err != nil {
-		return err
-	}
+func findTargetsLnd(extendedKey *hdkeychain.ExtendedKey, apiURL string,
+	recoveryWindow uint32) ([]*targetAddr, error) {
 
 	var (
 		targets []*targetAddr
@@ -157,17 +245,18 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			index)
 		parsedPath, err := lnd.ParsePath(path)
 		if err != nil {
-			return fmt.Errorf("error parsing path: %w", err)
+			return nil, fmt.Errorf("error parsing path: %w", err)
 		}
 
 		hdKey, err := lnd.DeriveChildren(extendedKey, parsedPath)
 		if err != nil {
-			return fmt.Errorf("eror deriving children: %w", err)
+			return nil, fmt.Errorf("eror deriving children: %w",
+				err)
 		}
 
 		privKey, err := hdKey.ECPrivKey()
 		if err != nil {
-			return fmt.Errorf("could not derive private "+
+			return nil, fmt.Errorf("could not derive private "+
 				"key: %w", err)
 		}
 
@@ -181,7 +270,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			}, api,
 		)
 		if err != nil {
-			return fmt.Errorf("could not query API for "+
+			return nil, fmt.Errorf("could not query API for "+
 				"addresses with funds: %w", err)
 		}
 		targets = append(targets, foundTargets...)
@@ -193,13 +282,59 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 		api, recoveryWindow, extendedKey,
 	)
 	if err != nil && !errors.Is(err, errAddrNotFound) {
-		return fmt.Errorf("could not check ancient channel points: %w",
-			err)
+		return nil, fmt.Errorf("could not check ancient channel "+
+			"points: %w", err)
 	}
 
 	if len(ancientChannelTargets) > 0 {
 		targets = append(targets, ancientChannelTargets...)
 	}
+
+	return targets, nil
+}
+
+func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
+	apiURL string, recoveryWindow uint32) ([]*targetAddr, error) {
+
+	var (
+		targets []*targetAddr
+		api     = newExplorerAPI(apiURL)
+	)
+	for _, pubKey := range pubKeys {
+		for index := range recoveryWindow {
+			desc := &keychain.KeyDescriptor{
+				PubKey: pubKey,
+				KeyLocator: keychain.KeyLocator{
+					Family: keychain.KeyFamilyPaymentBase,
+					Index:  index,
+				},
+			}
+			_, privKey, err := cln.DeriveKeyPair(hsmSecret, desc)
+			if err != nil {
+				return nil, fmt.Errorf("could not derive "+
+					"private key: %w", err)
+			}
+
+			foundTargets, err := queryAddressBalances(
+				privKey.PubKey(), desc, api,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("could not query API "+
+					"for addresses with funds: %w", err)
+			}
+			targets = append(targets, foundTargets...)
+		}
+	}
+
+	log.Infof("Found %d addresses with funds to sweep.", len(targets))
+
+	return targets, nil
+}
+
+func sweepRemoteClosed(signer lnd.ChannelSigner,
+	estimator *input.TxWeightEstimator, sweepScript []byte,
+	targets []*targetAddr, api *btc.ExplorerAPI, feeRate uint32,
+	publish bool) error {
 
 	// Create estimator and transaction template.
 	var (
@@ -332,13 +467,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	}}
 
 	// Sign the transaction now.
-	var (
-		signer = &lnd.Signer{
-			ExtendedKey: extendedKey,
-			ChainParams: chainParams,
-		}
-		sigHashes = txscript.NewTxSigHashes(sweepTx, prevOutFetcher)
-	)
+	var sigHashes = txscript.NewTxSigHashes(sweepTx, prevOutFetcher)
 	for idx, desc := range signDescs {
 		desc.SigHashes = sigHashes
 		desc.InputIndex = idx
@@ -370,6 +499,13 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 			// P2WKH descriptor to be set to the pkScript of the
 			// output...
 			desc.WitnessScript = desc.Output.PkScript
+
+			// For CLN we need to activate a flag to make sure we
+			// put the correct public key on the witness stack.
+			if clnSigner, ok := signer.(*cln.Signer); ok {
+				clnSigner.SwapDescKeyAfterDerive = true
+			}
+
 			witness, err := input.CommitSpendNoDelay(
 				signer, desc, sweepTx,
 				len(desc.SingleTweak) == 0,
@@ -382,7 +518,7 @@ func sweepRemoteClosed(extendedKey *hdkeychain.ExtendedKey, apiURL,
 	}
 
 	var buf bytes.Buffer
-	err = sweepTx.Serialize(&buf)
+	err := sweepTx.Serialize(&buf)
 	if err != nil {
 		return err
 	}
