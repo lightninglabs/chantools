@@ -20,6 +20,21 @@ import (
 	"github.com/lightningnetwork/lnd/keychain"
 )
 
+type ChannelSigner interface {
+	SignOutputRaw(tx *wire.MsgTx,
+		signDesc *input.SignDescriptor) (input.Signature, error)
+
+	FetchPrivateKey(descriptor *keychain.KeyDescriptor) (
+		*btcec.PrivateKey, error)
+
+	FindMultisigKey(targetPubkey, peerPubKey *btcec.PublicKey,
+		maxNumKeys uint32) (*keychain.KeyDescriptor, error)
+
+	AddPartialSignature(packet *psbt.Packet,
+		keyDesc keychain.KeyDescriptor, utxo *wire.TxOut,
+		witnessScript []byte, inputIndex int) error
+}
+
 type Signer struct {
 	*input.MusigSessionManager
 
@@ -37,10 +52,10 @@ func (s *Signer) SignOutputRaw(tx *wire.MsgTx,
 		return nil, err
 	}
 
-	return s.SignOutputRawWithPrivateKey(tx, signDesc, privKey)
+	return SignOutputRawWithPrivateKey(tx, signDesc, privKey)
 }
 
-func (s *Signer) SignOutputRawWithPrivateKey(tx *wire.MsgTx,
+func SignOutputRawWithPrivateKey(tx *wire.MsgTx,
 	signDesc *input.SignDescriptor,
 	privKey *secp256k1.PrivateKey) (input.Signature, error) {
 
@@ -140,6 +155,51 @@ func (s *Signer) FetchPrivateKey(descriptor *keychain.KeyDescriptor) (
 	return key.ECPrivKey()
 }
 
+func (s *Signer) FindMultisigKey(targetPubkey, _ *btcec.PublicKey,
+	maxNumKeys uint32) (*keychain.KeyDescriptor, error) {
+
+	// First, we need to derive the correct branch from the local root key.
+	multisigBranch, err := DeriveChildren(s.ExtendedKey, []uint32{
+		HardenedKeyStart + uint32(keychain.BIP0043Purpose),
+		HardenedKeyStart + s.ChainParams.HDCoinType,
+		HardenedKeyStart + uint32(keychain.KeyFamilyMultiSig),
+		0,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("could not derive local multisig key: "+
+			"%w", err)
+	}
+
+	// Loop through the local multisig keys to find the target key.
+	for index := range maxNumKeys {
+		currentKey, err := multisigBranch.DeriveNonStandard(index)
+		if err != nil {
+			return nil, fmt.Errorf("error deriving child key: %w",
+				err)
+		}
+
+		currentPubkey, err := currentKey.ECPubKey()
+		if err != nil {
+			return nil, fmt.Errorf("error deriving public key: %w",
+				err)
+		}
+
+		if !targetPubkey.IsEqual(currentPubkey) {
+			continue
+		}
+
+		return &keychain.KeyDescriptor{
+			PubKey: currentPubkey,
+			KeyLocator: keychain.KeyLocator{
+				Family: keychain.KeyFamilyMultiSig,
+				Index:  index,
+			},
+		}, nil
+	}
+
+	return nil, errors.New("no matching pubkeys found")
+}
+
 func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	keyDesc keychain.KeyDescriptor, utxo *wire.TxOut, witnessScript []byte,
 	inputIndex int) error {
@@ -199,7 +259,7 @@ func (s *Signer) AddPartialSignatureForPrivateKey(packet *psbt.Packet,
 			packet.UnsignedTx, prevOutFetcher,
 		),
 	}
-	ourSigRaw, err := s.SignOutputRawWithPrivateKey(
+	ourSigRaw, err := SignOutputRawWithPrivateKey(
 		packet.UnsignedTx, signDesc, privateKey,
 	)
 	if err != nil {
@@ -258,7 +318,7 @@ func (s *Signer) AddTaprootSignature(packet *psbt.Packet, inputIndex int,
 		signDesc.TapTweak = pIn.TaprootMerkleRoot
 	}
 
-	ourSigRaw, err := s.SignOutputRawWithPrivateKey(
+	ourSigRaw, err := SignOutputRawWithPrivateKey(
 		packet.UnsignedTx, signDesc, privateKey,
 	)
 	if err != nil {
