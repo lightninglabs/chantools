@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/connmgr"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/brontide"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -33,6 +35,8 @@ type triggerForceCloseCommand struct {
 	APIURL string
 
 	TorProxy string
+
+	HsmSecret string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -71,28 +75,56 @@ does not properly respond to a Data Loss Protection re-establish message).'`,
 		&cc.TorProxy, "torproxy", "", "SOCKS5 proxy to use for Tor "+
 			"connections (to .onion addresses)",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the node key for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
+	)
 	cc.rootKey = newRootKey(cc.cmd, "deriving the identity key")
 
 	return cc.cmd
 }
 
 func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
-	extendedKey, err := c.rootKey.read()
-	if err != nil {
-		return fmt.Errorf("error reading root key: %w", err)
+	var identityPriv *btcec.PrivateKey
+	switch {
+	case c.HsmSecret != "":
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		_, identityPriv, err = cln.NodeKey(hsmSecret)
+		if err != nil {
+			return fmt.Errorf("error deriving identity key: %w",
+				err)
+		}
+
+	default:
+		extendedKey, err := c.rootKey.read()
+		if err != nil {
+			return fmt.Errorf("error reading root key: %w", err)
+		}
+
+		identityPath := lnd.IdentityPath(chainParams)
+		child, _, _, err := lnd.DeriveKey(
+			extendedKey, identityPath, chainParams,
+		)
+		if err != nil {
+			return fmt.Errorf("could not derive identity key: %w",
+				err)
+		}
+		identityPriv, err = child.ECPrivKey()
+		if err != nil {
+			return fmt.Errorf("could not get identity private "+
+				"key: %w", err)
+		}
 	}
 
-	identityPath := lnd.IdentityPath(chainParams)
-	child, pubKey, _, err := lnd.DeriveKey(
-		extendedKey, identityPath, chainParams,
-	)
-	if err != nil {
-		return fmt.Errorf("could not derive identity key: %w", err)
-	}
-	identityPriv, err := child.ECPrivKey()
-	if err != nil {
-		return fmt.Errorf("could not get identity private key: %w", err)
-	}
 	identityECDH := &keychain.PrivKeyECDH{
 		PrivKey: identityPriv,
 	}
@@ -103,7 +135,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	err = requestForceClose(
-		c.Peer, c.TorProxy, pubKey, *outPoint, identityECDH,
+		c.Peer, c.TorProxy, identityPriv.PubKey(), *outPoint,
+		identityECDH,
 	)
 	if err != nil {
 		return fmt.Errorf("error requesting force close: %w", err)
