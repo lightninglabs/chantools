@@ -6,10 +6,8 @@ import (
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"
 )
 
@@ -69,24 +67,10 @@ func (c *signRescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		return fmt.Errorf("error decoding PSBT: %w", err)
 	}
 
-	return signRescueFunding(extendedKey, packet, signer)
+	return signRescueFunding(packet, signer)
 }
 
-func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
-	packet *psbt.Packet, signer *lnd.Signer) error {
-
-	// First, we need to derive the correct branch from the local root key.
-	localMultisig, err := lnd.DeriveChildren(rootKey, []uint32{
-		lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		lnd.HardenedKeyStart + chainParams.HDCoinType,
-		lnd.HardenedKeyStart + uint32(keychain.KeyFamilyMultiSig),
-		0,
-	})
-	if err != nil {
-		return fmt.Errorf("could not derive local multisig key: %w",
-			err)
-	}
-
+func signRescueFunding(packet *psbt.Packet, signer *lnd.Signer) error {
 	// Now let's check that the packet has the expected proprietary key with
 	// our pubkey that we need to sign with.
 	if len(packet.Inputs) != 1 {
@@ -110,8 +94,12 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 	}
 
 	// Now we can look up the local key and check the PSBT further, then
-	// add our signature.
-	localKeyDesc, err := findLocalMultisigKey(localMultisig, targetKey)
+	// add our signature. This is NOT CLN compatible, as we'd need to
+	// add the peer's public key as a command argument to pass into
+	// FindMultisigKey.
+	localKeyDesc, err := signer.FindMultisigKey(
+		targetKey, nil, MaxChannelLookup,
+	)
 	if err != nil {
 		return fmt.Errorf("could not find local multisig key: %w", err)
 	}
@@ -152,37 +140,4 @@ func signRescueFunding(rootKey *hdkeychain.ExtendedKey,
 		"node:\n\n%x\n\n", buf.Bytes())
 
 	return nil
-}
-
-func findLocalMultisigKey(multisigBranch *hdkeychain.ExtendedKey,
-	targetPubkey *btcec.PublicKey) (*keychain.KeyDescriptor, error) {
-
-	// Loop through the local multisig keys to find the target key.
-	for index := range uint32(MaxChannelLookup) {
-		currentKey, err := multisigBranch.DeriveNonStandard(index)
-		if err != nil {
-			return nil, fmt.Errorf("error deriving child key: %w",
-				err)
-		}
-
-		currentPubkey, err := currentKey.ECPubKey()
-		if err != nil {
-			return nil, fmt.Errorf("error deriving public key: %w",
-				err)
-		}
-
-		if !targetPubkey.IsEqual(currentPubkey) {
-			continue
-		}
-
-		return &keychain.KeyDescriptor{
-			PubKey: currentPubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  index,
-			},
-		}, nil
-	}
-
-	return nil, errors.New("no matching pubkeys found")
 }
