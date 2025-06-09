@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/btcsuite/btcd/btcec/v2"
@@ -19,8 +22,11 @@ import (
 	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
+	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/lncfg"
+	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
 	"github.com/spf13/cobra"
 )
@@ -40,8 +46,9 @@ type sweepRemoteClosedCommand struct {
 	SweepAddr      string
 	FeeRate        uint32
 
-	HsmSecret   string
-	PeerPubKeys string
+	HsmSecret    string
+	PeerPubKeys  string
+	KnownOutputs string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -107,7 +114,16 @@ Supported remote force-closed channel types are:
 		&cc.PeerPubKeys, "peers", "", "comma separated list of "+
 			"hex encoded public keys of the remote peers "+
 			"to recover funds from, only required when using "+
-			"--hsm_secret to derive the keys",
+			"--hsm_secret to derive the keys; can also be a file "+
+			"name to a file that contains the public keys, one "+
+			"per line",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.KnownOutputs, "known_outputs", "", "a comma separated "+
+			"list of known output addresses to use for matching "+
+			"against, instead of querying the API; can also be "+
+			"a file name to a file that contains the known "+
+			"outputs, one per line",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "sweeping the wallet")
@@ -134,11 +150,32 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	var (
-		signer      lnd.ChannelSigner
-		estimator   input.TxWeightEstimator
-		sweepScript []byte
-		targets     []*targetAddr
+		signer       lnd.ChannelSigner
+		estimator    input.TxWeightEstimator
+		knownOutputs []string
+		sweepScript  []byte
+		targets      []*targetAddr
 	)
+
+	if c.KnownOutputs != "" {
+		knownOutputs, err = listOrFile(c.KnownOutputs)
+		if err != nil {
+			return fmt.Errorf("error reading known outputs: %w",
+				err)
+		}
+
+		for _, output := range knownOutputs {
+			_, err = lnd.ParseAddress(output, chainParams)
+			if err != nil {
+				return fmt.Errorf("error parsing known output "+
+					"address %s: %w", output, err)
+			}
+		}
+
+		log.Infof("Using %d known outputs for matching.",
+			len(knownOutputs))
+	}
+
 	switch {
 	case c.HsmSecret != "":
 		secretBytes, err := hex.DecodeString(c.HsmSecret)
@@ -152,11 +189,16 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		if c.PeerPubKeys == "" {
 			return errors.New("invalid peer public keys, must be " +
 				"a comma separated list of hex encoded " +
-				"public keys")
+				"public keys or a file name")
 		}
 
 		var pubKeys []*btcec.PublicKey
-		for _, pubKeyHex := range strings.Split(c.PeerPubKeys, ",") {
+		hexPubKeys, err := listOrFile(c.PeerPubKeys)
+		if err != nil {
+			return fmt.Errorf("error reading peer public keys: %w",
+				err)
+		}
+		for _, pubKeyHex := range hexPubKeys {
 			pkHex, err := hex.DecodeString(pubKeyHex)
 			if err != nil {
 				return fmt.Errorf("error decoding peer "+
@@ -172,12 +214,16 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 			pubKeys = append(pubKeys, pk)
 		}
 
+		log.Infof("Using %d peer public keys for recovery.",
+			len(pubKeys))
+
 		signer = &cln.Signer{
 			HsmSecret: hsmSecret,
 		}
 
 		targets, err = findTargetsCln(
 			hsmSecret, pubKeys, c.APIURL, c.RecoveryWindow,
+			knownOutputs,
 		)
 		if err != nil {
 			return fmt.Errorf("error finding targets: %w", err)
@@ -202,7 +248,7 @@ func (c *sweepRemoteClosedCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		targets, err = findTargetsLnd(
-			extendedKey, c.APIURL, c.RecoveryWindow,
+			extendedKey, c.APIURL, c.RecoveryWindow, knownOutputs,
 		)
 		if err != nil {
 			return fmt.Errorf("error finding targets: %w", err)
@@ -233,7 +279,7 @@ type targetAddr struct {
 }
 
 func findTargetsLnd(extendedKey *hdkeychain.ExtendedKey, apiURL string,
-	recoveryWindow uint32) ([]*targetAddr, error) {
+	recoveryWindow uint32, knownOutputs []string) ([]*targetAddr, error) {
 
 	var (
 		targets []*targetAddr
@@ -267,7 +313,7 @@ func findTargetsLnd(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 					Family: keychain.KeyFamilyPaymentBase,
 					Index:  index,
 				},
-			}, api,
+			}, api, knownOutputs,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("could not query API for "+
@@ -294,7 +340,8 @@ func findTargetsLnd(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 }
 
 func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
-	apiURL string, recoveryWindow uint32) ([]*targetAddr, error) {
+	apiURL string, recoveryWindow uint32,
+	knownOutputs []string) ([]*targetAddr, error) {
 
 	var (
 		targets []*targetAddr
@@ -316,7 +363,7 @@ func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
 			}
 
 			foundTargets, err := queryAddressBalances(
-				privKey.PubKey(), desc, api,
+				privKey.PubKey(), desc, api, knownOutputs,
 			)
 			if err != nil {
 				return nil, fmt.Errorf("could not query API "+
@@ -540,12 +587,18 @@ func sweepRemoteClosed(signer lnd.ChannelSigner,
 }
 
 func queryAddressBalances(pubKey *btcec.PublicKey,
-	keyDesc *keychain.KeyDescriptor, api *btc.ExplorerAPI) ([]*targetAddr,
-	error) {
+	keyDesc *keychain.KeyDescriptor, api *btc.ExplorerAPI,
+	knownOutputs []string) ([]*targetAddr, error) {
 
 	var targets []*targetAddr
 	queryAddr := func(address btcutil.Address, script []byte,
 		scriptTree *input.CommitScriptTree) error {
+
+		if len(knownOutputs) > 0 {
+			if !slices.Contains(knownOutputs, address.String()) {
+				return nil
+			}
+		}
 
 		unspent, err := api.Unspent(address.EncodeAddress())
 		if err != nil {
@@ -715,4 +768,22 @@ func checkAncientChannelPoints(api *btc.ExplorerAPI, numKeys uint32,
 	}
 
 	return targets, nil
+}
+
+func listOrFile(listOrPath string) ([]string, error) {
+	if lnrpc.FileExists(lncfg.CleanAndExpandPath(listOrPath)) {
+		contents, err := os.ReadFile(listOrPath)
+		if err != nil {
+			return nil, fmt.Errorf("error reading file %s: %w",
+				listOrPath, err)
+		}
+
+		re := regexp.MustCompile(`[,\s]+`)
+		parts := re.Split(string(contents), -1)
+		return fn.Filter(parts, func(s string) bool {
+			return len(strings.TrimSpace(s)) > 0
+		}), nil
+	}
+
+	return strings.Split(listOrPath, ","), nil
 }
