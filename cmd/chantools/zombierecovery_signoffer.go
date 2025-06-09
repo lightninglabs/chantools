@@ -3,21 +3,24 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/btcsuite/btcd/btcec/v2"
-	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
-	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"
 )
 
 type zombieRecoverySignOfferCommand struct {
 	Psbt string
+
+	HsmSecret  string
+	RemotePeer string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -40,6 +43,17 @@ peer to recover funds from one or more channels.`,
 		&cc.Psbt, "psbt", "", "the base64 encoded PSBT that the other "+
 			"party sent as an offer to rescue funds",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the multisig keys for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.RemotePeer, "remote_peer", "", "the hex encoded remote "+
+			"peer node identity key, only required when running "+
+			"'signoffer' on the CLN side",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "signing the offer")
 
@@ -49,16 +63,6 @@ peer to recover funds from one or more channels.`,
 func (c *zombieRecoverySignOfferCommand) Execute(_ *cobra.Command,
 	_ []string) error {
 
-	extendedKey, err := c.rootKey.read()
-	if err != nil {
-		return fmt.Errorf("error reading root key: %w", err)
-	}
-
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
-	}
-
 	// Decode the PSBT.
 	packet, err := psbt.NewFromRawBytes(
 		bytes.NewReader([]byte(c.Psbt)), true,
@@ -67,23 +71,55 @@ func (c *zombieRecoverySignOfferCommand) Execute(_ *cobra.Command,
 		return fmt.Errorf("error decoding PSBT: %w", err)
 	}
 
-	return signOffer(extendedKey, packet, signer)
+	var (
+		signer     lnd.ChannelSigner
+		remoteNode *btcec.PublicKey
+	)
+	switch {
+	case c.HsmSecret != "":
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		if c.RemotePeer == "" {
+			return errors.New("remote peer pubkey is required " +
+				"when using the HSM secret")
+		}
+
+		remoteNodeBytes, err := hex.DecodeString(c.RemotePeer)
+		if err != nil {
+			return fmt.Errorf("error decoding peer pubkey: %w", err)
+		}
+		remoteNode, err = btcec.ParsePubKey(remoteNodeBytes)
+		if err != nil {
+			return fmt.Errorf("error parsing peer pubkey: %w", err)
+		}
+
+		signer = &cln.Signer{
+			HsmSecret: hsmSecret,
+		}
+
+	default:
+		extendedKey, err := c.rootKey.read()
+		if err != nil {
+			return fmt.Errorf("error reading root key: %w", err)
+		}
+
+		signer = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
+	}
+
+	return signOffer(packet, signer, remoteNode)
 }
 
-func signOffer(rootKey *hdkeychain.ExtendedKey,
-	packet *psbt.Packet, signer *lnd.Signer) error {
-
-	// First, we need to derive the correct branch from the local root key.
-	localMultisig, err := lnd.DeriveChildren(rootKey, []uint32{
-		lnd.HardenedKeyStart + uint32(keychain.BIP0043Purpose),
-		lnd.HardenedKeyStart + chainParams.HDCoinType,
-		lnd.HardenedKeyStart + uint32(keychain.KeyFamilyMultiSig),
-		0,
-	})
-	if err != nil {
-		return fmt.Errorf("could not derive local multisig key: %w",
-			err)
-	}
+func signOffer(packet *psbt.Packet, signer lnd.ChannelSigner,
+	peerPubKey *btcec.PublicKey) error {
 
 	// Now let's check that the packet has the expected proprietary key with
 	// our pubkey that we need to sign with.
@@ -144,8 +180,8 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 
 		// Now we can look up the local key and check the PSBT further,
 		// then add our signature.
-		localKeyDesc, err := findLocalMultisigKey(
-			localMultisig, targetKey,
+		localKeyDesc, err := signer.FindMultisigKey(
+			targetKey, peerPubKey, MaxChannelLookup,
 		)
 		if err != nil {
 			return fmt.Errorf("could not find local multisig key: "+
@@ -155,8 +191,14 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 		// If this is a Simple Taproot channel, we need to generate a
 		// partial MuSig2 signature instead.
 		if len(packet.Inputs[idx].MuSig2PartialSigs) > 0 {
+			lndSigner, ok := signer.(*lnd.Signer)
+			if !ok {
+				return errors.New("taproot channels not yet " +
+					"supported for CLN")
+			}
+
 			err = muSig2PartialSign(
-				signer, localKeyDesc, packet, idx,
+				lndSigner, localKeyDesc, packet, idx,
 			)
 			if err != nil {
 				return fmt.Errorf("error adding partial "+
@@ -187,7 +229,7 @@ func signOffer(rootKey *hdkeychain.ExtendedKey,
 
 	// We're almost done. Now we just need to make sure we can finalize and
 	// extract the final TX.
-	err = psbt.MaybeFinalizeAll(packet)
+	err := psbt.MaybeFinalizeAll(packet)
 	if err != nil {
 		return fmt.Errorf("error finalizing PSBT: %w", err)
 	}
