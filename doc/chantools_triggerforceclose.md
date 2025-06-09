@@ -24,6 +24,7 @@ chantools triggerforceclose \
 ### Options
 
 ```
+      --all_public_channels    query all public channels from the Amboss API and attempt to trigger a force close for each of them
       --apiurl string          API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                  read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channel_point string   funding transaction outpoint of the channel to trigger the force close of (<txid>:<txindex>)

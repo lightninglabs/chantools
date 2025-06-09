@@ -38,7 +38,8 @@ chantools sweepremoteclosed \
       --feerate uint32          fee rate to use for the sweep transaction in sat/vByte (default 30)
   -h, --help                    help for sweepremoteclosed
       --hsm_secret string       the hex encoded HSM secret to use for deriving the multisig keys for a CLN node; obtain by running 'xxd -p -c32 ~/.lightning/bitcoin/hsm_secret'
-      --peers string            comma separated list of hex encoded public keys of the remote peers to recover funds from, only required when using --hsm_secret to derive the keys
+      --known_outputs string    a comma separated list of known output addresses to use for matching against, instead of querying the API; can also be a file name to a file that contains the known outputs, one per line
+      --peers string            comma separated list of hex encoded public keys of the remote peers to recover funds from, only required when using --hsm_secret to derive the keys; can also be a file name to a file that contains the public keys, one per line
       --publish                 publish sweep TX to the chain API instead of just printing the TX
       --recoverywindow uint32   number of keys to scan per derivation path (default 200)
       --rootkey string          BIP32 HD root key of the wallet to use for sweeping the wallet; leave empty to prompt for lnd 24 word aezeed
