@@ -62,6 +62,10 @@ P.S.: If you don't want to be notified about future matches, please let me know.
 `
 )
 
+type gqAddress struct {
+	Address string `graphql:"addr"`
+}
+
 type gqChannel struct {
 	ChanPoint   string `graphql:"chan_point"`
 	Capacity    string `graphql:"capacity"`
@@ -70,6 +74,11 @@ type gqChannel struct {
 	} `graphql:"closure_info"`
 	Node1     string `graphql:"node1_pub"`
 	Node2     string `graphql:"node2_pub"`
+	Node2Info struct {
+		Node struct {
+			Addresses []*gqAddress `graphql:"addresses"`
+		} `graphql:"node"`
+	} `graphql:"node2_info"`
 	ChannelID string `graphql:"long_channel_id"`
 }
 

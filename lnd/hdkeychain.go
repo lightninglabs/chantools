@@ -477,8 +477,18 @@ func PrepareWalletAddress(addr string, chainParams *chaincfg.Params,
 			return nil, err
 		}
 
+		if estimator != nil {
+			estimator.AddP2WKHOutput()
+		}
+
 		return txscript.PayToAddrScript(p2wkhAddr)
 	}
+
+	return CheckAndEstimateAddress(addr, chainParams, estimator, hint)
+}
+
+func CheckAndEstimateAddress(addr string, chainParams *chaincfg.Params,
+	estimator *input.TxWeightEstimator, hint string) ([]byte, error) {
 
 	parsedAddr, err := ParseAddress(addr, chainParams)
 	if err != nil {

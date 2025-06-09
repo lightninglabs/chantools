@@ -21,8 +21,13 @@ import (
 )
 
 type ChannelSigner interface {
+	input.MuSig2Signer
+
 	SignOutputRaw(tx *wire.MsgTx,
 		signDesc *input.SignDescriptor) (input.Signature, error)
+
+	ComputeInputScript(tx *wire.MsgTx,
+		desc *input.SignDescriptor) (*input.Script, error)
 
 	FetchPrivateKey(descriptor *keychain.KeyDescriptor) (
 		*btcec.PrivateKey, error)
@@ -133,6 +138,7 @@ func SignOutputRawWithPrivateKey(tx *wire.MsgTx,
 	// Chop off the sighash flag at the end of the signature.
 	return ecdsa.ParseDERSignature(sig[:len(sig)-1])
 }
+
 func (s *Signer) ComputeInputScript(_ *wire.MsgTx, _ *input.SignDescriptor) (
 	*input.Script, error) {
 

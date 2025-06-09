@@ -28,6 +28,7 @@ chantools triggerforceclose \
       --bip39                  read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channel_point string   funding transaction outpoint of the channel to trigger the force close of (<txid>:<txindex>)
   -h, --help                   help for triggerforceclose
+      --hsm_secret string      the hex encoded HSM secret to use for deriving the node key for a CLN node; obtain by running 'xxd -p -c32 ~/.lightning/bitcoin/hsm_secret'
       --peer string            remote peer address (<pubkey>@<host>[:<port>])
       --rootkey string         BIP32 HD root key of the wallet to use for deriving the identity key; leave empty to prompt for lnd 24 word aezeed
       --torproxy string        SOCKS5 proxy to use for Tor connections (to .onion addresses)

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -10,8 +13,12 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/connmgr"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/hasura/go-graphql-client"
+	"github.com/lightninglabs/chantools/btc"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/brontide"
+	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/lightningnetwork/lnd/lncfg"
 	"github.com/lightningnetwork/lnd/lnwire"
@@ -30,9 +37,12 @@ type triggerForceCloseCommand struct {
 	Peer         string
 	ChannelPoint string
 
-	APIURL string
+	APIURL            string
+	AllPublicChannels bool
 
 	TorProxy string
+
+	HsmSecret string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -67,9 +77,20 @@ does not properly respond to a Data Loss Protection re-establish message).'`,
 		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use (must "+
 			"be esplora compatible)",
 	)
+	cc.cmd.Flags().BoolVar(
+		&cc.AllPublicChannels, "all_public_channels", false,
+		"query all public channels from the Amboss API and attempt "+
+			"to trigger a force close for each of them",
+	)
 	cc.cmd.Flags().StringVar(
 		&cc.TorProxy, "torproxy", "", "SOCKS5 proxy to use for Tor "+
 			"connections (to .onion addresses)",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the node key for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
 	)
 	cc.rootKey = newRootKey(cc.cmd, "deriving the identity key")
 
@@ -77,57 +98,176 @@ does not properly respond to a Data Loss Protection re-establish message).'`,
 }
 
 func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
-	extendedKey, err := c.rootKey.read()
-	if err != nil {
-		return fmt.Errorf("error reading root key: %w", err)
+	var identityPriv *btcec.PrivateKey
+	switch {
+	case c.HsmSecret != "":
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		_, identityPriv, err = cln.NodeKey(hsmSecret)
+		if err != nil {
+			return fmt.Errorf("error deriving identity key: %w",
+				err)
+		}
+
+	default:
+		extendedKey, err := c.rootKey.read()
+		if err != nil {
+			return fmt.Errorf("error reading root key: %w", err)
+		}
+
+		identityPath := lnd.IdentityPath(chainParams)
+		child, _, _, err := lnd.DeriveKey(
+			extendedKey, identityPath, chainParams,
+		)
+		if err != nil {
+			return fmt.Errorf("could not derive identity key: %w",
+				err)
+		}
+		identityPriv, err = child.ECPrivKey()
+		if err != nil {
+			return fmt.Errorf("could not get identity private "+
+				"key: %w", err)
+		}
 	}
 
-	identityPath := lnd.IdentityPath(chainParams)
-	child, pubKey, _, err := lnd.DeriveKey(
-		extendedKey, identityPath, chainParams,
-	)
-	if err != nil {
-		return fmt.Errorf("could not derive identity key: %w", err)
+	api := newExplorerAPI(c.APIURL)
+	switch {
+	case c.ChannelPoint != "" && c.Peer != "":
+		_, err := closeChannel(
+			identityPriv, api, c.ChannelPoint, c.Peer, c.TorProxy,
+		)
+		return err
+
+	case c.AllPublicChannels:
+		client := graphql.NewClient(
+			"https://api.amboss.space/graphql", nil,
+		)
+		ourNodeKey := hex.EncodeToString(
+			identityPriv.PubKey().SerializeCompressed(),
+		)
+
+		log.Infof("Fetching public channels for node %s", ourNodeKey)
+		channels, err := fetchChannels(client, ourNodeKey)
+		if err != nil {
+			return fmt.Errorf("error fetching channels: %w", err)
+		}
+
+		channels = fn.Filter(channels, func(c *gqChannel) bool {
+			return c.ClosureInfo.ClosedHeight == 0
+		})
+
+		log.Infof("Found %d public open channels, attempting to force "+
+			"close each of them", len(channels))
+
+		var (
+			pubKeys []string
+			outputs []string
+		)
+		for _, openChan := range channels {
+			addr := pickAddr(openChan.Node2Info.Node.Addresses)
+			peerAddr := fmt.Sprintf("%s@%s", openChan.Node2, addr)
+			log.Infof("Attempting to force close channel %s with "+
+				"peer %s", openChan.ChanPoint, peerAddr)
+
+			outputAddrs, err := closeChannel(
+				identityPriv, api, openChan.ChanPoint,
+				peerAddr, c.TorProxy,
+			)
+			if err != nil {
+				log.Errorf("Error closing channel %s, "+
+					"skipping: %v", openChan.ChanPoint, err)
+				continue
+			}
+
+			pubKeys = append(pubKeys, openChan.Node2)
+			outputs = append(outputs, outputAddrs...)
+		}
+
+		peersBytes := []byte(strings.Join(pubKeys, "\n"))
+		outputsBytes := []byte(strings.Join(outputs, "\n"))
+
+		fileName := fmt.Sprintf("results/forceclose-peers-%s.txt",
+			time.Now().Format("2006-01-02"))
+		log.Infof("Writing peers to %s", fileName)
+		err = os.WriteFile(fileName, peersBytes, 0644)
+		if err != nil {
+			return fmt.Errorf("error writing peers to file: %w",
+				err)
+		}
+
+		fileName = fmt.Sprintf("results/forceclose-addresses-%s.txt",
+			time.Now().Format("2006-01-02"))
+		log.Infof("Writing addresses to %s", fileName)
+		return os.WriteFile(fileName, outputsBytes, 0644)
+
+	default:
+		return errors.New("either --channel_point and --peer or " +
+			"--all_public_channels must be specified")
 	}
-	identityPriv, err := child.ECPrivKey()
-	if err != nil {
-		return fmt.Errorf("could not get identity private key: %w", err)
+}
+
+func pickAddr(addrs []*gqAddress) string {
+	// If there's only one address, we'll just return that one.
+	if len(addrs) == 1 {
+		return addrs[0].Address
 	}
+
+	// We'll pick the first address that is not a Tor address.
+	for _, addr := range addrs {
+		if !strings.HasSuffix(addr.Address, ".onion") {
+			return addr.Address
+		}
+	}
+
+	// If all addresses are Tor addresses, we'll just return the first one.
+	if len(addrs) > 0 {
+		return addrs[0].Address
+	}
+
+	return ""
+}
+
+func closeChannel(identityPriv *btcec.PrivateKey, api *btc.ExplorerAPI,
+	channelPoint, peer, torProxy string) ([]string, error) {
+
 	identityECDH := &keychain.PrivKeyECDH{
 		PrivKey: identityPriv,
 	}
 
-	outPoint, err := parseOutPoint(c.ChannelPoint)
+	outPoint, err := parseOutPoint(channelPoint)
 	if err != nil {
-		return fmt.Errorf("error parsing channel point: %w", err)
+		return nil, fmt.Errorf("error parsing channel point: %w", err)
 	}
 
-	err = requestForceClose(
-		c.Peer, c.TorProxy, pubKey, *outPoint, identityECDH,
-	)
+	err = requestForceClose(peer, torProxy, *outPoint, identityECDH)
 	if err != nil {
-		return fmt.Errorf("error requesting force close: %w", err)
+		return nil, fmt.Errorf("error requesting force close: %w", err)
 	}
 
 	log.Infof("Message sent, waiting for force close transaction to " +
 		"appear in mempool")
 
-	api := newExplorerAPI(c.APIURL)
-	channelAddress, err := api.Address(c.ChannelPoint)
+	channelAddress, err := api.Address(channelPoint)
 	if err != nil {
-		return fmt.Errorf("error getting channel address: %w", err)
+		return nil, fmt.Errorf("error getting channel address: %w", err)
 	}
 
 	spends, err := api.Spends(channelAddress)
 	if err != nil {
-		return fmt.Errorf("error getting spends: %w", err)
+		return nil, fmt.Errorf("error getting spends: %w", err)
 	}
 	for len(spends) == 0 {
 		log.Infof("No spends found yet, waiting 5 seconds...")
 		time.Sleep(5 * time.Second)
 		spends, err = api.Spends(channelAddress)
 		if err != nil {
-			return fmt.Errorf("error getting spends: %w", err)
+			return nil, fmt.Errorf("error getting spends: %w", err)
 		}
 	}
 
@@ -135,7 +275,11 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	log.Infof("You can now use the sweepremoteclosed command to sweep " +
 		"the funds from the channel")
 
-	return nil
+	outputAddrs := fn.Map(spends[0].Vout, func(v *btc.Vout) string {
+		return v.ScriptPubkeyAddr
+	})
+
+	return outputAddrs, nil
 }
 
 func noiseDial(idKey keychain.SingleKeyECDH, lnAddr *lnwire.NetAddress,
@@ -144,8 +288,7 @@ func noiseDial(idKey keychain.SingleKeyECDH, lnAddr *lnwire.NetAddress,
 	return brontide.Dial(idKey, lnAddr, timeout, netCfg.Dial)
 }
 
-func connectPeer(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
-	identity keychain.SingleKeyECDH,
+func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 	dialTimeout time.Duration) (*peer.Brontide, error) {
 
 	var dialNet tor.Net = &tor.ClearNet{}
@@ -165,6 +308,8 @@ func connectPeer(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
 	if err != nil {
 		return nil, fmt.Errorf("error parsing peer address: %w", err)
 	}
+
+	peerPubKey := peerAddr.IdentityKey
 
 	log.Debugf("Attempting to dial resolved peer address %v",
 		peerAddr.String())
@@ -198,12 +343,10 @@ func connectPeer(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
 	return p, nil
 }
 
-func requestForceClose(peerHost, torProxy string, peerPubKey *btcec.PublicKey,
-	channelPoint wire.OutPoint, identity keychain.SingleKeyECDH) error {
+func requestForceClose(peerHost, torProxy string, channelPoint wire.OutPoint,
+	identity keychain.SingleKeyECDH) error {
 
-	p, err := connectPeer(
-		peerHost, torProxy, peerPubKey, identity, dialTimeout,
-	)
+	p, err := connectPeer(peerHost, torProxy, identity, dialTimeout)
 	if err != nil {
 		return fmt.Errorf("error connecting to peer: %w", err)
 	}
