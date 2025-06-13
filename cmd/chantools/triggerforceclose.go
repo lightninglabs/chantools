@@ -172,6 +172,17 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		for idx, openChan := range channels {
 			addr := pickAddr(openChan.Node2Info.Node.Addresses)
 			peerAddr := fmt.Sprintf("%s@%s", openChan.Node2, addr)
+
+			if c.TorProxy == "" &&
+				strings.Contains(addr, ".onion") {
+
+				log.Infof("Skipping channel %s with peer %s "+
+					"because it is a Tor address and no "+
+					"Tor proxy is configured",
+					openChan.ChanPoint, peerAddr)
+				continue
+			}
+
 			log.Infof("Attempting to force close channel %s with "+
 				"peer %s (channel %d of %d)",
 				openChan.ChanPoint, peerAddr, idx+1,
@@ -223,7 +234,7 @@ func pickAddr(addrs []*gqAddress) string {
 
 	// We'll pick the first address that is not a Tor address.
 	for _, addr := range addrs {
-		if !strings.HasSuffix(addr.Address, ".onion") {
+		if !strings.Contains(addr.Address, ".onion") {
 			return addr.Address
 		}
 	}
