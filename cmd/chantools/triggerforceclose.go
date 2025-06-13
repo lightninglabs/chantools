@@ -169,11 +169,13 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 			pubKeys []string
 			outputs []string
 		)
-		for _, openChan := range channels {
+		for idx, openChan := range channels {
 			addr := pickAddr(openChan.Node2Info.Node.Addresses)
 			peerAddr := fmt.Sprintf("%s@%s", openChan.Node2, addr)
 			log.Infof("Attempting to force close channel %s with "+
-				"peer %s", openChan.ChanPoint, peerAddr)
+				"peer %s (channel %d of %d)",
+				openChan.ChanPoint, peerAddr, idx+1,
+				len(channels))
 
 			outputAddrs, err := closeChannel(
 				identityPriv, api, openChan.ChanPoint,
@@ -181,7 +183,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 			)
 			if err != nil {
 				log.Errorf("Error closing channel %s, "+
-					"skipping: %v", openChan.ChanPoint, err)
+					"skipping and trying next one. "+
+					"Reason: %v", openChan.ChanPoint, err)
 				continue
 			}
 
@@ -262,12 +265,20 @@ func closeChannel(identityPriv *btcec.PrivateKey, api *btc.ExplorerAPI,
 	if err != nil {
 		return nil, fmt.Errorf("error getting spends: %w", err)
 	}
+
+	counter := 0
 	for len(spends) == 0 {
 		log.Infof("No spends found yet, waiting 5 seconds...")
 		time.Sleep(5 * time.Second)
 		spends, err = api.Spends(channelAddress)
 		if err != nil {
 			return nil, fmt.Errorf("error getting spends: %w", err)
+		}
+
+		counter++
+		if counter >= 12 {
+			return nil, fmt.Errorf("no spends found after 60 " +
+				"seconds, aborting re-try loop")
 		}
 	}
 
