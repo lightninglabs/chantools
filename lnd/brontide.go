@@ -3,6 +3,7 @@ package lnd
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -53,11 +54,12 @@ var (
 
 func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	netParams *chaincfg.Params,
-	identityECDH keychain.SingleKeyECDH) (*peer.Brontide, error) {
+	identityECDH keychain.SingleKeyECDH) (*peer.Brontide, *channeldb.DB,
+	error) {
 
 	featureMgr, err := feature.NewManager(feature.Config{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	initFeatures := featureMgr.Get(feature.SetInit)
@@ -72,7 +74,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	}
 	errBuffer, err := queue.NewCircularBuffer(500)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pongBuf := make([]byte, lnwire.MaxPongBytes)
@@ -99,27 +101,31 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	)
 
 	if err := writePool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start write pool: %w", err)
+		return nil, nil, fmt.Errorf("unable to start write pool: %w",
+			err)
 	}
 	if err := readPool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start read pool: %w", err)
+		return nil, nil, fmt.Errorf("unable to start read pool: %w",
+			err)
 	}
 
+	randNum := rand.Int31()
 	backend, err := kvdb.GetBoltBackend(&kvdb.BoltBackendConfig{
 		DBPath:            os.TempDir(),
-		DBFileName:        "channel.db",
+		DBFileName:        fmt.Sprintf("channel-%d.db", randNum),
 		NoFreelistSync:    true,
 		AutoCompact:       false,
 		AutoCompactMinAge: kvdb.DefaultBoltAutoCompactMinAge,
 		DBTimeout:         kvdb.DefaultDBTimeout,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	channelDB, err := channeldb.CreateWithBackend(backend)
 	if err != nil {
-		return nil, err
+		_ = backend.Close()
+		return nil, nil, err
 	}
 
 	gossiper := discovery.New(discovery.Config{
@@ -212,7 +218,8 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create interceptable "+
+		_ = channelDB.Close()
+		return nil, nil, fmt.Errorf("unable to create interceptable "+
 			"switch: %w", err)
 	}
 
@@ -322,8 +329,9 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 	p := peer.NewBrontide(pCfg)
 	if err := p.Start(); err != nil {
-		return nil, err
+		_ = channelDB.Close()
+		return nil, nil, err
 	}
 
-	return p, nil
+	return p, channelDB, nil
 }

@@ -311,7 +311,11 @@ func noiseDial(idKey keychain.SingleKeyECDH, lnAddr *lnwire.NetAddress,
 }
 
 func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
-	dialTimeout time.Duration) (*peer.Brontide, error) {
+	dialTimeout time.Duration) (*peer.Brontide, func() error, error) {
+
+	cleanup := func() error {
+		return nil
+	}
 
 	var dialNet tor.Net = &tor.ClearNet{}
 	if torProxy != "" {
@@ -328,7 +332,8 @@ func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 		peerHost, "9735", dialNet.ResolveTCPAddr,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing peer address: %w", err)
+		return nil, cleanup, fmt.Errorf("error parsing peer address: "+
+			"%w", err)
 	}
 
 	peerPubKey := peerAddr.IdentityKey
@@ -337,7 +342,11 @@ func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 		peerAddr.String())
 	conn, err := noiseDial(identity, peerAddr, dialNet, dialTimeout)
 	if err != nil {
-		return nil, fmt.Errorf("error dialing peer: %w", err)
+		return nil, cleanup, fmt.Errorf("error dialing peer: %w", err)
+	}
+
+	cleanup = func() error {
+		return conn.Close()
 	}
 
 	log.Infof("Attempting to establish p2p connection to peer %x, dial"+
@@ -346,9 +355,20 @@ func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 		Addr:      peerAddr,
 		Permanent: false,
 	}
-	p, err := lnd.ConnectPeer(conn, req, chainParams, identity)
+	p, channelDB, err := lnd.ConnectPeer(conn, req, chainParams, identity)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to peer: %w", err)
+		return nil, cleanup, fmt.Errorf("error connecting to peer: %w",
+			err)
+	}
+
+	cleanup = func() error {
+		p.Disconnect(errors.New("done with peer"))
+		if channelDB != nil {
+			if err := channelDB.Close(); err != nil {
+				log.Errorf("Error closing channel DB: %v", err)
+			}
+		}
+		return conn.Close()
 	}
 
 	log.Infof("Connection established to peer %x",
@@ -358,17 +378,23 @@ func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 	select {
 	case <-p.ActiveSignal():
 	case <-p.QuitSignal():
-		return nil, fmt.Errorf("peer %x disconnected",
+		return nil, cleanup, fmt.Errorf("peer %x disconnected",
 			peerPubKey.SerializeCompressed())
 	}
 
-	return p, nil
+	return p, cleanup, nil
 }
 
 func requestForceClose(peerHost, torProxy string, channelPoint wire.OutPoint,
 	identity keychain.SingleKeyECDH) error {
 
-	p, err := connectPeer(peerHost, torProxy, identity, dialTimeout)
+	p, cleanup, err := connectPeer(
+		peerHost, torProxy, identity, dialTimeout,
+	)
+	defer func() {
+		_ = cleanup()
+	}()
+
 	if err != nil {
 		return fmt.Errorf("error connecting to peer: %w", err)
 	}
@@ -404,6 +430,9 @@ func requestForceClose(peerHost, torProxy string, channelPoint wire.OutPoint,
 	if err != nil {
 		return fmt.Errorf("error sending message: %w", err)
 	}
+
+	// Wait a few seconds to give the peer time to process the message.
+	time.Sleep(5 * time.Second)
 
 	return nil
 }
