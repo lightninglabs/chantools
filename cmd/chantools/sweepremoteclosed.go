@@ -347,7 +347,10 @@ func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
 		targets []*targetAddr
 		api     = newExplorerAPI(apiURL)
 	)
-	for _, pubKey := range pubKeys {
+	for idx, pubKey := range pubKeys {
+		log.Infof("Trying to find targets for pubkey %x (%d of %d)",
+			pubKey.SerializeCompressed(), idx+1, len(pubKeys))
+
 		for index := range recoveryWindow {
 			desc := &keychain.KeyDescriptor{
 				PubKey: pubKey,
@@ -370,6 +373,14 @@ func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
 					"for addresses with funds: %w", err)
 			}
 			targets = append(targets, foundTargets...)
+
+			if idx > 0 && idx%200 == 0 {
+				log.Infof("Tried %d addresses for pubkey "+
+					"%x (%d of %d), found %d targets so "+
+					"far", index+1,
+					pubKey.SerializeCompressed(), idx+1,
+					len(pubKeys), len(targets))
+			}
 		}
 	}
 
