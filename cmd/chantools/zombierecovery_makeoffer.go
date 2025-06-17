@@ -24,6 +24,7 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcwallet/wallet"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/fn/v2"
 	"github.com/lightningnetwork/lnd/input"
@@ -39,6 +40,8 @@ type zombieRecoveryMakeOfferCommand struct {
 	FeeRate uint32
 
 	MatchOnly bool
+
+	HsmSecret string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -80,6 +83,12 @@ a counter offer.`,
 		&cc.MatchOnly, "matchonly", false, "only match the keys, "+
 			"don't create an offer",
 	)
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the multisig keys for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
+	)
 
 	cc.rootKey = newRootKey(cc.cmd, "signing the offer")
 
@@ -88,11 +97,6 @@ a counter offer.`,
 
 func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 	_ []string) error {
-
-	extendedKey, err := c.rootKey.read()
-	if err != nil {
-		return fmt.Errorf("error reading root key: %w", err)
-	}
 
 	if c.FeeRate == 0 {
 		c.FeeRate = defaultFeeSatPerVByte
@@ -183,18 +187,70 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 		}
 	}
 
-	// Make sure one of the nodes is ours.
-	_, pubKey, _, err := lnd.DeriveKey(
-		extendedKey, lnd.IdentityPath(chainParams), chainParams,
+	var (
+		signer  lnd.ChannelSigner
+		ourNode *btcec.PublicKey
 	)
-	if err != nil {
-		return fmt.Errorf("error deriving identity pubkey: %w", err)
+	switch {
+	case c.HsmSecret != "":
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		ourNode, _, err = cln.NodeKey(hsmSecret)
+		if err != nil {
+			return fmt.Errorf("error deriving CLN node pubkey: %w",
+				err)
+		}
+
+		signer = &cln.Signer{
+			HsmSecret: hsmSecret,
+		}
+
+	default:
+		extendedKey, err := c.rootKey.read()
+		if err != nil {
+			return fmt.Errorf("error reading root key: %w", err)
+		}
+
+		_, ourNode, _, err = lnd.DeriveKey(
+			extendedKey, lnd.IdentityPath(chainParams), chainParams,
+		)
+		if err != nil {
+			return fmt.Errorf("error deriving identity pubkey: %w",
+				err)
+		}
+
+		signer = &lnd.Signer{
+			ExtendedKey: extendedKey,
+			ChainParams: chainParams,
+		}
 	}
 
-	pubKeyStr := hex.EncodeToString(pubKey.SerializeCompressed())
+	// Make sure one of the nodes is ours.
+	pubKeyStr := hex.EncodeToString(ourNode.SerializeCompressed())
 	if keys1.Node1.PubKey != pubKeyStr && keys1.Node2.PubKey != pubKeyStr {
 		return fmt.Errorf("derived pubkey %s from seed but that key "+
 			"was not found in the match files", pubKeyStr)
+	}
+
+	// We need to have the peer pubkey ready, in case we're using a CLN
+	// signer.
+	peerPubKeyStr := keys1.Node1.PubKey
+	if keys1.Node1.PubKey == pubKeyStr {
+		peerPubKeyStr = keys1.Node2.PubKey
+	}
+	peerPubKeyBytes, err := hex.DecodeString(peerPubKeyStr)
+	if err != nil {
+		return fmt.Errorf("error decoding peer pubkey: %w", err)
+	}
+	peerPubKey, err := btcec.ParsePubKey(peerPubKeyBytes)
+	if err != nil {
+		return fmt.Errorf("error parsing peer pubkey: %w", err)
 	}
 
 	// Pick the correct list of keys. There are 4 possibilities, given 2
@@ -344,6 +400,12 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 			PrevOutputFetcher: prevOutFetcher,
 		}
 
+		// For CLN, we also need to set the peer's public key in the
+		// key descriptor.
+		if _, ok := signer.(*cln.Signer); ok {
+			signDesc.KeyDesc.PubKey = peerPubKey
+		}
+
 		switch a := channelAddr.(type) {
 		case *btcutil.AddressWitnessScriptHash:
 			estimator.AddWitnessInput(input.MultiSigWitnessSize)
@@ -359,9 +421,15 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 			signDesc.HashType = txscript.SigHashDefault
 			signDesc.SignMethod = input.TaprootKeySpendSignMethod
 
+			lndSigner, ok := signer.(*lnd.Signer)
+			if !ok {
+				return errors.New("taproot channels not " +
+					"supported for CLN")
+			}
+
 			err := addMuSig2Data(
-				extendedKey, &pIn, channel, theirChannels[idx],
-				op, a.WitnessProgram(),
+				lndSigner.ExtendedKey, &pIn, channel,
+				theirChannels[idx], op, a.WitnessProgram(),
 			)
 			if err != nil {
 				return fmt.Errorf("error adding MuSig2 data: "+
@@ -487,18 +555,20 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 
 	// Loop a second time through the inputs and sign each input. We now
 	// have all the witness/non-witness data filled in the psbt package.
-	signer := &lnd.Signer{
-		ExtendedKey: extendedKey,
-		ChainParams: chainParams,
-	}
 	for idx := range packet.UnsignedTx.TxIn {
 		signDesc := signDescs[idx]
 
 		// If we're dealing with a taproot channel, we'll need to
 		// create a MuSig2 partial signature.
 		if signDesc.SignMethod == input.TaprootKeySpendSignMethod {
+			lndSigner, ok := signer.(*lnd.Signer)
+			if !ok {
+				return errors.New("taproot channels not yet " +
+					"supported for CLN")
+			}
+
 			err := muSig2PartialSign(
-				signer, &signDesc.KeyDesc, packet, idx,
+				lndSigner, &signDesc.KeyDesc, packet, idx,
 			)
 			if err != nil {
 				return fmt.Errorf("error creating MuSig2 "+
@@ -508,33 +578,10 @@ func (c *zombieRecoveryMakeOfferCommand) Execute(_ *cobra.Command,
 			continue
 		}
 
-		ourSigRaw, err := signer.SignOutputRaw(
-			packet.UnsignedTx, signDesc,
-		)
+		err = signer.AddPartialSignatureWithDesc(packet, signDesc)
 		if err != nil {
-			return fmt.Errorf("error signing with our key: %w", err)
-		}
-		ourSig := append(ourSigRaw.Serialize(), byte(signDesc.HashType))
-
-		// Great, we were able to create our sig, let's add it to the
-		// PSBT.
-		updater, err := psbt.NewUpdater(packet)
-		if err != nil {
-			return fmt.Errorf("error creating PSBT updater: %w",
+			return fmt.Errorf("error adding partial signature: %w",
 				err)
-		}
-		status, err := updater.Sign(
-			idx, ourSig,
-			signDesc.KeyDesc.PubKey.SerializeCompressed(), nil,
-			signDesc.WitnessScript,
-		)
-		if err != nil {
-			return fmt.Errorf("error adding signature to PSBT: %w",
-				err)
-		}
-		if status != 0 {
-			return fmt.Errorf("unexpected status for signature "+
-				"update, got %d wanted 0", status)
 		}
 	}
 
