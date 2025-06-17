@@ -95,6 +95,7 @@ type SummaryEntryFile struct {
 	FundsClosedSpent      uint64          `json:"funds_closed_channels_spent"`
 	FundsForceClose       uint64          `json:"funds_force_closed_maybe_ours"`
 	FundsCoopClose        uint64          `json:"funds_coop_closed_maybe_ours"`
+	OpenChannelList       []*SummaryEntry `json:"open_channel_list"`
 }
 
 func ExtractSummaryFromDump(data string) ([]*SummaryEntry, error) {
