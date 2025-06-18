@@ -47,6 +47,9 @@ func SummarizeChannels(api *ExplorerAPI, channels []*dataformat.SummaryEntry,
 		} else {
 			summaryFile.OpenChannels++
 			summaryFile.FundsOpenChannels += channel.LocalBalance
+			summaryFile.OpenChannelList = append(
+				summaryFile.OpenChannelList, channel,
+			)
 			channel.ClosingTX = nil
 			channel.HasPotential = true
 		}

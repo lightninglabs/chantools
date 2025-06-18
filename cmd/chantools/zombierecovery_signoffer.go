@@ -11,6 +11,7 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/lightninglabs/chantools/btc"
 	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
@@ -21,6 +22,9 @@ type zombieRecoverySignOfferCommand struct {
 
 	HsmSecret  string
 	RemotePeer string
+
+	APIURL  string
+	Publish bool
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -53,6 +57,16 @@ peer to recover funds from one or more channels.`,
 		&cc.RemotePeer, "remote_peer", "", "the hex encoded remote "+
 			"peer node identity key, only required when running "+
 			"'signoffer' on the CLN side",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.APIURL, "apiurl", defaultAPIURL, "API URL to use for "+
+			"publishing the final transaction (must be esplora "+
+			"compatible)",
+	)
+	cc.cmd.Flags().BoolVar(
+		&cc.Publish, "publish", false, "if set, the final PSBT "+
+			"will be published to the network after signing, "+
+			"otherwise it will just be printed to stdout",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "signing the offer")
@@ -115,11 +129,13 @@ func (c *zombieRecoverySignOfferCommand) Execute(_ *cobra.Command,
 		}
 	}
 
-	return signOffer(packet, signer, remoteNode)
+	return signOffer(
+		packet, signer, remoteNode, newExplorerAPI(c.APIURL), c.Publish,
+	)
 }
 
 func signOffer(packet *psbt.Packet, signer lnd.ChannelSigner,
-	peerPubKey *btcec.PublicKey) error {
+	peerPubKey *btcec.PublicKey, api *btc.ExplorerAPI, publish bool) error {
 
 	// Now let's check that the packet has the expected proprietary key with
 	// our pubkey that we need to sign with.
@@ -243,9 +259,19 @@ func signOffer(packet *psbt.Packet, signer lnd.ChannelSigner,
 		return fmt.Errorf("unable to serialize final TX: %w", err)
 	}
 
-	fmt.Printf("Success, we counter signed the PSBT and extracted the "+
-		"final\ntransaction. Please publish this using any bitcoin "+
-		"node:\n\n%x\n\n", buf.Bytes())
+	// Publish TX.
+	if publish {
+		response, err := api.PublishTx(hex.EncodeToString(buf.Bytes()))
+		if err != nil {
+			return err
+		}
+		log.Infof("Published TX %s, response: %s",
+			finalTx.TxHash().String(), response)
+	} else {
+		fmt.Printf("Success, we counter signed the PSBT and extracted "+
+			"the final\ntransaction. Please publish this using "+
+			"any bitcoin node:\n\n%x\n\n", buf.Bytes())
+	}
 
 	return nil
 }

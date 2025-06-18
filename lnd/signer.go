@@ -35,6 +35,9 @@ type ChannelSigner interface {
 	FindMultisigKey(targetPubkey, peerPubKey *btcec.PublicKey,
 		maxNumKeys uint32) (*keychain.KeyDescriptor, error)
 
+	AddPartialSignatureWithDesc(packet *psbt.Packet,
+		signDesc *input.SignDescriptor) error
+
 	AddPartialSignature(packet *psbt.Packet,
 		keyDesc keychain.KeyDescriptor, utxo *wire.TxOut,
 		witnessScript []byte, inputIndex int) error
@@ -223,11 +226,18 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 			packet.UnsignedTx, prevOutFetcher,
 		),
 	}
+
+	return s.AddPartialSignatureWithDesc(packet, signDesc)
+}
+
+func (s *Signer) AddPartialSignatureWithDesc(packet *psbt.Packet,
+	signDesc *input.SignDescriptor) error {
+
 	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
 	if err != nil {
 		return fmt.Errorf("error signing with our key: %w", err)
 	}
-	ourSig := append(ourSigRaw.Serialize(), byte(txscript.SigHashAll))
+	ourSig := append(ourSigRaw.Serialize(), byte(signDesc.HashType))
 
 	// Great, we were able to create our sig, let's add it to the PSBT.
 	updater, err := psbt.NewUpdater(packet)
@@ -235,8 +245,9 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 		return fmt.Errorf("error creating PSBT updater: %w", err)
 	}
 	status, err := updater.Sign(
-		inputIndex, ourSig, keyDesc.PubKey.SerializeCompressed(), nil,
-		witnessScript,
+		signDesc.InputIndex, ourSig,
+		signDesc.KeyDesc.PubKey.SerializeCompressed(), nil,
+		signDesc.WitnessScript,
 	)
 	if err != nil {
 		return fmt.Errorf("error adding signature to PSBT: %w", err)

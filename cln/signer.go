@@ -95,6 +95,45 @@ func (s *Signer) FindMultisigKey(targetPubkey, peerPubKey *btcec.PublicKey,
 	return nil, errors.New("no matching pubkeys found")
 }
 
+func (s *Signer) AddPartialSignatureWithDesc(packet *psbt.Packet,
+	signDesc *input.SignDescriptor) error {
+
+	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
+	if err != nil {
+		return fmt.Errorf("error signing with our key: %w", err)
+	}
+	ourSig := append(ourSigRaw.Serialize(), byte(signDesc.HashType))
+
+	// Because of the way we derive keys in CLN, the public key in the key
+	// descriptor is the peer's public key, not our own. So we need to
+	// derive our own public key from the private key.
+	ourPrivKey, err := s.FetchPrivateKey(&signDesc.KeyDesc)
+	if err != nil {
+		return fmt.Errorf("error fetching private key for descriptor "+
+			"%v: %w", signDesc.KeyDesc, err)
+	}
+	ourPubKey := ourPrivKey.PubKey()
+
+	// Great, we were able to create our sig, let's add it to the PSBT.
+	updater, err := psbt.NewUpdater(packet)
+	if err != nil {
+		return fmt.Errorf("error creating PSBT updater: %w", err)
+	}
+	status, err := updater.Sign(
+		signDesc.InputIndex, ourSig, ourPubKey.SerializeCompressed(),
+		nil, signDesc.WitnessScript,
+	)
+	if err != nil {
+		return fmt.Errorf("error adding signature to PSBT: %w", err)
+	}
+	if status != 0 {
+		return fmt.Errorf("unexpected status for signature update, "+
+			"got %d wanted 0", status)
+	}
+
+	return nil
+}
+
 func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 	keyDesc keychain.KeyDescriptor, utxo *wire.TxOut, witnessScript []byte,
 	inputIndex int) error {
@@ -112,40 +151,8 @@ func (s *Signer) AddPartialSignature(packet *psbt.Packet,
 			packet.UnsignedTx, prevOutFetcher,
 		),
 	}
-	ourSigRaw, err := s.SignOutputRaw(packet.UnsignedTx, signDesc)
-	if err != nil {
-		return fmt.Errorf("error signing with our key: %w", err)
-	}
-	ourSig := append(ourSigRaw.Serialize(), byte(txscript.SigHashAll))
 
-	// Because of the way we derive keys in CLN, the public key in the key
-	// descriptor is the peer's public key, not our own. So we need to
-	// derive our own public key from the private key.
-	ourPrivKey, err := s.FetchPrivateKey(&keyDesc)
-	if err != nil {
-		return fmt.Errorf("error fetching private key for descriptor "+
-			"%v: %w", keyDesc, err)
-	}
-	ourPubKey := ourPrivKey.PubKey()
-
-	// Great, we were able to create our sig, let's add it to the PSBT.
-	updater, err := psbt.NewUpdater(packet)
-	if err != nil {
-		return fmt.Errorf("error creating PSBT updater: %w", err)
-	}
-	status, err := updater.Sign(
-		inputIndex, ourSig, ourPubKey.SerializeCompressed(), nil,
-		witnessScript,
-	)
-	if err != nil {
-		return fmt.Errorf("error adding signature to PSBT: %w", err)
-	}
-	if status != 0 {
-		return fmt.Errorf("unexpected status for signature update, "+
-			"got %d wanted 0", status)
-	}
-
-	return nil
+	return s.AddPartialSignatureWithDesc(packet, signDesc)
 }
 
 var _ lnd.ChannelSigner = (*Signer)(nil)

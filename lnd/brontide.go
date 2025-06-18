@@ -3,6 +3,7 @@ package lnd
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -10,11 +11,16 @@ import (
 	"github.com/btcsuite/btcd/btcec/v2/ecdsa"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/connmgr"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/lightningnetwork/lnd/aliasmgr"
 	"github.com/lightningnetwork/lnd/brontide"
+	"github.com/lightningnetwork/lnd/chainntnfs"
 	"github.com/lightningnetwork/lnd/channeldb"
+	"github.com/lightningnetwork/lnd/channelnotifier"
 	"github.com/lightningnetwork/lnd/discovery"
 	"github.com/lightningnetwork/lnd/feature"
+	"github.com/lightningnetwork/lnd/fn/v2"
+	"github.com/lightningnetwork/lnd/graph/db/models"
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/htlcswitch/hodl"
 	"github.com/lightningnetwork/lnd/keychain"
@@ -24,7 +30,9 @@ import (
 	"github.com/lightningnetwork/lnd/lntest/mock"
 	"github.com/lightningnetwork/lnd/lnwallet"
 	"github.com/lightningnetwork/lnd/lnwallet/chainfee"
+	"github.com/lightningnetwork/lnd/lnwallet/chancloser"
 	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/msgmux"
 	"github.com/lightningnetwork/lnd/netann"
 	"github.com/lightningnetwork/lnd/peer"
 	"github.com/lightningnetwork/lnd/pool"
@@ -46,11 +54,12 @@ var (
 
 func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	netParams *chaincfg.Params,
-	identityECDH keychain.SingleKeyECDH) (*peer.Brontide, error) {
+	identityECDH keychain.SingleKeyECDH) (*peer.Brontide, *channeldb.DB,
+	error) {
 
 	featureMgr, err := feature.NewManager(feature.Config{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	initFeatures := featureMgr.Get(feature.SetInit)
@@ -65,7 +74,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	}
 	errBuffer, err := queue.NewCircularBuffer(500)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	pongBuf := make([]byte, lnwire.MaxPongBytes)
@@ -92,27 +101,31 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	)
 
 	if err := writePool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start write pool: %w", err)
+		return nil, nil, fmt.Errorf("unable to start write pool: %w",
+			err)
 	}
 	if err := readPool.Start(); err != nil {
-		return nil, fmt.Errorf("unable to start read pool: %w", err)
+		return nil, nil, fmt.Errorf("unable to start read pool: %w",
+			err)
 	}
 
+	randNum := rand.Int31()
 	backend, err := kvdb.GetBoltBackend(&kvdb.BoltBackendConfig{
 		DBPath:            os.TempDir(),
-		DBFileName:        "channel.db",
+		DBFileName:        fmt.Sprintf("channel-%d.db", randNum),
 		NoFreelistSync:    true,
 		AutoCompact:       false,
 		AutoCompactMinAge: kvdb.DefaultBoltAutoCompactMinAge,
 		DBTimeout:         kvdb.DefaultDBTimeout,
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	channelDB, err := channeldb.CreateWithBackend(backend)
 	if err != nil {
-		return nil, err
+		_ = backend.Close()
+		return nil, nil, err
 	}
 
 	gossiper := discovery.New(discovery.Config{
@@ -175,11 +188,53 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		PubKey:     identityECDH.PubKey(),
 	})
 
+	chanStatusMgr, err := netann.NewChanStatusManager(&netann.
+		ChanStatusConfig{
+		ChanStatusSampleInterval: 30 * time.Second,
+		ChanDisableTimeout:       2 * time.Minute,
+		DB:                       channelDB.ChannelStateDB(),
+		IsChannelActive: func(lnwire.ChannelID) bool {
+			return true
+		},
+		ApplyChannelUpdate: func(*lnwire.ChannelUpdate1,
+			*wire.OutPoint, bool) error {
+
+			return nil
+		},
+	})
+	if err != nil {
+		_ = channelDB.Close()
+		return nil, nil, fmt.Errorf("unable to create channel status "+
+			"manager: %w", err)
+	}
+
+	channelNotifier := channelnotifier.New(channelDB.ChannelStateDB())
+	interceptableSwitchNotifier := &mock.ChainNotifier{
+		EpochChan: make(chan *chainntnfs.BlockEpoch, 1),
+	}
+	interceptableSwitchNotifier.EpochChan <- &chainntnfs.BlockEpoch{
+		Height: 1,
+	}
+	interceptableSwitch, err := htlcswitch.NewInterceptableSwitch(
+		&htlcswitch.InterceptableSwitchConfig{
+			CltvRejectDelta:    13,
+			CltvInterceptDelta: 16,
+			Notifier:           interceptableSwitchNotifier,
+		},
+	)
+	if err != nil {
+		_ = channelDB.Close()
+		return nil, nil, fmt.Errorf("unable to create interceptable "+
+			"switch: %w", err)
+	}
+
 	pCfg := peer.Config{
-		Conn:                    conn,
-		ConnReq:                 connReq,
+		Conn:    conn,
+		ConnReq: connReq,
+		PubKeyBytes: [33]byte(
+			identityECDH.PubKey().SerializeCompressed(),
+		),
 		Addr:                    peerAddr,
-		Inbound:                 false,
 		Features:                initFeatures,
 		LegacyFeatures:          legacyFeatures,
 		OutgoingCltvRejectDelta: lncfg.DefaultOutgoingCltvRejectDelta,
@@ -187,9 +242,30 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		ErrorBuffer:             errBuffer,
 		WritePool:               writePool,
 		ReadPool:                readPool,
+		Switch:                  &mockMessageSwitch{},
+		InterceptSwitch:         interceptableSwitch,
 		ChannelDB:               channelDB.ChannelStateDB(),
+		ChainArb:                nil,
 		AuthGossiper:            gossiper,
-		ChainNotifier:           &mock.ChainNotifier{},
+		ChanStatusMgr:           chanStatusMgr,
+		ChainIO:                 &mock.ChainIO{},
+		FeeEstimator:            nil,
+		Signer:                  nil,
+		SigPool:                 nil,
+		Wallet: &lnwallet.LightningWallet{
+			WalletController: &mock.WalletController{},
+		},
+		ChainNotifier: &mock.ChainNotifier{},
+		BestBlockView: chainntnfs.NewBestBlockTracker(
+			&mock.ChainNotifier{},
+		),
+		RoutingPolicy:   models.ForwardingPolicy{},
+		Sphinx:          nil,
+		WitnessBeacon:   nil,
+		Invoices:        nil,
+		ChannelNotifier: channelNotifier,
+		HtlcNotifier:    nil,
+		TowerClient:     nil,
 		DisconnectPeer: func(key *btcec.PublicKey) error {
 			fmt.Printf("Peer %x disconnected\n",
 				key.SerializeCompressed())
@@ -201,23 +277,20 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 			return lnwire.NodeAnnouncement{},
 				errors.New("unimplemented")
 		},
-
-		PongBuf: pongBuf,
-
 		PrunePersistentPeerConnection: func(_ [33]byte) {},
-
 		FetchLastChanUpdate: func(_ lnwire.ShortChannelID) (
 			*lnwire.ChannelUpdate1, error) {
 
 			return nil, errors.New("unimplemented")
 		},
-
+		FundingManager:          nil,
 		Hodl:                    &hodl.Config{},
 		UnsafeReplay:            false,
 		MaxOutgoingCltvExpiry:   htlcswitch.DefaultMaxOutgoingCltvExpiry,
 		MaxChannelFeeAllocation: htlcswitch.DefaultMaxLinkFeeAllocation,
-		CoopCloseTargetConfs:    defaultCoopCloseTargetConfs,
 		MaxAnchorsCommitFeeRate: commitFee.FeePerKWeight(),
+		CoopCloseTargetConfs:    defaultCoopCloseTargetConfs,
+		ServerPubKey:            [33]byte{},
 		ChannelCommitInterval:   defaultChannelCommitInterval,
 		PendingCommitInterval:   defaultPendingCommitInterval,
 		ChannelCommitBatchSize:  defaultChannelCommitBatchSize,
@@ -241,7 +314,19 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 			return nil
 		},
-		Quit: make(chan struct{}),
+		AuxLeafStore:              fn.None[lnwallet.AuxLeafStore](),
+		AuxSigner:                 fn.None[lnwallet.AuxSigner](),
+		AuxResolver:               fn.None[lnwallet.AuxContractResolver](),
+		AuxTrafficShaper:          fn.None[htlcswitch.AuxTrafficShaper](),
+		PongBuf:                   pongBuf,
+		DisallowRouteBlinding:     false,
+		DisallowQuiescence:        false,
+		MaxFeeExposure:            0,
+		MsgRouter:                 fn.None[msgmux.Router](),
+		AuxChanCloser:             fn.None[chancloser.AuxChanCloser](),
+		ShouldFwdExpEndorsement:   nil,
+		NoDisconnectOnPongFailure: false,
+		Quit:                      make(chan struct{}),
 	}
 
 	copy(pCfg.PubKeyBytes[:], peerAddr.IdentityKey.SerializeCompressed())
@@ -249,8 +334,9 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 	p := peer.NewBrontide(pCfg)
 	if err := p.Start(); err != nil {
-		return nil, err
+		_ = channelDB.Close()
+		return nil, nil, err
 	}
 
-	return p, nil
+	return p, channelDB, nil
 }
