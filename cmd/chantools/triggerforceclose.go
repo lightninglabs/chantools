@@ -288,7 +288,7 @@ func closeChannel(identityPriv *btcec.PrivateKey, api *btc.ExplorerAPI,
 
 		counter++
 		if counter >= 12 {
-			return nil, fmt.Errorf("no spends found after 60 " +
+			return nil, errors.New("no spends found after 60 " +
 				"seconds, aborting re-try loop")
 		}
 	}

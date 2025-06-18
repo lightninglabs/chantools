@@ -202,6 +202,11 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 			return nil
 		},
 	})
+	if err != nil {
+		_ = channelDB.Close()
+		return nil, nil, fmt.Errorf("unable to create channel status "+
+			"manager: %w", err)
+	}
 
 	channelNotifier := channelnotifier.New(channelDB.ChannelStateDB())
 	interceptableSwitchNotifier := &mock.ChainNotifier{
