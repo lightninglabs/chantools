@@ -1,0 +1,82 @@
+{
+  "description": "Lightning Terminal Recovery Configuration",
+  "version": "1.0",
+  "lightning_terminal": {
+    "keys": {
+      "actual_internal_key": "034078498a1e314de9798be9954561727dbd3726fab244f67dcb7230d40f8a44fc",
+      "remote_revocation_base": "023506c9e7a80046ea227bde349e6a5a5e24c3e7a7e973de4b18b0a86f36d21e9e",
+      "remote_funding_key": "02b259eca2e2db52816246dbfde6efaa1d814197077b5cc02b282edc5f0fb7cb2a"
+    },
+    "channel": {
+      "type": 3630,
+      "csv_delays": [144, 1008, 2016],
+      "key_index": 4,
+      "balance": 97751
+    },
+    "tapscript": {
+      "actual_root": "76b97956f891309d3b96aa3795d8ee458eaf11dc2a9ecaffe867b9c06ae35d8e",
+      "test_scenarios": [
+        {
+          "name": "empty_root",
+          "root": ""
+        },
+        {
+          "name": "zero_root", 
+          "root": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        {
+          "name": "single_byte_root",
+          "root": "01"
+        },
+        {
+          "name": "taproot_assets_marker",
+          "root": "computed_from_sha256_taproot_assets"
+        },
+        {
+          "name": "actual_tapscript_root",
+          "root": "76b97956f891309d3b96aa3795d8ee458eaf11dc2a9ecaffe867b9c06ae35d8e"
+        }
+      ]
+    },
+    "auxiliary_leaves": {
+      "target_aux_hash": "6b24a43fc6543726b0dc499cee205e11bfab9fd439276dacb6c5986edcb87482",
+      "asset_scenarios": [
+        {
+          "version": 0,
+          "name": "empty-commitment",
+          "root_hash": "",
+          "root_sum": 0
+        },
+        {
+          "version": 0,
+          "name": "single-asset",
+          "root_hash": "computed_from_single_asset_root",
+          "root_sum": 97751
+        },
+        {
+          "version": 1,
+          "name": "keyed-commitment",
+          "root_hash": "computed_from_key_index",
+          "root_sum": 97751
+        },
+        {
+          "version": 2,
+          "name": "csv-keyed-commitment",
+          "root_hash": "computed_from_csv_delay",
+          "root_sum": 97751
+        }
+      ]
+    }
+  },
+  "testing": {
+    "max_htlc_index": 10,
+    "max_keys_to_test": 5000,
+    "channel_types": [
+      3630,
+      "SimpleTaprootFeatureBit | TapscriptRootBit",
+      "SimpleTaprootFeatureBit | TapscriptRootBit | AnchorOutputsBit", 
+      "SimpleTaprootFeatureBit | TapscriptRootBit | AnchorOutputsBit | ZeroHtlcTxFeeBit"
+    ],
+    "dummy_key": "020000000000000000000000000000000000000000000000000000000000000001"
+  }
+}
