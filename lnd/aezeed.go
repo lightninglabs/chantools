@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -139,16 +140,15 @@ func ReadPassphrase(verb string) ([]byte, error) {
 	// The environment variable didn't contain anything, we'll read the
 	// passphrase from the terminal.
 	case passphrase == "":
-		fmt.Printf("Input your cipher seed passphrase (press enter "+
-			"if your seed %s a passphrase): ", verb)
 		var err error
-		passphraseBytes, err = terminal.ReadPassword(
-			int(syscall.Stdin), //nolint
+		passphraseBytes, err = PasswordFromConsole(
+			fmt.Sprintf("Input your cipher seed passphrase "+
+				"(press enter if your seed %s a passphrase): ",
+				verb),
 		)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println()
 
 	// There was a password in the environment, just convert it to bytes.
 	default:
@@ -160,13 +160,15 @@ func ReadPassphrase(verb string) ([]byte, error) {
 
 // PasswordFromConsole reads a password from the console or stdin.
 func PasswordFromConsole(userQuery string) ([]byte, error) {
+	fmt.Print(userQuery)
+
 	// Read from terminal (if there is one).
 	if terminal.IsTerminal(int(syscall.Stdin)) { //nolint
-		fmt.Print(userQuery)
 		pw, err := terminal.ReadPassword(int(syscall.Stdin)) //nolint
 		if err != nil {
 			return nil, err
 		}
+
 		fmt.Println()
 		return pw, nil
 	}
@@ -177,7 +179,9 @@ func PasswordFromConsole(userQuery string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return pw, nil
+
+	fmt.Println()
+	return bytes.TrimSpace(pw), nil
 }
 
 // OpenWallet opens a lnd compatible wallet and returns it, along with the
