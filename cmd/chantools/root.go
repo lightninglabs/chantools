@@ -47,15 +47,13 @@ const (
 )
 
 var (
-	Testnet bool
-	Regtest bool
-	Signet  bool
+	Testnet   bool
+	Regtest   bool
+	Signet    bool
+	NoLogFile bool
 
-	logWriter = build.NewRotatingLogWriter()
-	subLogMgr = build.NewSubLoggerManager(build.NewDefaultLogHandlers(
-		build.DefaultLogConfig(), logWriter,
-	)...)
-	log         = build.NewSubLogger("CHAN", genSubLogger(subLogMgr))
+	log btclog.Logger
+
 	chainParams = &chaincfg.MainNetParams
 )
 
@@ -102,6 +100,11 @@ func main() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&Signet, "signet", "s", false, "Indicates if the public "+
 			"signet parameters should be used",
+	)
+	rootCmd.PersistentFlags().BoolVar(
+		&NoLogFile, "nologfile", false, "If set, no log file "+
+			"will be created. This is useful for testing purposes "+
+			"where we don't want to create a log file.",
 	)
 
 	rootCmd.AddCommand(
@@ -328,28 +331,34 @@ func readInput(input string) ([]byte, error) {
 }
 
 func setupLogging() {
-	setSubLogger("CHAN", log)
-	addSubLogger("CHDB", channeldb.UseLogger)
-	addSubLogger("BCKP", chanbackup.UseLogger)
-	addSubLogger("PEER", peer.UseLogger)
-
-	err := logWriter.InitLogRotator(
-		&build.FileLoggerConfig{
-			Compressor:     build.Gzip,
-			MaxLogFiles:    3,
-			MaxLogFileSize: 10,
-		},
-		"./results/chantools.log",
-	)
-	if err != nil {
-		panic(err)
-	}
-
+	logWriter := build.NewRotatingLogWriter()
 	subLogMgr := build.NewSubLoggerManager(build.NewDefaultLogHandlers(
 		build.DefaultLogConfig(), logWriter,
 	)...)
 
-	err = build.ParseAndSetDebugLevels("debug", subLogMgr)
+	log = build.NewSubLogger("CHAN", genSubLogger(subLogMgr))
+	log.SetLevel(btclog.LevelDebug)
+
+	setSubLogger(subLogMgr, "CHAN", log)
+	addSubLogger(subLogMgr, "CHDB", channeldb.UseLogger)
+	addSubLogger(subLogMgr, "BCKP", chanbackup.UseLogger)
+	addSubLogger(subLogMgr, "PEER", peer.UseLogger)
+
+	if !NoLogFile {
+		err := logWriter.InitLogRotator(
+			&build.FileLoggerConfig{
+				Compressor:     build.Gzip,
+				MaxLogFiles:    3,
+				MaxLogFileSize: 10,
+			},
+			"./results/chantools.log",
+		)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	err := build.ParseAndSetDebugLevels("debug", subLogMgr)
 	if err != nil {
 		panic(err)
 	}
@@ -364,17 +373,19 @@ func genSubLogger(mgr *build.SubLoggerManager) func(string) btclog.Logger {
 
 // addSubLogger is a helper method to conveniently create and register the
 // logger of one or more sub systems.
-func addSubLogger(subsystem string, useLoggers ...func(btclog.Logger)) {
+func addSubLogger(subLogMgr *build.SubLoggerManager, subsystem string,
+	useLoggers ...func(btclog.Logger)) {
+
 	// Create and register just a single logger to prevent them from
 	// overwriting each other internally.
 	logger := build.NewSubLogger(subsystem, genSubLogger(subLogMgr))
-	setSubLogger(subsystem, logger, useLoggers...)
+	setSubLogger(subLogMgr, subsystem, logger, useLoggers...)
 }
 
 // setSubLogger is a helper method to conveniently register the logger of a sub
 // system.
-func setSubLogger(subsystem string, logger btclog.Logger,
-	useLoggers ...func(btclog.Logger)) {
+func setSubLogger(subLogMgr *build.SubLoggerManager, subsystem string,
+	logger btclog.Logger, useLoggers ...func(btclog.Logger)) {
 
 	subLogMgr.RegisterSubLogger(subsystem, logger)
 	for _, useLogger := range useLoggers {

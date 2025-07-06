@@ -61,7 +61,7 @@ chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
       --channelpoint string         funding transaction outpoint of the channel to rescue (<txid>:<txindex>) as it is displayed on 1ml.com
       --from_channel_graph string   the full LN channel graph in the JSON format that the 'lncli describegraph' returns
   -h, --help                        help for fakechanbackup
-      --multi_file string           the fake channel backup file to create (default "results/fake-2024-12-27-13-52-07.backup")
+      --multi_file string           the fake channel backup file to create (default "results/fake-2025-07-06-14-25-48.backup")
       --remote_node_addr string     the remote node connection information in the format pubkey@host:port
       --rootkey string              BIP32 HD root key of the wallet to use for encrypting the backup; leave empty to prompt for lnd 24 word aezeed
       --short_channel_id string     the short channel ID in the format <blockheight>x<transactionindex>x<outputindex>
@@ -71,9 +71,10 @@ chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
 ### Options inherited from parent commands
 
 ```
-  -r, --regtest   Indicates if regtest parameters should be used
-  -s, --signet    Indicates if the public signet parameters should be used
-  -t, --testnet   Indicates if testnet parameters should be used
+      --nologfile   If set, no log file will be created. This is useful for testing purposes where we don't want to create a log file.
+  -r, --regtest     Indicates if regtest parameters should be used
+  -s, --signet      Indicates if the public signet parameters should be used
+  -t, --testnet     Indicates if testnet parameters should be used
 ```
 
 ### SEE ALSO
