@@ -99,8 +99,9 @@ func TestDeriveKeyXprv(t *testing.T) {
 	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
-	h.assertLogContains("cQcdieZy2d1TAdCsa5MjmHJs2gdHcD7x22nDbhJyVTUa3Ax" +
-		"5KB3w")
+	h.assertLogContains(
+		"cQcdieZy2d1TAdCsa5MjmHJs2gdHcD7x22nDbhJyVTUa3Ax5KB3w",
+	)
 }
 
 func TestDeriveKeyXpub(t *testing.T) {
@@ -120,8 +121,10 @@ func TestDeriveKeyXpub(t *testing.T) {
 	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
-	h.assertLogContains("03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b042571" +
-		"05eb1ab99aa05e01c2a")
+	h.assertLogContains(
+		"03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b04257105eb1ab99aa05e" +
+			"01c2a",
+	)
 }
 
 func TestDeriveKeyXpubNoNeuter(t *testing.T) {
@@ -140,6 +143,27 @@ func TestDeriveKeyXpubNoNeuter(t *testing.T) {
 	err := derive.Execute(nil, nil)
 	require.NoError(t, err)
 
-	h.assertLogContains("03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b042571" +
-		"05eb1ab99aa05e01c2a")
+	h.assertLogContains(
+		"03dc8655d58bd4fd4326863fe34bd5cdddbefaa3b04257105eb1ab99aa05e" +
+			"01c2a",
+	)
+}
+
+func TestDeriveKeyHsmSecret(t *testing.T) {
+	h := newHarness(t)
+
+	// Derive a specific key from the serialized root key.
+	derive := &deriveKeyCommand{
+		Identity: true,
+		HsmSecret: "471a115fb8edd6281f883ac82509fb0f30707e590d895f683" +
+			"2d781f1639c07ff",
+	}
+
+	err := derive.Execute(nil, nil)
+	require.NoError(t, err)
+
+	h.assertLogContains(
+		"03508beb59d2ec4772cd7b143bbef0fdac204b240747e82bc5fe58bd0418" +
+			"4f35a3",
+	)
 }

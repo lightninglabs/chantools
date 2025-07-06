@@ -484,7 +484,7 @@ Legend:
 | [compactdb](doc/chantools_compactdb.md)                     | Run database compaction manually to reclaim space                                                                                          |
 | [createwallet](doc/chantools_createwallet.md)               | :pencil: Create a new lnd compatible wallet.db file from an existing seed or by generating a new one                                       |
 | [deletepayments](doc/chantools_deletepayments.md)           | Remove ALL payments from a `channel.db` file to reduce size                                                                                |
-| [derivekey](doc/chantools_derivekey.md)                     | :pencil: Derive a single private/public key from `lnd`'s seed, use to test seed                                                            |
+| [derivekey](doc/chantools_derivekey.md)                     | :pencil: (**CLN**) Derive a single private/public key from `lnd`'s seed, use to test seed                                                  |
 | [doublespendinputs](doc/chantools_doublespendinputs.md)     | :pencil: Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address        |
 | [dropchannelgraph](doc/chantools_dropchannelgraph.md)       | ( :warning: ) Completely drop the channel graph from a `channel.db` to force re-sync (not recommended while channels are open!)            |
 | [dropgraphzombies](doc/chantools_dropgraphzombies.md)       | Drop all zombie channels from a `channel.db` to force a graph re-sync                                                                      |
