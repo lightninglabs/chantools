@@ -48,6 +48,9 @@ jobs:
         uses: actions/setup-go@v2
         with:
           go-version: '${{ env.GO_VERSION }}'
+          
+      - name: Install chantools
+        run: make install
 
       - name: run unit tests
         run: make unit

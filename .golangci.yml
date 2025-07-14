@@ -1,11 +1,12 @@
 run:
   # timeout for analysis
   timeout: 4m
+  go: "1.23"
 
 linters-settings:
   govet:
     # Don't report about shadowed variables
-    check-shadowing: false
+    shadow: false
   gofmt:
     # simplify code: gofmt with `-s` option, true by default
     simplify: true
@@ -17,7 +18,6 @@ linters-settings:
       rules:
         json: snake
   staticcheck:
-    go: "1.18"
     checks: ["-SA1019"]
   gomoddirectives:
     replace-allow-list:
@@ -34,7 +34,6 @@ linters:
     - varnamelen
     - wrapcheck
     - testpackage
-    - gomnd
     - err113
     - exhaustruct
     - forbidigo

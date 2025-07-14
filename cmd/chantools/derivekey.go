@@ -1,10 +1,13 @@
 package main
 
 import (
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
+	"github.com/lightninglabs/chantools/cln"
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/spf13/cobra"
 )
@@ -26,6 +29,8 @@ type deriveKeyCommand struct {
 	Path     string
 	Neuter   bool
 	Identity bool
+
+	HsmSecret string
 
 	rootKey *rootKey
 	cmd     *cobra.Command
@@ -53,8 +58,14 @@ chantools derivekey --identity`,
 			"only public key(s)",
 	)
 	cc.cmd.Flags().BoolVar(
-		&cc.Identity, "identity", false, "derive the lnd "+
-			"identity_pubkey",
+		&cc.Identity, "identity", false, "derive the node's identity "+
+			"public key",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.HsmSecret, "hsm_secret", "", "the hex encoded HSM secret "+
+			"to use for deriving the multisig keys for a CLN "+
+			"node; obtain by running 'xxd -p -c32 "+
+			"~/.lightning/bitcoin/hsm_secret'",
 	)
 
 	cc.rootKey = newRootKey(cc.cmd, "decrypting the backup")
@@ -63,6 +74,40 @@ chantools derivekey --identity`,
 }
 
 func (c *deriveKeyCommand) Execute(_ *cobra.Command, _ []string) error {
+	if c.HsmSecret != "" {
+		if c.Path != "" {
+			return errors.New("cannot specify --path with " +
+				"--hsm_secret, only identity key can be " +
+				"derived")
+		}
+
+		secretBytes, err := hex.DecodeString(c.HsmSecret)
+		if err != nil {
+			return fmt.Errorf("error decoding HSM secret: %w", err)
+		}
+
+		var hsmSecret [32]byte
+		copy(hsmSecret[:], secretBytes)
+
+		nodePubKey, _, err := cln.NodeKey(hsmSecret)
+		if err != nil {
+			return fmt.Errorf("error deriving node key from HSM: "+
+				"%w", err)
+		}
+
+		result := fmt.Sprintf(
+			"Node identity public key: 	%x",
+			nodePubKey.SerializeCompressed(),
+		)
+		fmt.Println(result)
+
+		// For the tests, also log as trace level which is disabled by
+		// default.
+		log.Tracef(result)
+
+		return nil
+	}
+
 	extendedKey, err := c.rootKey.read()
 	if err != nil {
 		return fmt.Errorf("error reading root key: %w", err)
