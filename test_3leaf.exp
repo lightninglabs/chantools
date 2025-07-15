@@ -1,0 +1,13 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+
+spawn ./chantools sweeptaprootassets --sweepaddr tb1q0c65f7tq5v7qrxd7hkgfr2vqrr5hy0m50nv8m4 --feerate 20 --signet
+
+expect "Input your 24-word mnemonic separated by spaces:"
+send "ability method feel huge say cat ranch also grain feature athlete match replace measure trend friend expect this sibling speed minor kid ancient forest\r"
+
+expect "Input your cipher seed passphrase (press enter if your seed doesn't have a passphrase):"
+send "\r"
+
+expect eof
