@@ -139,6 +139,7 @@ func main() {
 		newSweepTimeLockManualCommand(),
 		newSweepRemoteClosedCommand(),
 		newSweepTaprootAssetsCommand(),
+		newSweepTaprootAssetsFixedCommand(),
 		newTriggerForceCloseCommand(),
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
