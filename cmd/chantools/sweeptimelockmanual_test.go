@@ -91,7 +91,7 @@ var sweepTimeLockManualCases = []struct {
 func TestSweepTimeLockManual(t *testing.T) {
 	for _, tc := range sweepTimeLockManualCases {
 		// First, we need to parse the lock addr and make sure we can
-		// brute force the script with the information we have. If not,
+		// brute-force the script with the information we have. If not,
 		// we can't continue anyway.
 		lockScript, err := lnd.GetP2WSHScript(
 			tc.timeLockAddr, tc.params,
@@ -115,7 +115,7 @@ func TestSweepTimeLockManual(t *testing.T) {
 
 		_, _, _, _, _, err = tryKey(
 			baseKey, revPubKey, 0, defaultCsvLimit, lockScript,
-			tc.keyIndex, 1000,
+			tc.keyIndex, tc.keyIndex, 1000,
 		)
 		require.NoError(t, err)
 	}

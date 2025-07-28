@@ -167,6 +167,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 		startNumChannelsTotal     uint16
 		maxNumChannelsTotal       = c.MaxNumChannelsTotal
 		remoteRevocationBasePoint = c.RemoteRevocationBasePoint
+		multiSigIdx               uint32
 	)
 
 	// We either support specifying the remote revocation base point
@@ -193,14 +194,13 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 		}
 
 		remoteCfg := backupChan.RemoteChanCfg
+		localCfg := backupChan.LocalChanCfg
 		remoteRevocationBasePoint = remoteCfg.RevocationBasePoint.PubKey
 
 		startCsvLimit = remoteCfg.CsvDelay
 		maxCsvLimit = startCsvLimit + 1
 
-		delayPath, err := lnd.ParsePath(
-			backupChan.LocalChanCfg.DelayBasePoint.Path,
-		)
+		delayPath, err := lnd.ParsePath(localCfg.DelayBasePoint.Path)
 		if err != nil {
 			return fmt.Errorf("error parsing delay path: %w", err)
 		}
@@ -210,6 +210,16 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 		startNumChannelsTotal = uint16(delayPath[4])
 		maxNumChannelsTotal = startNumChannelsTotal + 1
+		multiSigKeyPath, err := lnd.ParsePath(localCfg.MultiSigKey.Path)
+		if err != nil {
+			return fmt.Errorf("error parsing multisigkey path: %w",
+				err)
+		}
+		if len(multiSigKeyPath) != 5 {
+			return fmt.Errorf("invalid multisig path '%v'",
+				multiSigKeyPath)
+		}
+		multiSigIdx = multiSigKeyPath[4]
 
 	case c.ChannelBackup != "" && c.RemoteRevocationBasePoint != "":
 		return errors.New("cannot use both --frombackup and " +
@@ -230,7 +240,7 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 	return sweepTimeLockManual(
 		extendedKey, c.APIURL, c.SweepAddr, c.TimeLockAddr,
-		remoteRevPoint, startCsvLimit, maxCsvLimit,
+		remoteRevPoint, multiSigIdx, startCsvLimit, maxCsvLimit,
 		startNumChannelsTotal, maxNumChannelsTotal,
 		c.MaxNumChanUpdates, c.Publish, c.FeeRate,
 	)
@@ -238,8 +248,9 @@ func (c *sweepTimeLockManualCommand) Execute(_ *cobra.Command, _ []string) error
 
 func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 	sweepAddr, timeLockAddr string, remoteRevPoint *btcec.PublicKey,
-	startCsvTimeout, maxCsvTimeout, startNumChannels, maxNumChannels uint16,
-	maxNumChanUpdates uint64, publish bool, feeRate uint32) error {
+	multiSigIdx uint32, startCsvTimeout, maxCsvTimeout, startNumChannels,
+	maxNumChannels uint16, maxNumChanUpdates uint64, publish bool,
+	feeRate uint32) error {
 
 	log.Debugf("Starting to brute force the time lock script, using: "+
 		"remote_rev_base_point=%x, start_csv_limit=%d, "+
@@ -301,9 +312,13 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		commitPoint *btcec.PublicKey
 	)
 	for i := startNumChannels; i < maxNumChannels; i++ {
+		if multiSigIdx == 0 {
+			multiSigIdx = uint32(i)
+		}
+
 		csvTimeout, script, scriptHash, commitPoint, delayDesc, err = tryKey(
 			baseKey, remoteRevPoint, startCsvTimeout, maxCsvTimeout,
-			lockScript, uint32(i), maxNumChanUpdates,
+			lockScript, uint32(i), multiSigIdx, maxNumChanUpdates,
 		)
 
 		if err == nil {
@@ -413,9 +428,9 @@ func sweepTimeLockManual(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 }
 
 func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
-	startCsvTimeout, maxCsvTimeout uint16, lockScript []byte, idx uint32,
-	maxNumChanUpdates uint64) (int32, []byte, []byte, *btcec.PublicKey,
-	*keychain.KeyDescriptor, error) {
+	startCsvTimeout, maxCsvTimeout uint16, lockScript []byte, idx,
+	multiSigIdx uint32, maxNumChanUpdates uint64) (int32, []byte,
+	[]byte, *btcec.PublicKey, *keychain.KeyDescriptor, error) {
 
 	// The easy part first, let's derive the delay base point.
 	delayPath := []uint32{
@@ -495,7 +510,7 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 	// Now we try the same with the new revocation producer format.
 	multiSigPath := []uint32{
 		lnd.HardenedKey(uint32(keychain.KeyFamilyMultiSig)),
-		0, idx,
+		0, multiSigIdx,
 	}
 	multiSigPrivKey, err := lnd.PrivKeyFromPath(baseKey, multiSigPath)
 	if err != nil {
