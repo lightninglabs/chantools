@@ -145,6 +145,7 @@ func main() {
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
 		newZombieRecoveryCommand(),
+		dumphistoricalchan(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
