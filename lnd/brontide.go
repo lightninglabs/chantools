@@ -20,6 +20,7 @@ import (
 	"github.com/lightningnetwork/lnd/discovery"
 	"github.com/lightningnetwork/lnd/feature"
 	"github.com/lightningnetwork/lnd/fn/v2"
+	graphdb "github.com/lightningnetwork/lnd/graph/db"
 	"github.com/lightningnetwork/lnd/graph/db/models"
 	"github.com/lightningnetwork/lnd/htlcswitch"
 	"github.com/lightningnetwork/lnd/htlcswitch/hodl"
@@ -128,6 +129,17 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		return nil, nil, err
 	}
 
+	graphDB, err := graphdb.NewChannelGraph(&graphdb.Config{
+		KVDB: backend,
+	})
+	if err != nil {
+		_ = backend.Close()
+		_ = channelDB.Close()
+
+		return nil, nil, fmt.Errorf("unable to open graph db: %w",
+			err)
+	}
+
 	gossiper := discovery.New(discovery.Config{
 		ChainHash: *netParams.GenesisHash,
 		Broadcast: func(_ map[route.Vertex]struct{},
@@ -188,20 +200,24 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		PubKey:     identityECDH.PubKey(),
 	})
 
-	chanStatusMgr, err := netann.NewChanStatusManager(&netann.
-		ChanStatusConfig{
-		ChanStatusSampleInterval: 30 * time.Second,
-		ChanDisableTimeout:       2 * time.Minute,
-		DB:                       channelDB.ChannelStateDB(),
-		IsChannelActive: func(lnwire.ChannelID) bool {
-			return true
-		},
-		ApplyChannelUpdate: func(*lnwire.ChannelUpdate1,
-			*wire.OutPoint, bool) error {
+	chanStatusMgr, err := netann.NewChanStatusManager(
+		&netann.ChanStatusConfig{
+			ChanStatusSampleInterval: 30 * time.Second,
+			// Enable + Sample Interval must be <= DisableTimeout.
+			ChanEnableTimeout:  30 * time.Second,
+			ChanDisableTimeout: 2 * time.Minute,
+			DB:                 channelDB.ChannelStateDB(),
+			Graph:              graphDB,
+			OurPubKey:          identityECDH.PubKey(),
+			IsChannelActive: func(lnwire.ChannelID) bool {
+				return true
+			},
+			ApplyChannelUpdate: func(*lnwire.ChannelUpdate1,
+				*wire.OutPoint, bool) error {
 
-			return nil
-		},
-	})
+				return nil
+			},
+		})
 	if err != nil {
 		_ = channelDB.Close()
 		return nil, nil, fmt.Errorf("unable to create channel status "+
