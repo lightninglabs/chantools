@@ -108,7 +108,7 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 	}
 
 	log.Infof("Fixed shachain root of %d channels.", fixedChannels)
-	fileName := fmt.Sprintf("results/backup-fixed-%s.backup",
+	fileName := fmt.Sprintf("%s/backup-fixed-%s.backup", ResultsDir,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)

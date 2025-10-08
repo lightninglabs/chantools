@@ -108,7 +108,7 @@ chantools fakechanbackup --from_channel_graph lncli_describegraph.json \
 			"LN channel graph in the JSON format that the "+
 			"'lncli describegraph' returns",
 	)
-	multiFileName := fmt.Sprintf("results/fake-%s.backup",
+	multiFileName := fmt.Sprintf("%s/fake-%s.backup", ResultsDir,
 		time.Now().Format("2006-01-02-15-04-05"))
 	cc.cmd.Flags().StringVar(
 		&cc.MultiFile, "multi_file", multiFileName, "the fake channel "+

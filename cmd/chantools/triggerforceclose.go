@@ -206,8 +206,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		peersBytes := []byte(strings.Join(pubKeys, "\n"))
 		outputsBytes := []byte(strings.Join(outputs, "\n"))
 
-		fileName := fmt.Sprintf("results/forceclose-peers-%s.txt",
-			time.Now().Format("2006-01-02"))
+		fileName := fmt.Sprintf("%s/forceclose-peers-%s.txt",
+			ResultsDir, time.Now().Format("2006-01-02"))
 		log.Infof("Writing peers to %s", fileName)
 		err = os.WriteFile(fileName, peersBytes, 0644)
 		if err != nil {
@@ -215,8 +215,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 				err)
 		}
 
-		fileName = fmt.Sprintf("results/forceclose-addresses-%s.txt",
-			time.Now().Format("2006-01-02"))
+		fileName = fmt.Sprintf("%s/forceclose-addresses-%s.txt",
+			ResultsDir, time.Now().Format("2006-01-02"))
 		log.Infof("Writing addresses to %s", fileName)
 		return os.WriteFile(fileName, outputsBytes, 0644)
 

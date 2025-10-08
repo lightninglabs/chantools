@@ -158,7 +158,7 @@ func (c *genImportScriptCommand) Execute(_ *cobra.Command, _ []string) error {
 
 	writer := os.Stdout
 	if !c.Stdout {
-		fileName := fmt.Sprintf("results/genimportscript-%s.txt",
+		fileName := fmt.Sprintf("%s/genimportscript-%s.txt", ResultsDir,
 			time.Now().Format("2006-01-02-15-04-05"))
 		log.Infof("Writing import script with format '%s' to %s",
 			c.Format, fileName)

@@ -230,7 +230,7 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 	if err != nil {
 		return err
 	}
-	fileName := fmt.Sprintf("results/forceclose-%s.json",
+	fileName := fmt.Sprintf("%s/forceclose-%s.json", ResultsDir,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	return os.WriteFile(fileName, summaryBytes, 0644)

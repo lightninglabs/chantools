@@ -93,7 +93,7 @@ func filterChannelBackup(multiFile *chanbackup.MultiFile, ring keychain.KeyRing,
 	}
 	multi.StaticBackups = keep
 
-	fileName := fmt.Sprintf("results/backup-filtered-%s.backup",
+	fileName := fmt.Sprintf("%s/backup-filtered-%s.backup", ResultsDir,
 		time.Now().Format("2006-01-02-15-04-05"))
 	log.Infof("Writing result to %s", fileName)
 	f, err := os.OpenFile(fileName, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
