@@ -44,7 +44,7 @@ DOCKER_TOOLS = docker run \
 
 TEST_FLAGS = -test.timeout=20m
 
-UNIT := $(GOLIST) | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
+UNIT := $(GOLIST) | grep -v "/itest" | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
 LDFLAGS := -X main.Commit=$(shell git describe --tags)
 RELEASE_LDFLAGS := -s -w -buildid= $(LDFLAGS)
 
@@ -63,6 +63,10 @@ $(GOIMPORTS_BIN):
 unit: 
 	@$(call print, "Running unit tests.")
 	$(UNIT)
+
+itest: install
+	@$(call print, "Running integration tests.")
+	cd itest; ./itest.sh
 
 build:
 	@$(call print, "Building chantools.")
@@ -94,3 +98,5 @@ lint: docker-tools
 docs: install
 	@$(call print, "Rendering docs.")
 	chantools doc
+
+.PHONY: unit itest build install release fmt lint docs docker-tools

@@ -1,0 +1,303 @@
+services:
+  bitcoind:
+    image: lightninglabs/bitcoin-core:${BITCOIND_VERSION}
+    container_name: bitcoind
+    restart: unless-stopped
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+      - "28332:28332"
+      - "28333:28333"
+    networks:
+      regtest:
+        aliases:
+          - bitcoind
+    command:
+      - "-txindex"
+      - "-regtest"
+      - "-rest"
+      - "-printtoconsole"
+      - "-zmqpubrawblock=tcp://0.0.0.0:28332"
+      - "-zmqpubrawtx=tcp://0.0.0.0:28333"
+      - "-rpcport=18443"
+      - "-rpcbind=0.0.0.0"
+      - "-rpcauth=lightning:8492220e715bbfdf5f165102bfd7ed4$$88090545821ed5e9db614588c0afbad575ccc14681fb77f3cae6899bc419af67"
+      - "-rpcallowip=0.0.0.0/0"
+      - "-fallbackfee=0.0002"
+      - "-peerblockfilters=1"
+      - "-blockfilterindex=1"
+      - "-wallet=/home/bitcoin/.bitcoin/regtest/wallets/miner"
+    environment:
+      - HOME=/home/bitcoin
+    volumes:
+      - bitcoind:/home/bitcoin/.bitcoin
+
+  electrs:
+    image: mempool/electrs
+    container_name: electrs
+    restart: unless-stopped
+    ports:
+      - "${ELECTRS_EXPORTED_PORT}:3000"
+    networks:
+      - regtest
+    environment:
+      - RUST_BACKTRACE=1
+    volumes:
+      - bitcoind:/home/user/.bitcoin
+    user: "0:0"
+    depends_on:
+      - bitcoind
+    command:
+      - "-vvv"
+      - "--timestamp"
+      - "--network=regtest"
+      - "--cookie=lightning:lightning"
+      - "--daemon-rpc-addr=bitcoind:18443"
+      - "--http-addr=0.0.0.0:3000"
+      - "--cors=http://localhost:3002"
+      - "--daemon-dir=/home/user/.bitcoin"
+      - "--db-dir=/home/user/.bitcoin/db"
+
+  alice:
+    image: lightninglabs/lnd:${LND_LATEST_VERSION}
+    container_name: alice
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    networks:
+      regtest:
+        aliases:
+          - alice
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/alice:/home/user/.lnd"
+    depends_on:
+      - bitcoind
+    command:
+      - "--logdir=/home/user/.lnd"
+      - "--alias=alice"
+      - "--rpclisten=0.0.0.0:10009"
+      - "--restlisten=0.0.0.0:8080"
+      - "--color=#cccccc"
+      - "--noseedbackup"
+      - "--bitcoin.active"
+      - "--bitcoin.regtest"
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoind.rpchost=bitcoind"
+      - "--bitcoind.rpcuser=lightning"
+      - "--bitcoind.rpcpass=lightning"
+      - "--bitcoind.zmqpubrawblock=tcp://bitcoind:28332"
+      - "--bitcoind.zmqpubrawtx=tcp://bitcoind:28333"
+      - "--debuglevel=debug"
+      - "--externalip=alice"
+      - "--tlsextradomain=alice"
+      - "--accept-keysend"
+      - "--protocol.option-scid-alias"
+      - "--protocol.zero-conf"
+      - "--protocol.simple-taproot-chans"
+      - "--trickledelay=50"
+
+  bob:
+    image: lightninglabs/lnd:${LND_LATEST_VERSION}
+    container_name: bob
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    networks:
+      regtest:
+        aliases:
+          - bob
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/bob:/home/user/.lnd"
+    depends_on:
+      - bitcoind
+    command:
+      - "--logdir=/home/user/.lnd"
+      - "--alias=bob"
+      - "--rpclisten=0.0.0.0:10009"
+      - "--restlisten=0.0.0.0:8080"
+      - "--color=#cccccc"
+      - "--noseedbackup"
+      - "--bitcoin.active"
+      - "--bitcoin.regtest"
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoind.rpchost=bitcoind"
+      - "--bitcoind.rpcuser=lightning"
+      - "--bitcoind.rpcpass=lightning"
+      - "--bitcoind.zmqpubrawblock=tcp://bitcoind:28332"
+      - "--bitcoind.zmqpubrawtx=tcp://bitcoind:28333"
+      - "--debuglevel=debug"
+      - "--externalip=bob"
+      - "--tlsextradomain=bob"
+      - "--accept-keysend"
+      - "--protocol.option-scid-alias"
+      - "--protocol.zero-conf"
+      - "--protocol.simple-taproot-chans"
+      - "--trickledelay=50"
+
+  charlie:
+    image: lightninglabs/lnd:${LND_LATEST_VERSION}
+    container_name: charlie
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    networks:
+      regtest:
+        aliases:
+          - charlie
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/charlie:/home/user/.lnd"
+    depends_on:
+      - bitcoind
+    command:
+      - "--logdir=/home/user/.lnd"
+      - "--alias=charlie"
+      - "--rpclisten=0.0.0.0:10009"
+      - "--restlisten=0.0.0.0:8080"
+      - "--color=#cccccc"
+      - "--noseedbackup"
+      - "--bitcoin.active"
+      - "--bitcoin.regtest"
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoind.rpchost=bitcoind"
+      - "--bitcoind.rpcuser=lightning"
+      - "--bitcoind.rpcpass=lightning"
+      - "--bitcoind.zmqpubrawblock=tcp://bitcoind:28332"
+      - "--bitcoind.zmqpubrawtx=tcp://bitcoind:28333"
+      - "--debuglevel=debug"
+      - "--externalip=charlie"
+      - "--tlsextradomain=charlie"
+      - "--accept-keysend"
+      - "--protocol.option-scid-alias"
+      - "--protocol.zero-conf"
+      - "--protocol.simple-taproot-chans"
+      - "--trickledelay=50"
+
+  dave:
+    image: lightninglabs/lnd:${LND_LATEST_VERSION}
+    container_name: dave
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    ports:
+      - "${DAVE_EXPORTED_PORT}:9735"
+    networks:
+      regtest:
+        aliases:
+          - dave
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/dave:/home/user/.lnd"
+    depends_on:
+      - bitcoind
+    command:
+      - "--logdir=/home/user/.lnd"
+      - "--alias=dave"
+      - "--rpclisten=0.0.0.0:10009"
+      - "--restlisten=0.0.0.0:8080"
+      - "--color=#cccccc"
+      - "--noseedbackup"
+      - "--bitcoin.active"
+      - "--bitcoin.regtest"
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoind.rpchost=bitcoind"
+      - "--bitcoind.rpcuser=lightning"
+      - "--bitcoind.rpcpass=lightning"
+      - "--bitcoind.zmqpubrawblock=tcp://bitcoind:28332"
+      - "--bitcoind.zmqpubrawtx=tcp://bitcoind:28333"
+      - "--debuglevel=debug"
+      - "--externalip=dave"
+      - "--tlsextradomain=dave"
+      - "--accept-keysend"
+      - "--protocol.option-scid-alias"
+      - "--protocol.zero-conf"
+      - "--protocol.simple-taproot-chans"
+      - "--trickledelay=50"
+
+  rusty:
+    image: elementsproject/lightningd:${CLN_LATEST_VERSION}
+    container_name: rusty
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    networks:
+      - regtest
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/rusty:/home/user/.lightning"
+    depends_on:
+      - bitcoind
+    command:
+      - "--bitcoin-rpcconnect=bitcoind"
+      - "--bitcoin-rpcuser=lightning"
+      - "--bitcoin-rpcpassword=lightning"
+      - "--network=regtest"
+      - "--plugin-dir=/usr/libexec/c-lightning/plugins"
+      - "--alias=rusty"
+      - "--developer"
+      - "--dev-bitcoind-poll=1"
+      - "--dev-fast-gossip"
+      - "--log-level=debug"
+      - "--bind-addr=0.0.0.0:9735"
+
+  nifty:
+    image: elementsproject/lightningd:${CLN_LATEST_VERSION}
+    container_name: nifty
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    networks:
+      - regtest
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/nifty:/home/user/.lightning"
+    depends_on:
+      - bitcoind
+    command:
+      - "--bitcoin-rpcconnect=bitcoind"
+      - "--bitcoin-rpcuser=lightning"
+      - "--bitcoin-rpcpassword=lightning"
+      - "--network=regtest"
+      - "--plugin-dir=/usr/libexec/c-lightning/plugins"
+      - "--alias=nifty"
+      - "--developer"
+      - "--dev-bitcoind-poll=1"
+      - "--dev-fast-gossip"
+      - "--log-level=debug"
+      - "--bind-addr=0.0.0.0:9735"
+
+  snyke:
+    image: elementsproject/lightningd:${CLN_LATEST_VERSION}
+    container_name: snyke
+    restart: unless-stopped
+    user: ${LOCAL_USER_ID}:${LOCAL_GROUP_ID}
+    ports:
+      - "${SNYKE_EXPORTED_PORT}:9735"
+    networks:
+      - regtest
+    environment:
+      - HOME=/home/user
+    volumes:
+      - "./node-data/snyke:/home/user/.lightning"
+    depends_on:
+      - bitcoind
+    command:
+      - "--bitcoin-rpcconnect=bitcoind"
+      - "--bitcoin-rpcuser=lightning"
+      - "--bitcoin-rpcpassword=lightning"
+      - "--network=regtest"
+      - "--plugin-dir=/usr/libexec/c-lightning/plugins"
+      - "--alias=snyke"
+      - "--developer"
+      - "--dev-bitcoind-poll=1"
+      - "--dev-fast-gossip"
+      - "--log-level=debug"
+      - "--bind-addr=0.0.0.0:9735"
+
+networks:
+  regtest:
+
+volumes:
+  bitcoind:
