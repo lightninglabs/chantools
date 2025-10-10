@@ -1,32 +1,11 @@
+version: "2"
+
 run:
-  # timeout for analysis
-  timeout: 4m
+  timeout: 5m
   go: "1.23"
 
-linters-settings:
-  govet:
-    # Don't report about shadowed variables
-    shadow: false
-  gofmt:
-    # simplify code: gofmt with `-s` option, true by default
-    simplify: true
-  whitespace:
-    multi-func: true
-    multi-if: true
-  tagliatelle:
-    case:
-      rules:
-        json: snake
-  staticcheck:
-    checks: ["-SA1019"]
-  gomoddirectives:
-    replace-allow-list:
-      # See go.mod for the explanation why these are needed.
-      - google.golang.org/protobuf
-
-
 linters:
-  enable-all: true
+  default: all
   disable:
     - gochecknoglobals
     - gosec
@@ -43,20 +22,50 @@ linters:
     - cyclop
     - gocyclo
     - nlreturn
-    - stylecheck
     - paralleltest
     - ireturn
     - maintidx
     - noctx
-    - gofumpt
     - exhaustive
     - protogetter
     - depguard
     - mnd
     - gomoddirectives
+    - nolintlint
+    - errcheck
+    - funcorder
+    - godoclint
+    - noinlineerr
+    - revive
+    - wsl_v5
 
-issues:
-  exclude-rules:
-    - path: cmd/chantools
-      linters:
-        - lll
+  settings:
+    govet:
+      # Don't report about shadowed variables.
+      shadow: false
+    gofmt:
+      # simplify code: gofmt with `-s` option, true by default.
+      simplify: true
+    whitespace:
+      multi-func: true
+      multi-if: true
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+    staticcheck:
+      checks: [ "-SA1019" ]
+    gomoddirectives:
+      replace-allow-list:
+        # See go.mod for the explanation why these are needed.
+        - google.golang.org/protobuf
+
+  exclusions:
+    rules:
+      - path: cmd/chantools
+        linters:
+          - lll
+      - path: itest
+        linters:
+          - dupl
+          - thelper
