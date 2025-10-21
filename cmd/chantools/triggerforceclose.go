@@ -206,8 +206,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 		peersBytes := []byte(strings.Join(pubKeys, "\n"))
 		outputsBytes := []byte(strings.Join(outputs, "\n"))
 
-		fileName := fmt.Sprintf("results/forceclose-peers-%s.txt",
-			time.Now().Format("2006-01-02"))
+		fileName := fmt.Sprintf("%s/forceclose-peers-%s.txt",
+			ResultsDir, time.Now().Format("2006-01-02"))
 		log.Infof("Writing peers to %s", fileName)
 		err = os.WriteFile(fileName, peersBytes, 0644)
 		if err != nil {
@@ -215,8 +215,8 @@ func (c *triggerForceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 				err)
 		}
 
-		fileName = fmt.Sprintf("results/forceclose-addresses-%s.txt",
-			time.Now().Format("2006-01-02"))
+		fileName = fmt.Sprintf("%s/forceclose-addresses-%s.txt",
+			ResultsDir, time.Now().Format("2006-01-02"))
 		log.Infof("Writing addresses to %s", fileName)
 		return os.WriteFile(fileName, outputsBytes, 0644)
 
@@ -259,7 +259,11 @@ func closeChannel(identityPriv *btcec.PrivateKey, api *btc.ExplorerAPI,
 		return nil, fmt.Errorf("error parsing channel point: %w", err)
 	}
 
-	err = requestForceClose(peer, torProxy, *outPoint, identityECDH)
+	err = requestForceCloseLnd(peer, torProxy, *outPoint, identityECDH)
+	if err != nil {
+		return nil, fmt.Errorf("error requesting force close: %w", err)
+	}
+	err = requestForceCloseCln(peer, torProxy, *outPoint, identityECDH)
 	if err != nil {
 		return nil, fmt.Errorf("error requesting force close: %w", err)
 	}
@@ -287,6 +291,17 @@ func closeChannel(identityPriv *btcec.PrivateKey, api *btc.ExplorerAPI,
 		}
 
 		counter++
+		if counter >= 6 {
+			log.Info("Waited 30 seconds, still no spends found, " +
+				"re-triggering CLN request")
+			err = requestForceCloseCln(
+				peer, torProxy, *outPoint, identityECDH,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("error requesting "+
+					"force close: %w", err)
+			}
+		}
 		if counter >= 12 {
 			return nil, errors.New("no spends found after 60 " +
 				"seconds, aborting re-try loop")
@@ -385,7 +400,7 @@ func connectPeer(peerHost, torProxy string, identity keychain.SingleKeyECDH,
 	return p, cleanup, nil
 }
 
-func requestForceClose(peerHost, torProxy string, channelPoint wire.OutPoint,
+func requestForceCloseLnd(peerHost, torProxy string, channelPoint wire.OutPoint,
 	identity keychain.SingleKeyECDH) error {
 
 	p, cleanup, err := connectPeer(
@@ -414,6 +429,32 @@ func requestForceClose(peerHost, torProxy string, channelPoint wire.OutPoint,
 	if err != nil {
 		return err
 	}
+
+	// Wait a few seconds to give the peer time to process the message.
+	time.Sleep(5 * time.Second)
+
+	return nil
+}
+
+func requestForceCloseCln(peerHost, torProxy string, channelPoint wire.OutPoint,
+	identity keychain.SingleKeyECDH) error {
+
+	p, cleanup, err := connectPeer(
+		peerHost, torProxy, identity, dialTimeout,
+	)
+	defer func() {
+		_ = cleanup()
+	}()
+
+	if err != nil {
+		return fmt.Errorf("error connecting to peer: %w", err)
+	}
+
+	channelID := lnwire.NewChanIDFromOutPoint(channelPoint)
+
+	// Channel ID (32 byte) + u16 for the data length (which will be 0).
+	data := make([]byte, 34)
+	copy(data[:32], channelID[:])
 
 	log.Infof("Sending channel error message to peer to trigger force "+
 		"close of channel %v", channelPoint)

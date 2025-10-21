@@ -217,7 +217,8 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 
 				return nil
 			},
-		})
+		},
+	)
 	if err != nil {
 		_ = channelDB.Close()
 		return nil, nil, fmt.Errorf("unable to create channel status "+

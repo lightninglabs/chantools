@@ -9,7 +9,7 @@ package lnd
 // dependencies here and pin the version in go.mod.
 import (
 	_ "github.com/btcsuite/btcd"
-	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
+	_ "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
 	_ "github.com/ory/go-acc"
 	_ "github.com/rinchsan/gosimports/cmd/gosimports"
 )

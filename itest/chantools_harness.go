@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"strings"
@@ -27,6 +28,8 @@ type ChantoolsProcess struct {
 func StartChantools(t *testing.T, args ...string) *ChantoolsProcess {
 	t.Helper()
 
+	log.Debugf("Calling chantools with args: %v", args)
+
 	args = append([]string{"--nologfile"}, args...)
 	cmd := exec.Command("chantools", args...)
 	stdin, err := cmd.StdinPipe()
@@ -42,13 +45,35 @@ func StartChantools(t *testing.T, args ...string) *ChantoolsProcess {
 
 	require.NoError(t, cmd.Start())
 
-	return &ChantoolsProcess{
+	proc := &ChantoolsProcess{
 		cmd:          cmd,
 		stdin:        stdin,
 		stdout:       stdoutFile,
 		stdoutReader: bufio.NewReader(stdoutFile),
 		stderr:       bufio.NewReader(stderrPipe),
 	}
+
+	proc.AssertNoStderr(t)
+	return proc
+}
+
+func (p *ChantoolsProcess) AssertNoStderr(t *testing.T) {
+	t.Helper()
+
+	require.Never(t, func() bool {
+		stderrBytes, err := io.ReadAll(p.stderr)
+		if isProcessExitErr(err) {
+			return false
+		}
+		require.NoError(t, err)
+
+		if len(stderrBytes) > 0 {
+			t.Logf("Stderr has unexpected output: %s", stderrBytes)
+			return true
+		}
+
+		return false
+	}, shortTimeout, testTick)
 }
 
 // WriteInput writes input to the process's stdin.
@@ -66,35 +91,9 @@ func (p *ChantoolsProcess) ReadAllOutput(t *testing.T) string {
 	resp, err := io.ReadAll(p.stdout)
 	require.NoError(t, err, "failed to read chantools output")
 
-	log.Debugf("[CHANTOOLS]: %s", resp)
+	log.Debugf("[CHANTOOLS]: %s", strings.TrimSpace(string(resp)))
 
 	return string(resp)
-}
-
-// ReadOutputUntil reads from stdout until the given substring is found or
-// timeout.
-func (p *ChantoolsProcess) ReadOutputUntil(t *testing.T, substr string,
-	timeout time.Duration) string {
-
-	t.Helper()
-
-	var out bytes.Buffer
-	deadline := time.Now().Add(timeout)
-	for {
-		if time.Now().After(deadline) {
-			t.Fatal("timeout waiting for chantools output")
-		}
-		line, err := p.stdoutReader.ReadString('\n')
-		out.WriteString(line)
-
-		log.Debugf("[CHANTOOLS]: %s", line)
-
-		if strings.Contains(out.String(), substr) {
-			return out.String()
-		}
-
-		require.NoError(t, err)
-	}
 }
 
 // ReadAvailableOutput reads as many bytes as possible from stdout until the
@@ -130,7 +129,7 @@ func (p *ChantoolsProcess) ReadAvailableOutput(t *testing.T,
 		}
 	}
 
-	log.Debugf("[CHANTOOLS]: %s", out.String())
+	log.Debugf("[CHANTOOLS]: %s", strings.TrimSpace(out.String()))
 	return out.String()
 }
 
@@ -146,4 +145,13 @@ func (p *ChantoolsProcess) Kill(t *testing.T) {
 	t.Helper()
 
 	require.NoError(t, p.cmd.Process.Kill())
+}
+
+func isProcessExitErr(err error) bool {
+	var pathError *fs.PathError
+	if err != nil && errors.As(err, &pathError) {
+		return errors.Is(pathError.Err, fs.ErrClosed)
+	}
+
+	return false
 }

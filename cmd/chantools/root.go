@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -47,10 +48,11 @@ const (
 )
 
 var (
-	Testnet   bool
-	Regtest   bool
-	Signet    bool
-	NoLogFile bool
+	Testnet    bool
+	Regtest    bool
+	Signet     bool
+	NoLogFile  bool
+	ResultsDir string
 
 	log btclog.Logger
 
@@ -105,6 +107,10 @@ func main() {
 		&NoLogFile, "nologfile", false, "If set, no log file "+
 			"will be created. This is useful for testing purposes "+
 			"where we don't want to create a log file.",
+	)
+	rootCmd.PersistentFlags().StringVar(
+		&ResultsDir, "resultsdir", "./results", "Directory where "+
+			"results should be stored",
 	)
 
 	rootCmd.AddCommand(
@@ -351,7 +357,7 @@ func setupLogging() {
 				MaxLogFiles:    3,
 				MaxLogFileSize: 10,
 			},
-			"./results/chantools.log",
+			filepath.Join(ResultsDir, "chantools.log"),
 		)
 		if err != nil {
 			panic(err)

@@ -247,7 +247,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 		return err
 	}
 
-	fileName := fmt.Sprintf("results/preparedkeys-%s-%s.json",
+	fileName := fmt.Sprintf("%s/preparedkeys-%s-%s.json", ResultsDir,
 		time.Now().Format("2006-01-02"), pubKeyStr)
 	log.Infof("Writing result to %s", fileName)
 	return os.WriteFile(fileName, matchBytes, 0644)
