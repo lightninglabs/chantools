@@ -84,7 +84,17 @@ function build_release() {
 #   arguments: <version-tag>
 function docker_release() {
   local tag=$1
-  docker buildx build --platform linux/arm64,linux/amd64 --tag $DOCKER_USER/$PACKAGE:$tag --output "type=registry" .
+  docker buildx build \
+    --platform linux/arm64,linux/amd64 \
+    --tag $DOCKER_USER/$PACKAGE:$tag \
+    --tag $DOCKER_USER/$PACKAGE:latest --output "type=registry" .
+    
+  docker buildx build \
+    -f docker/umbrel.Dockerfile \
+    --platform linux/arm64,linux/amd64 \
+    --build-arg VERSION=$tag \
+    --tag $DOCKER_USER/$PACKAGE:$tag-umbrel \
+    --tag $DOCKER_USER/$PACKAGE:latest-umbrel --output "type=registry" .
 }
 
 # usage prints the usage of the whole script.
