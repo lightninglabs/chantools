@@ -81,6 +81,10 @@ release:
 	rm -rf chantools-v*
 	./release.sh build-release "$(VERSION_TAG)" "$(BUILD_SYSTEM)" "$(RELEASE_LDFLAGS)"
 
+docker-release:
+	@$(call print, "Creating docker release of chantools.")
+	./release.sh docker-release "$(VERSION_TAG)"
+
 docker-tools:
 	@$(call print, "Building tools docker image.")
 	docker build -q -t chantools-tools $(TOOLS_DIR)
