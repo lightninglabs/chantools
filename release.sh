@@ -10,6 +10,7 @@
 set -e
 
 PKG="github.com/lightninglabs/chantools"
+DOCKER_USER="guggero"
 PACKAGE=chantools
 
 # green prints one line of green text (if the terminal supports it).
@@ -79,6 +80,13 @@ function build_release() {
   shasum -a 256 * >manifest-$tag.txt
 }
 
+# docker_release builds the Docker images for all supported platforms.
+#   arguments: <version-tag>
+function docker_release() {
+  local tag=$1
+  docker buildx build --platform linux/arm64,linux/amd64 --tag $DOCKER_USER/$PACKAGE:$tag --output "type=registry" .
+}
+
 # usage prints the usage of the whole script.
 function usage() {
   red "Usage: "
@@ -102,6 +110,10 @@ case $SUBCOMMAND in
 build-release)
   green "Building release"
   build_release "$@"
+  ;;
+docker-release)
+  green "Building docker release"
+  docker_release "$@"
   ;;
 *)
   usage
