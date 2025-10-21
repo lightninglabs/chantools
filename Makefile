@@ -89,6 +89,11 @@ docker-tools:
 	@$(call print, "Building tools docker image.")
 	docker build -q -t chantools-tools $(TOOLS_DIR)
 
+command-generator-build:
+	@$(call print, "Building command generator.")
+	cd doc/command-generator; npm install && npm run build
+	mv doc/command-generator/dist/index.html doc/command-generator.html
+
 fmt: $(GOIMPORTS_BIN)
 	@$(call print, "Fixing imports.")
 	gosimports -w $(GOFILES_NOVENDOR)
@@ -99,7 +104,7 @@ lint: docker-tools
 	@$(call print, "Linting source.")
 	$(DOCKER_TOOLS) golangci-lint run -v $(LINT_WORKERS)
 
-docs: install
+docs: install command-generator-build
 	@$(call print, "Rendering docs.")
 	chantools doc
 
