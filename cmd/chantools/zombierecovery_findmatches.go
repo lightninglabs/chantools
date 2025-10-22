@@ -379,7 +379,7 @@ func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 		var query gqGetNodeQuery
 		err := client.Query(context.Background(), &query, variables)
 		if err != nil {
-			if strings.Contains(err.Error(), "Too many requests") {
+			if isServerErr(err) {
 				time.Sleep(1 * time.Second)
 				continue
 			}
@@ -399,6 +399,24 @@ func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 	}
 
 	return channels, nil
+}
+
+func isServerErr(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	errStr := err.Error()
+	switch {
+	case strings.Contains(errStr, "Too many requests"):
+		return true
+
+	case strings.Contains(errStr, "error code: 520"):
+		return true
+
+	default:
+		return false
+	}
 }
 
 func identifyPeer(channel *gqChannel, node1 string) string {
