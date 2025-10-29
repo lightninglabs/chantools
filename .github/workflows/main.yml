@@ -28,17 +28,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: create linter cache directory
+        run: mkdir -p /tmp/go-lint-cache
+
       - name: linter cache
         uses: actions/cache@v4
         with:
           path: |
             /tmp/go-lint-cache
           key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-linter-${{ hashFiles('**/go.sum') }}
-
-      - name: Cache Docker images.
-        uses: ScribeMD/docker-cache@0.5.0
-        with:
-          key: docker-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
       - name: lint
         run: make lint

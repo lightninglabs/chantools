@@ -19,7 +19,11 @@ func newZombieRecoveryCommand() *cobra.Command {
 to help with recovering funds stuck in zombie channels.
 
 Please visit https://github.com/lightninglabs/chantools/blob/master/doc/zombierecovery.md
-for more information on how to use these commands.`,
+for more information on how to use these commands.
+
+Check out https://guggero.github.io/chantools/doc/command-generator.html for an
+interactive GUI that guides you through the different steps.
+`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
 				_ = cmd.Help()
