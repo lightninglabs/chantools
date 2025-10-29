@@ -10,6 +10,9 @@ to help with recovering funds stuck in zombie channels.
 Please visit https://github.com/lightninglabs/chantools/blob/master/doc/zombierecovery.md
 for more information on how to use these commands.
 
+Check out https://guggero.github.io/chantools/doc/command-generator.html for an
+interactive GUI that guides you through the different steps.
+
 ```
 chantools zombierecovery [flags]
 ```
@@ -33,7 +36,7 @@ chantools zombierecovery [flags]
 ### SEE ALSO
 
 * [chantools](chantools.md)	 - Chantools helps recover funds from lightning channels
-* [chantools zombierecovery findmatches](chantools_zombierecovery_findmatches.md)	 - [0/3] Match maker only: Find matches between registered nodes
+* [chantools zombierecovery findmatches](chantools_zombierecovery_findmatches.md)	 - [0/3] Matchmaker only: Find matches between registered nodes
 * [chantools zombierecovery makeoffer](chantools_zombierecovery_makeoffer.md)	 - [2/3] Make an offer on how to split the funds to recover
 * [chantools zombierecovery preparekeys](chantools_zombierecovery_preparekeys.md)	 - [1/3] Prepare all public keys for a recovery attempt
 * [chantools zombierecovery signoffer](chantools_zombierecovery_signoffer.md)	 - [3/3] Sign an offer sent by the remote peer to recover funds

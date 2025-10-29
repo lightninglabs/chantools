@@ -4,7 +4,7 @@
 
 ### Synopsis
 
-Match maker only: Runs through all the nodes that have
+Matchmaker only: Runs through all the nodes that have
 registered their ID on https://www.node-recovery.com and checks whether there
 are any matches of channels between them by looking at the whole channel graph.
 

@@ -26,6 +26,12 @@
           the channels that were just force-closed and confirmed in the previous
           step.
         </li>
+        <li>
+          For any remaining channels where neither party has channel data
+          anymore, run <code>ZombieRecovery</code> to try and recover funds
+          with the cooperation of the remote peer (requires you to be in contact
+          with the remote node operator).
+        </li>
       </ol>
       <div class="command-list">
         <div
@@ -63,6 +69,12 @@ export default {
               'ask them to trigger a force close of the specified channel. ' +
               'Requires the peer to be online, reachable and still have the ' +
               'channel data.',
+        },
+        {
+          name: 'ZombieRecovery',
+          description: 'A multi-step process to rescue funds from channels ' +
+              'where both nodes have lost their channel data. This requires ' +
+              'cooperation from the channel peer.',
         },
       ],
     };
