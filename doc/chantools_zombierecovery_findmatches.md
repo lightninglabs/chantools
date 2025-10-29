@@ -1,6 +1,6 @@
 ## chantools zombierecovery findmatches
 
-[0/3] Match maker only: Find matches between registered nodes
+[0/3] Matchmaker only: Find matches between registered nodes
 
 ### Synopsis
 
