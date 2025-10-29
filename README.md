@@ -276,53 +276,53 @@ Detailed documentation for each sub command is available in the
 The following table provides quick access to each command's documentation.
 Legend:
 
-- :pencil: This command requires the seed to be entered (see [seed and
+- ✏️ This command requires the seed to be entered (see [seed and
   passphrase input](#seed-and-passphrase-input)).
-- :warning: Should not be used unless no other option exists, can lead to
+- ⚠️ Should not be used unless no other option exists, can lead to
   malfunction of the node.
-- :skull: Danger of loss of funds, only use when instructed to.
-- :pushpin: Command was created for a very specific version or use case and most
+- ☠️ Danger of loss of funds, only use when instructed to.
+- 📌 Command was created for a very specific version or use case and most
   likely does not apply to 99.9% of users
 - **CLN**: Command is compatible with Core Lightning (CLN), use `--hsm_secret`
   flag instead of root key or wallet.
 
 | Command                                                     | Use when                                                                                                                                   |
 |-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
-| [chanbackup](doc/chantools_chanbackup.md)                   | :pencil: Extract a `channel.backup` file from a `channel.db` file                                                                          |
-| [closepoolaccount](doc/chantools_closepoolaccount.md)       | :pencil: Manually close an expired Lightning Pool account                                                                                  |
+| [chanbackup](doc/chantools_chanbackup.md)                   | ✏️ Extract a `channel.backup` file from a `channel.db` file                                                                          |
+| [closepoolaccount](doc/chantools_closepoolaccount.md)       | ✏️ Manually close an expired Lightning Pool account                                                                                  |
 | [compactdb](doc/chantools_compactdb.md)                     | Run database compaction manually to reclaim space                                                                                          |
-| [createwallet](doc/chantools_createwallet.md)               | :pencil: Create a new lnd compatible wallet.db file from an existing seed or by generating a new one                                       |
+| [createwallet](doc/chantools_createwallet.md)               | ✏️ Create a new lnd compatible wallet.db file from an existing seed or by generating a new one                                       |
 | [deletepayments](doc/chantools_deletepayments.md)           | Remove ALL payments from a `channel.db` file to reduce size                                                                                |
-| [derivekey](doc/chantools_derivekey.md)                     | :pencil: (**CLN**) Derive a single private/public key from `lnd`'s seed, use to test seed                                                  |
-| [doublespendinputs](doc/chantools_doublespendinputs.md)     | :pencil: Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address        |
-| [dropchannelgraph](doc/chantools_dropchannelgraph.md)       | ( :warning: ) Completely drop the channel graph from a `channel.db` to force re-sync (not recommended while channels are open!)            |
+| [derivekey](doc/chantools_derivekey.md)                     | ✏️ (**CLN**) Derive a single private/public key from `lnd`'s seed, use to test seed                                                  |
+| [doublespendinputs](doc/chantools_doublespendinputs.md)     | ✏️ Tries to double spend the given inputs by deriving the private for the address and sweeping the funds to the given address        |
+| [dropchannelgraph](doc/chantools_dropchannelgraph.md)       | ( ⚠️ ) Completely drop the channel graph from a `channel.db` to force re-sync (not recommended while channels are open!)            |
 | [dropgraphzombies](doc/chantools_dropgraphzombies.md)       | Drop all zombie channels from a `channel.db` to force a graph re-sync                                                                      |
-| [dumpbackup](doc/chantools_dumpbackup.md)                   | :pencil: Show the content of a `channel.backup` file as text                                                                               |
+| [dumpbackup](doc/chantools_dumpbackup.md)                   | ✏️ Show the content of a `channel.backup` file as text                                                                               |
 | [dumpchannels](doc/chantools_dumpchannels.md)               | Show the content of a `channel.db` file as text                                                                                            |
-| [fakechanbackup](doc/chantools_fakechanbackup.md)           | :pencil: Create a fake `channel.backup` file from public information                                                                       |
-| [filterbackup](doc/chantools_filterbackup.md)               | :pencil: Remove a channel from a `channel.backup` file                                                                                     |
-| [fixoldbackup](doc/chantools_fixoldbackup.md)               | :pencil: ( :pushpin: ) Fixes an issue with old `channel.backup` files                                                                      |
-| [forceclose](doc/chantools_forceclose.md)                   | :pencil: ( :skull: :warning: ) Publish an old channel state from a `channel.db` file                                                       |
-| [genimportscript](doc/chantools_genimportscript.md)         | :pencil: Create a script/text file that can be used to import `lnd` keys into other software                                               |
+| [fakechanbackup](doc/chantools_fakechanbackup.md)           | ✏️ Create a fake `channel.backup` file from public information                                                                       |
+| [filterbackup](doc/chantools_filterbackup.md)               | ✏️ Remove a channel from a `channel.backup` file                                                                                     |
+| [fixoldbackup](doc/chantools_fixoldbackup.md)               | ✏️ ( 📌 ) Fixes an issue with old `channel.backup` files                                                                      |
+| [forceclose](doc/chantools_forceclose.md)                   | ✏️ ( ☠️ ⚠️ ) Publish an old channel state from a `channel.db` file                                                       |
+| [genimportscript](doc/chantools_genimportscript.md)         | ✏️ Create a script/text file that can be used to import `lnd` keys into other software                                               |
 | [migratedb](doc/chantools_migratedb.md)                     | Upgrade the `channel.db` file to the latest version                                                                                        |
-| [pullanchor](doc/chantools_pullanchor.md)                   | :pencil: Attempt to CPFP an anchor output of a channel                                                                                     | 
-| [recoverloopin](doc/chantools_recoverloopin.md)             | :pencil: Recover funds from a failed Lightning Loop inbound swap                                                                           |
-| [removechannel](doc/chantools_removechannel.md)             | (:skull: :warning:) Remove a single channel from a `channel.db` file                                                                       |
-| [rescueclosed](doc/chantools_rescueclosed.md)               | :pencil: ( :pushpin: ) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
-| [rescuefunding](doc/chantools_rescuefunding.md)             | :pencil: ( :pushpin: ) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |
-| [scbforceclose](doc/chantools_scbforceclose.md)             | :pencil: :warning: :skull: Force close a channel using the latest state from a channel backup. EXTREMELY DANGEROUS, read help text!        |
-| [showrootkey](doc/chantools_showrootkey.md)                 | :pencil: Display the master root key (`xprv`) from your seed (DO NOT SHARE WITH ANYONE)                                                    |
-| [signmessage](doc/chantools_signmessage.md)                 | :pencil: Sign a message with the nodes identity pubkey.                                                                                    |
-| [signpsbt](doc/chantools_signpsbt.md)                       | :pencil: Sign a Partially Signed Bitcoin Transaction (PSBT)                                                                                |
-| [signrescuefunding](doc/chantools_signrescuefunding.md)     | :pencil: ( :pushpin: ) Sign to funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead |
+| [pullanchor](doc/chantools_pullanchor.md)                   | ✏️ Attempt to CPFP an anchor output of a channel                                                                                     | 
+| [recoverloopin](doc/chantools_recoverloopin.md)             | ✏️ Recover funds from a failed Lightning Loop inbound swap                                                                           |
+| [removechannel](doc/chantools_removechannel.md)             | (☠️ ⚠️) Remove a single channel from a `channel.db` file                                                                       |
+| [rescueclosed](doc/chantools_rescueclosed.md)               | ✏️ ( 📌 ) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
+| [rescuefunding](doc/chantools_rescuefunding.md)             | ✏️ ( 📌 ) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |
+| [scbforceclose](doc/chantools_scbforceclose.md)             | ✏️ ⚠️ ☠️ Force close a channel using the latest state from a channel backup. EXTREMELY DANGEROUS, read help text!        |
+| [showrootkey](doc/chantools_showrootkey.md)                 | ✏️ Display the master root key (`xprv`) from your seed (DO NOT SHARE WITH ANYONE)                                                    |
+| [signmessage](doc/chantools_signmessage.md)                 | ✏️ Sign a message with the nodes identity pubkey.                                                                                    |
+| [signpsbt](doc/chantools_signpsbt.md)                       | ✏️ Sign a Partially Signed Bitcoin Transaction (PSBT)                                                                                |
+| [signrescuefunding](doc/chantools_signrescuefunding.md)     | ✏️ ( 📌 ) Sign to funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead |
 | [summary](doc/chantools_summary.md)                         | Create a summary of channel funds from a `channel.db` file                                                                                 |
-| [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)     | :pencil: (**CLN**) Find channel funds from remotely force closed channels and sweep them                                                   |
-| [sweeptimelock](doc/chantools_sweeptimelock.md)             | :pencil: Sweep funds in locally force closed channels once time lock has expired (requires `channel.db`)                                   |
-| [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md) | :pencil: Manually sweep funds in a locally force closed channel where no `channel.db` file is available                                    |
-| [triggerforceclose](doc/chantools_triggerforceclose.md)     | :pencil: (**CLN** :pushpin: ) Request a peer to force close a channel                                                                      |
+| [sweepremoteclosed](doc/chantools_sweepremoteclosed.md)     | ✏️ (**CLN**) Find channel funds from remotely force closed channels and sweep them                                                   |
+| [sweeptimelock](doc/chantools_sweeptimelock.md)             | ✏️ Sweep funds in locally force closed channels once time lock has expired (requires `channel.db`)                                   |
+| [sweeptimelockmanual](doc/chantools_sweeptimelockmanual.md) | ✏️ Manually sweep funds in a locally force closed channel where no `channel.db` file is available                                    |
+| [triggerforceclose](doc/chantools_triggerforceclose.md)     | ✏️ (**CLN** 📌 ) Request a peer to force close a channel                                                                      |
 | [vanitygen](doc/chantools_vanitygen.md)                     | Generate an `lnd` seed for a node public key that starts with a certain sequence of hex digits                                             |
 | [walletinfo](doc/chantools_walletinfo.md)                   | Show information from a `wallet.db` file, requires access to the wallet password                                                           |
-| [zombierecovery](doc/chantools_zombierecovery.md)           | :pencil: (**CLN**) Cooperatively rescue funds from channels where normal recovery is not possible (see [full guide here][zombie-recovery]) |
+| [zombierecovery](doc/chantools_zombierecovery.md)           | ✏️ (**CLN**) Cooperatively rescue funds from channels where normal recovery is not possible (see [full guide here][zombie-recovery]) |
 
 
 ## Legacy channel recovery scenario
