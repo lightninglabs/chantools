@@ -3,7 +3,7 @@
 ## Read me first
 
 It's useful to understand Zombie Channel recovery is one of the latest
-"desparate" steps in recovering balances. Basically the channel states are not
+"desperate" steps in recovering balances. Basically the channel states are not
 known anymore: no one knows what the balances were (there is no channel DB,
 static channel backup did not work, force closing was not possible).
 
@@ -18,6 +18,9 @@ This means:
    or maybe you want to do a 50:50 split.
 
 ## Recovery steps
+
+NOTE: There is also a more [interactive version of this guide available as
+a GUI here](https://guggero.github.io/chantools/doc/command-generator.html.
 
 Preparation:
 * Make sure you have your seed words ready, you will need these to generate

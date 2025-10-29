@@ -138,7 +138,7 @@ func newZombieRecoveryFindMatchesCommand() *cobra.Command {
 	cc := &zombieRecoveryFindMatchesCommand{}
 	cc.cmd = &cobra.Command{
 		Use: "findmatches",
-		Short: "[0/3] Match maker only: Find matches between " +
+		Short: "[0/3] Matchmaker only: Find matches between " +
 			"registered nodes",
 		Long: `Match maker only: Runs through all the nodes that have
 registered their ID on https://www.node-recovery.com and checks whether there
