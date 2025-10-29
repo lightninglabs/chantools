@@ -44,7 +44,7 @@ available or you want to build `chantools` from source for another reason, you
 need to make sure you have `go 1.23.6` (or later) and `make` installed and can
 then run the following commands:
 
-```bash
+```shell
 git clone https://github.com/lightninglabs/chantools.git
 cd chantools
 make install
@@ -187,7 +187,7 @@ three distinct possibilities to specify it:
 
 Example using environment variables:
 
-```shell script
+```shell
 # We add a space in front of each command to tell bash we don't want this
 # command stored in the history.
 $    export AEZEED_MNEMONIC="abandon able ... ... ..."
