@@ -4,9 +4,10 @@
       :is="command.name"
       @generate-args="onGenerateArgs"
       :command="command"
+      :global-args="globalArgs"
       v-if="command.name"
     />
-    <div class="generated-command mt-4">
+    <div class="generated-command mt-4" v-if="!hideCommandOutput">
       <h3>Generated Command:</h3>
       <pre
         class="alert alert-secondary"
@@ -19,6 +20,7 @@
 <script>
 import SweepRemoteClosed from './SweepRemoteClosed.vue';
 import TriggerForceClose from './TriggerForceClose.vue';
+import ZombieRecovery from './ZombieRecovery.vue';
 
 function commandString(comp) {
   let commandName = comp.command.name || '';
@@ -67,6 +69,7 @@ export default {
   components: {
     SweepRemoteClosed,
     TriggerForceClose,
+    ZombieRecovery,
   },
   props: {
     command: {
@@ -85,6 +88,7 @@ export default {
     return {
       generatedCommand: commandString(this),
       pageArgs: {},
+      hideCommandOutput: false,
     };
   },
   methods: {
@@ -92,12 +96,19 @@ export default {
       this.$emit('back');
     },
     onGenerateArgs(args) {
-      this.pageArgs = args;
+      if (args.hide) {
+        this.hideCommandOutput = true;
+        this.pageArgs = {};
+      } else {
+        this.hideCommandOutput = false;
+        this.pageArgs = args;
+      }
       this.generatedCommand = commandString(this);
     },
   },
   watch: {
     command() {
+      this.hideCommandOutput = false;
       this.generatedCommand = commandString(this);
     },
     globalArgs() {

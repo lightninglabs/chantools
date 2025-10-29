@@ -1,6 +1,16 @@
 <template>
   <div id="app" class="container mt-5">
     <h1 class="mb-4">chantools command generator</h1>
+    <p class="lead">
+      This tool helps you generate the correct command line arguments for
+      various chantools commands based on your scenario.<br/>
+      You must have <code>chantools</code> installed on your system to run the
+      generated commands. See the
+      <a href="https://github.com/lightninglabs/chantools#installation">installation instructions</a>.
+      <br/><br/>
+      Once you have installed <code>chantools</code>, start by specifying the
+      global options below, then pick a command to run.
+    </p>
     <GlobalOptions @global-args-changed="updateGlobalArgs" />
     <CommandSelector
         v-if="!selectedCommand"
