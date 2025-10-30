@@ -8,6 +8,7 @@ import (
 
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/chanbackup"
+	"github.com/lightningnetwork/lnd/input"
 	"github.com/lightningnetwork/lnd/keychain"
 	"github.com/spf13/cobra"
 )
@@ -77,15 +78,64 @@ func fixOldChannelBackup(multiFile *chanbackup.MultiFile,
 	for idx, single := range multi.StaticBackups {
 		err := ring.CheckDescriptor(single.ShaChainRootDesc)
 		switch {
-		case err == nil:
+		// If the descriptor is correct or the error is because no
+		// public key is provided, skip the channel. This can happen
+		// if the backup file has partially valid and invalid channels.
+		case err == nil || errors.Is(err, lnd.ErrNoPublicKeyProvided):
+			log.Infof("The shachain root for channel %v is "+
+				"correct, skipping...", single.FundingOutpoint)
+
 			continue
 
 		case errors.Is(err, keychain.ErrCannotDerivePrivKey):
+			// Before fixing the descriptor, print the funding
+			// multisig P2WSH witness program hash. Derive the
+			// local multisig pubkey via its locator if needed
+			// (and possible).
+			localPub, err := ring.PubKeyForDescriptor(
+				single.LocalChanCfg.MultiSigKey,
+			)
+			if err != nil {
+				return fmt.Errorf("could not derive local "+
+					"multisig pubkey for channel %v: %w",
+					single.FundingOutpoint, err)
+			}
+
+			remotePub, err := ring.PubKeyForDescriptor(
+				single.RemoteChanCfg.MultiSigKey,
+			)
+			if err != nil {
+				return fmt.Errorf("could not derive remote "+
+					"multisig pubkey for channel %v: %w",
+					single.FundingOutpoint, err)
+			}
+
+			a := localPub.SerializeCompressed()
+			b := remotePub.SerializeCompressed()
+			msScript, err := input.GenMultiSigScript(a, b)
+			if err != nil {
+				return fmt.Errorf("could not generate "+
+					"multisig script for channel "+
+					"%v: %w",
+					single.FundingOutpoint, err)
+			}
+
+			msHash, err := input.WitnessScriptHash(msScript)
+			if err != nil {
+				return fmt.Errorf("could not compute "+
+					"multisig script hash: %w", err)
+			}
+
+			log.Infof("Channel %v funding multisig P2WSH "+
+				"(pubkey): %x",
+				single.FundingOutpoint, msHash)
+
 			// Fix the incorrect descriptor by deriving a default
 			// one and overwriting it in the backup.
-			log.Infof("The shachain root for channel %s could "+
+			log.Infof("The shachain root for channel %v could "+
 				"not be derived, must be in old format. "+
-				"Fixing...", single.FundingOutpoint.String())
+				"Fixing...", single.FundingOutpoint)
+
 			baseKeyDesc, err := ring.DeriveKey(keychain.KeyLocator{
 				Family: keychain.KeyFamilyRevocationRoot,
 				Index:  0,

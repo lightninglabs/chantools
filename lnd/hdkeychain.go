@@ -21,6 +21,10 @@ import (
 	"github.com/lightningnetwork/lnd/shachain"
 )
 
+// ErrNoPublicKeyProvided is returned when a key descriptor check is attempted
+// without a public key present in the descriptor.
+var ErrNoPublicKeyProvided = errors.New("no public key provided to check")
+
 const (
 	HardenedKeyStart            = uint32(hdkeychain.HardenedKeyStart)
 	WalletDefaultDerivationPath = "m/84'/0'/0'"
@@ -609,7 +613,7 @@ func (r *HDKeyRing) CheckDescriptor(
 
 	// A check doesn't make sense if there is no public key set.
 	if keyDesc.PubKey == nil {
-		return errors.New("no public key provided to check")
+		return ErrNoPublicKeyProvided
 	}
 
 	// Performance fix, derive static path only once.
@@ -657,4 +661,23 @@ func (r *HDKeyRing) NodePubKey() (*btcec.PublicKey, error) {
 	}
 
 	return keyDesc.PubKey, nil
+}
+
+// PubKeyForDescriptor returns the public key for a given key descriptor. If the
+// descriptor already contains a public key, it is returned as-is. Otherwise,
+// the public key is derived using the descriptor's key locator.
+func (r *HDKeyRing) PubKeyForDescriptor(desc keychain.KeyDescriptor) (
+	*btcec.PublicKey, error) {
+
+	if desc.PubKey != nil {
+		return desc.PubKey, nil
+	}
+
+	// Attempt to derive using the provided key locator.
+	kd, err := r.DeriveKey(desc.KeyLocator)
+	if err != nil {
+		return nil, err
+	}
+
+	return kd.PubKey, nil
 }
