@@ -117,6 +117,18 @@ func (h *harness) testdataFile(name string) string {
 	return fileCopy
 }
 
+func (h *harness) readTestdataFile(name string) []byte {
+	workingDir, err := os.Getwd()
+	require.NoError(h.t, err)
+
+	origFile := path.Join(workingDir, "testdata", name)
+
+	data, err := os.ReadFile(origFile)
+	require.NoError(h.t, err)
+
+	return data
+}
+
 func (h *harness) tempFile(name string) string {
 	return path.Join(h.tempDir, name)
 }
