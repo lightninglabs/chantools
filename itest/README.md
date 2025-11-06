@@ -11,10 +11,10 @@ around the network).
 The network is set up as follows:
 
 ```
-Alice ◄──► Bob ◄──► Charlie ◄──► Dave
-   └───────►└──► Rusty ◄──┘
-   |               └► Nifty
-   └► Snyke
+    Alice ◄──► Bob ◄──► Charlie ◄──► Dave
+       └───────►└──► Rusty ◄──┘
+       |     Nifty ◄──┘       |
+       └► Snyke ◄─────────────┘
 ```
 
 - Channel **Alice** - **Bob**: Remains open, used by `runZombieRecoveryLndLnd`.
@@ -26,6 +26,7 @@ Alice ◄──► Bob ◄──► Charlie ◄──► Dave
   `runSweepRemoteClosedLnd`.
 - Channel **Charlie** - **Dave**: Remains open, used by
   `runTriggerForceCloseLnd`.
+- Channel **Charlie** - **Snyke**: Remains open, used by `runSCBForceClose`.
 - Channel **Bob** - **Rusty**: Remains open, used by `runZombieRecoveryLndCln`.
 - Channel **Rusty** - **Charlie**: Remains open, used by
   `runZombieRecoveryClnLnd`.

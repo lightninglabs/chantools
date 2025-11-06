@@ -33,6 +33,8 @@ const (
 	channelsFilePattern = "docker/node-data/chantools/%s-channels.json"
 	walletFilePattern   = "docker/node-data/%s/data/chain/bitcoin/" +
 		"regtest/wallet.db"
+	scbFilePattern = "docker/node-data/%s/data/chain/bitcoin/" +
+		"regtest/channel.backup"
 	hsmSecretFilePattern    = "docker/node-data/%s/regtest/hsm_secret"
 	nodeIdentityFilePattern = "docker/node-data/chantools/identities.txt"
 	nodeURIPattern          = "%s@%s"
@@ -48,9 +50,10 @@ const (
 	transactionHexIdent = "02000000"
 	rowSign             = "Press <enter> to continue and sign the " +
 		"transaction or <ctrl+c> to abort:"
-	rowPublish     = "Please publish this using any bitcoin node:"
-	rowTransaction = "Transaction:"
-	rowForceClose  = "Found force close transaction"
+	rowPublish        = "Please publish this using any bitcoin node:"
+	rowTransaction    = "Transaction:"
+	rowForceClose     = "Found force close transaction"
+	rowRawTransaction = "Raw transaction hex:"
 )
 
 var (
@@ -321,6 +324,36 @@ func invokeCmdTriggerForceClose(t *testing.T, walletPassword *string,
 	return output
 }
 
+func invokeCmdScbForceClose(t *testing.T, walletPassword *string,
+	resultsDir string, args ...string) string {
+
+	t.Helper()
+
+	fullArgs := append([]string{
+		"--regtest", "--resultsdir", resultsDir, "scbforceclose",
+	}, args...)
+	proc := StartChantools(t, fullArgs...)
+	defer proc.Wait(t)
+
+	if walletPassword != nil {
+		pwPrompt := proc.ReadAvailableOutput(t, readTimeout)
+
+		require.Contains(t, pwPrompt, "Input wallet password:")
+		proc.WriteInput(t, *walletPassword+"\n")
+
+		proc.AssertNoStderr(t)
+	}
+
+	warnPrompt := proc.ReadAvailableOutput(t, defaultTimeout)
+	require.Contains(t, warnPrompt, "Type YES to proceed: ")
+	proc.WriteInput(t, "YES\n")
+
+	proc.AssertNoStderr(t)
+
+	output := proc.ReadAvailableOutput(t, longTimeout)
+	return output
+}
+
 func getNodeIdentityKey(t *testing.T, node string) string {
 	t.Helper()
 
@@ -502,4 +535,21 @@ func getTriggerForceClose(t *testing.T, node, tempDir, apiURL, peerURI,
 	require.Len(t, txid, hex.EncodedLen(sha256.Size))
 
 	return txid
+}
+
+func getScbForceClose(t *testing.T, node, tempDir, multiBackup,
+	channelPoint string) (string, string) {
+
+	t.Helper()
+
+	walletDbPath := fmt.Sprintf(walletFilePattern, node)
+	cmdOutput := invokeCmdScbForceClose(
+		t, &emptyPassword, tempDir,
+		"--channel_point", channelPoint, "--walletdb", walletDbPath,
+		"--multi_file", multiBackup,
+	)
+	txHex := extractRowContent(cmdOutput, rowRawTransaction)
+	require.Contains(t, txHex, transactionHexIdent)
+
+	return txHex, cmdOutput
 }

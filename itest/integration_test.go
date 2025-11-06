@@ -42,6 +42,10 @@ var testCases = []testCase{
 		name: "trigger force close cln",
 		fn:   runTriggerForceCloseCln,
 	},
+	{
+		name: "scb force close",
+		fn:   runScbForceClose,
+	},
 }
 
 // TestIntegration runs all integration test cases.

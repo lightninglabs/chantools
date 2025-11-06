@@ -26,9 +26,7 @@ done
 # Spin up the network in detached mode.
 compose_up
 
-# Set up the basic A ◄─► B ◄─► C ◄─► D network.
-#                  └────►└► R ◄┘
-#                           └► N
+# Set up the basic network.
 setup_bitcoin
 
 wait_for_nodes alice bob charlie dave rusty nifty snyke
@@ -36,7 +34,7 @@ wait_for_nodes alice bob charlie dave rusty nifty snyke
 do_for fund_node alice bob charlie dave rusty nifty snyke
 
 # Alice, Bob and Charlie will open more than one channel each.
-do_for fund_node alice alice bob charlie
+do_for fund_node alice alice bob charlie charlie
 
 mine 6
 
@@ -51,6 +49,7 @@ connect_nodes bob rusty
 connect_nodes bob nifty
 connect_nodes charlie dave
 connect_nodes charlie rusty
+connect_nodes charlie snyke
 connect_nodes rusty nifty
 
 open_channel alice bob
@@ -59,17 +58,21 @@ open_channel bob charlie
 open_channel charlie dave
 open_channel bob rusty
 open_channel charlie rusty
+open_channel charlie snyke
 open_channel rusty nifty
 open_channel alice snyke
 
-echo "🔗  Set up network: Alice ◄─► Bob ◄─► Charlie ◄─► Dave network."
-echo "                     └────────►└► Rusty ◄┘ "
-echo "                     |             └► Nifty"
-echo "                     └► Snyke"
+echo "🔗  Set up network:"
+cat << EOF
+    Alice ◄──► Bob ◄──► Charlie ◄──► Dave
+       └───────►└──► Rusty ◄──┘
+       |     Nifty ◄──┘       |
+       └► Snyke ◄─────────────┘
+EOF
 
 mine 12
 
-num_channels=8
+num_channels=9
 
 wait_graph_sync alice $num_channels
 wait_graph_sync bob $num_channels
@@ -83,6 +86,7 @@ send_payment alice dave
 send_payment alice rusty
 send_payment dave rusty
 send_payment alice snyke
+send_payment charlie snyke
 
 # Repeat the basic tests.
 send_payment bob dave
@@ -91,6 +95,7 @@ send_payment alice dave
 send_payment alice rusty
 send_payment dave rusty
 send_payment alice snyke
+send_payment charlie snyke
 
 # Store all the channel information in separate JSON files.
 alice listchannels > "$DIR/node-data/chantools/alice-channels.json"
