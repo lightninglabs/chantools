@@ -135,6 +135,7 @@ func main() {
 		newMigrateDBCommand(),
 		newPullAnchorCommand(),
 		newRecoverLoopInCommand(),
+		newRecoverLoopOutCommand(),
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
 		newRescueFundingCommand(),
