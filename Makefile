@@ -1,8 +1,6 @@
 PKG := github.com/lightninglabs/chantools
 TOOLS_DIR := tools
 
-GOTEST := GO111MODULE=on go test -v
-
 GO_BIN := ${GOPATH}/bin
 
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
@@ -11,9 +9,9 @@ GOLIST := go list $(PKG)/... | grep -v '/vendor/'
 GOIMPORTS_BIN := $(GO_BIN)/gosimports
 GOIMPORTS_PKG := github.com/rinchsan/gosimports/cmd/gosimports
 
-GOBUILD := go build -v
-GOINSTALL := go install -v
-GOTEST := go test -v
+GOBUILD := CGO_ENABLED=0 go build -v
+GOINSTALL := CGO_ENABLED=0 go install -v
+GOTEST := CGO_ENABLED=0 go test -v
 XARGS := xargs -L 1
 
 VERSION_TAG = $(shell git describe --tags)
@@ -60,7 +58,7 @@ $(GOIMPORTS_BIN):
 	@$(call print, "Installing goimports.")
 	cd $(TOOLS_DIR); go install -trimpath $(GOIMPORTS_PKG)
 
-unit: 
+unit:
 	@$(call print, "Running unit tests.")
 	$(UNIT)
 
