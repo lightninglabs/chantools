@@ -261,9 +261,14 @@ func DecodeAddressHash(addr string, chainParams *chaincfg.Params) ([]byte, bool,
 		isScriptHash = true
 		targetHash = targetAddr.ScriptAddress()
 
+	case *btcutil.AddressTaproot:
+		// For taproot, we treat it as a script hash for the rescue logic
+		isScriptHash = true
+		targetHash = targetAddr.ScriptAddress()
+
 	default:
 		return nil, false, errors.New("address: must be a bech32 " +
-			"P2WPKH or P2WSH address")
+			"P2WPKH, P2WSH, or P2TR address")
 	}
 	return targetHash, isScriptHash, nil
 }
