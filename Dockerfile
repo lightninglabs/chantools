@@ -1,5 +1,5 @@
 # Start with a Golang builder image.
-FROM golang:1.24.6-alpine3.22@sha256:c8c5f95d64aa79b6547f3b626eb84b16a7ce18a139e3e9ca19a8c078b85ba80d AS golangbuilder
+FROM golang:1.24.10-alpine3.22@sha256:12c199a889439928e36df7b4c5031c18bfdad0d33cdeae5dd35b2de369b5fbf5 AS golangbuilder
 
 # Pass a tag, branch or a commit using build-arg. This allows a docker image to
 # be built from a specified Git state.
