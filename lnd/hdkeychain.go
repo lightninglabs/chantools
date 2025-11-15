@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -524,25 +525,15 @@ func CheckAndEstimateAddress(addr string, chainParams *chaincfg.Params,
 }
 
 func matchAddrType(addr btcutil.Address, allowedTypes ...AddrType) bool {
-	contains := func(allowedTypes []AddrType, addrType AddrType) bool {
-		for _, allowedType := range allowedTypes {
-			if allowedType == addrType {
-				return true
-			}
-		}
-
-		return false
-	}
-
 	switch addr.(type) {
 	case *btcutil.AddressWitnessPubKeyHash:
-		return contains(allowedTypes, AddrTypeP2WKH)
+		return slices.Contains(allowedTypes, AddrTypeP2WKH)
 
 	case *btcutil.AddressWitnessScriptHash:
-		return contains(allowedTypes, AddrTypeP2WSH)
+		return slices.Contains(allowedTypes, AddrTypeP2WSH)
 
 	case *btcutil.AddressTaproot:
-		return contains(allowedTypes, AddrTypeP2TR)
+		return slices.Contains(allowedTypes, AddrTypeP2TR)
 
 	default:
 		return false

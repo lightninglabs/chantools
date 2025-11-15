@@ -368,7 +368,7 @@ func fetchChannels(client *graphql.Client, pubkey string) ([]*gqChannel,
 
 	offset := 0.0
 	limit := 50.0
-	variables := map[string]interface{}{
+	variables := map[string]any{
 		"pubkey": pubkey,
 		"limit":  50.0,
 		"offset": offset,
