@@ -230,7 +230,7 @@ func (a *ExplorerAPI) PublishTx(rawTxHex string) (string, error) {
 	return body.String(), nil
 }
 
-func fetchJSON(url string, target interface{}) error {
+func fetchJSON(url string, target any) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("error fetching data from API '%s', "+

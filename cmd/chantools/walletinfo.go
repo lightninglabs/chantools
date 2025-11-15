@@ -227,6 +227,7 @@ func printScopeInfo(name string, w *wallet.Wallet,
 			return "", fmt.Errorf("error fetching account "+
 				"properties: %w", err)
 		}
+		//nolint:modernize,perfsprint
 		scopeInfo += fmt.Sprintf(
 			keyScopeformat, scope.Purpose, scope.Coin, name,
 			props.InternalKeyCount, name, props.ExternalKeyCount,

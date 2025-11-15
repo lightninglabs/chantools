@@ -309,6 +309,7 @@ outer:
 
 	importStr := ""
 	for addr, wif := range resultMap {
+		//nolint:modernize,perfsprint
 		importStr += fmt.Sprintf(`importprivkey "%s" "%s" false%s`, wif,
 			addr, "\n")
 	}
