@@ -33,13 +33,6 @@ ifneq ($(sys),)
 BUILD_SYSTEM = $(sys)
 endif
 
-DOCKER_TOOLS = docker run \
-  --rm \
-  -v $(shell bash -c "go env GOCACHE || (mkdir -p /tmp/go-cache; echo /tmp/go-cache)"):/tmp/build/.cache \
-  -v $(shell bash -c "go env GOMODCACHE || (mkdir -p /tmp/go-modcache; echo /tmp/go-modcache)"):/tmp/build/.modcache \
-  -v $(shell bash -c "mkdir -p /tmp/go-lint-cache; echo /tmp/go-lint-cache"):/root/.cache/golangci-lint \
-  -v $$(pwd):/build chantools-tools
-
 TEST_FLAGS = -test.timeout=20m
 
 UNIT := $(GOLIST) | grep -v "/itest" | $(XARGS) env $(GOTEST) $(TEST_FLAGS)
@@ -53,10 +46,6 @@ define print
 endef
 
 default: build
-
-$(GOIMPORTS_BIN):
-	@$(call print, "Installing goimports.")
-	cd $(TOOLS_DIR); go install -trimpath $(GOIMPORTS_PKG)
 
 unit:
 	@$(call print, "Running unit tests.")
@@ -83,10 +72,6 @@ docker-release:
 	@$(call print, "Creating docker release of chantools.")
 	./release.sh docker-release "$(VERSION_TAG)"
 
-docker-tools:
-	@$(call print, "Building tools docker image.")
-	docker build -q -t chantools-tools $(TOOLS_DIR)
-
 command-generator-build:
 	@$(call print, "Building command generator.")
 	cd doc/command-generator; npm install && npm run build
@@ -94,13 +79,13 @@ command-generator-build:
 
 fmt: $(GOIMPORTS_BIN)
 	@$(call print, "Fixing imports.")
-	gosimports -w $(GOFILES_NOVENDOR)
+	go tool gosimports -w $(GOFILES_NOVENDOR)
 	@$(call print, "Formatting source.")
 	gofmt -l -w -s $(GOFILES_NOVENDOR)
 
-lint: docker-tools
+lint:
 	@$(call print, "Linting source.")
-	$(DOCKER_TOOLS) golangci-lint run -v $(LINT_WORKERS)
+	go tool golangci-lint run -v $(LINT_WORKERS)
 
 docs: install command-generator-build
 	@$(call print, "Rendering docs.")
