@@ -1,13 +1,7 @@
 PKG := github.com/lightninglabs/chantools
-TOOLS_DIR := tools
-
-GO_BIN := ${GOPATH}/bin
 
 GOFILES_NOVENDOR = $(shell find . -type f -name '*.go' -not -path "./vendor/*")
 GOLIST := go list $(PKG)/... | grep -v '/vendor/'
-
-GOIMPORTS_BIN := $(GO_BIN)/gosimports
-GOIMPORTS_PKG := github.com/rinchsan/gosimports/cmd/gosimports
 
 GOBUILD := CGO_ENABLED=0 go build -v
 GOINSTALL := CGO_ENABLED=0 go install -v
@@ -91,4 +85,4 @@ docs: install command-generator-build
 	@$(call print, "Rendering docs.")
 	chantools doc
 
-.PHONY: unit itest build install release fmt lint docs docker-tools
+.PHONY: unit itest build install release fmt lint docs
