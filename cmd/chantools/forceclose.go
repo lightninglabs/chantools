@@ -16,6 +16,8 @@ import (
 	"github.com/lightninglabs/chantools/lnd"
 	"github.com/lightningnetwork/lnd/channeldb"
 	"github.com/lightningnetwork/lnd/input"
+	"github.com/lightningnetwork/lnd/lnwire"
+	"github.com/lightningnetwork/lnd/tlv"
 	"github.com/spf13/cobra"
 )
 
@@ -34,9 +36,11 @@ blocks) transaction *or* they have a watch tower looking out for them.
 **This should absolutely be the last resort and you have been warned!**`
 
 type forceCloseCommand struct {
-	APIURL    string
-	ChannelDB string
-	Publish   bool
+	APIURL       string
+	ChannelDB    string
+	ChannelPoint string
+	Publish      bool
+	StateIndex   int32
 
 	rootKey *rootKey
 	inputs  *inputFlags
@@ -53,7 +57,11 @@ func newForceCloseCommand() *cobra.Command {
 		Example: `chantools forceclose \
 	--fromsummary results/summary-xxxx-yyyy.json
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
-	--publish`,
+	--publish
+
+chantools forceclose \
+	--channelpoint abcdef01234...:x \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db`,
 		RunE: cc.Execute,
 	}
 	cc.cmd.Flags().StringVar(
@@ -63,6 +71,16 @@ func newForceCloseCommand() *cobra.Command {
 	cc.cmd.Flags().StringVar(
 		&cc.ChannelDB, "channeldb", "", "lnd channel.db file to use "+
 			"for force-closing channels",
+	)
+	cc.cmd.Flags().StringVar(
+		&cc.ChannelPoint, "channelpoint", "", "the channel point of "+
+			"the channel to force-close",
+	)
+	cc.cmd.Flags().Int32Var(
+		&cc.StateIndex, "stateindex", -1, "the index of the channel "+
+			"state to publish; if not set, the latest state is "+
+			"used; not using the latest state comes with extreme "+
+			"risk, read the warning in the help of this command",
 	)
 	cc.cmd.Flags().BoolVar(
 		&cc.Publish, "publish", false, "publish force-closing TX to "+
@@ -91,18 +109,29 @@ func (c *forceCloseCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 
 	// Parse channel entries from any of the possible input files.
-	entries, err := c.inputs.parseInputType()
-	if err != nil {
-		return err
+	var entries []*dataformat.SummaryEntry
+	if c.ChannelPoint != "" {
+		entries = []*dataformat.SummaryEntry{
+			{
+				ChannelPoint: c.ChannelPoint,
+			},
+		}
+	} else {
+		entries, err = c.inputs.parseInputType()
+		if err != nil {
+			return err
+		}
 	}
+
 	return forceCloseChannels(
 		c.APIURL, extendedKey, entries, db.ChannelStateDB(), c.Publish,
+		c.StateIndex,
 	)
 }
 
 func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 	entries []*dataformat.SummaryEntry, chanDb *channeldb.ChannelStateDB,
-	publish bool) error {
+	publish bool, state int32) error {
 
 	channels, err := chanDb.FetchAllChannels()
 	if err != nil {
@@ -130,8 +159,42 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 			continue
 		}
 
-		localCommit := channel.LocalCommitment
-		localCommitTx := localCommit.CommitTx
+		// Use the specified state index if given.
+		if state >= 0 {
+			revLog, commitment, err := channel.FindPreviousState(
+				uint64(state),
+			)
+			if err != nil {
+				return fmt.Errorf("unable to find state %d "+
+					"for channel %s: %w", state,
+					channelPoint, err)
+			}
+
+			if commitment == nil {
+				return fmt.Errorf("no commitment for state %d "+
+					"for channel %s", state, channelPoint)
+			}
+
+			if revLog != nil {
+				zero := tlv.NewBigSizeT[lnwire.MilliSatoshi](0)
+				ourBalanceOpt := revLog.OurBalance.ValOpt()
+				theirBalanceOpt := revLog.TheirBalance.ValOpt()
+				ourBalance := ourBalanceOpt.UnwrapOr(zero)
+				theirBalance := theirBalanceOpt.UnwrapOr(zero)
+				log.Warnf("Publishing state %d for channel "+
+					"%s: our_balance=%d, their_balance=%d",
+					state, channelPoint, ourBalance.Int(),
+					theirBalance.Int())
+			} else {
+				log.Warnf("Publishing state %d for channel %s "+
+					"but no revocation log found", state,
+					channelPoint)
+			}
+
+			channel.LocalCommitment = *commitment
+		}
+
+		localCommitTx := channel.LocalCommitment.CommitTx
 		if localCommitTx == nil {
 			log.Errorf("Cannot force-close, no local commit TX "+
 				"for channel %s", channelEntry.ChannelPoint)
@@ -168,7 +231,7 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 		basepoint := channel.LocalChanCfg.DelayBasePoint
 		revpoint := channel.RemoteChanCfg.RevocationBasePoint
 		revocationPreimage, err := channel.RevocationProducer.AtIndex(
-			localCommit.CommitHeight,
+			channel.LocalCommitment.CommitHeight,
 		)
 		if err != nil {
 			return err
@@ -221,6 +284,8 @@ func forceCloseChannels(apiURL string, extendedKey *hdkeychain.ExtendedKey,
 			}
 			log.Infof("Published TX %s, response: %s",
 				hash.String(), response)
+		} else {
+			log.Infof("Raw transaction hex: %s", serialized)
 		}
 	}
 

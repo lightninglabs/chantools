@@ -29,6 +29,10 @@ chantools forceclose \
 	--fromsummary results/summary-xxxx-yyyy.json
 	--channeldb ~/.lnd/data/graph/mainnet/channel.db \
 	--publish
+
+chantools forceclose \
+	--channelpoint abcdef01234...:x \
+	--channeldb ~/.lnd/data/graph/mainnet/channel.db
 ```
 
 ### Options
@@ -37,6 +41,7 @@ chantools forceclose \
       --apiurl string            API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                    read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
       --channeldb string         lnd channel.db file to use for force-closing channels
+      --channelpoint string      the channel point of the channel to force-close
       --fromchanneldb string     channel input is in the format of an lnd channel.db file
       --fromchanneldump string   channel input is in the format of a channel dump file
       --fromsummary string       channel input is in the format of chantool's channel summary; specify '-' to read from stdin
@@ -45,6 +50,7 @@ chantools forceclose \
       --pendingchannels string   channel input is in the format of lncli's pendingchannels format; specify '-' to read from stdin
       --publish                  publish force-closing TX to the chain API instead of just printing the TX
       --rootkey string           BIP32 HD root key of the wallet to use for decrypting the backup; leave empty to prompt for lnd 24 word aezeed
+      --stateindex int32         the index of the channel state to publish; if not set, the latest state is used; not using the latest state comes with extreme risk, read the warning in the help of this command (default -1)
       --walletdb string          read the seed/master root key to use for decrypting the backup from an lnd wallet.db file instead of asking for a seed or providing the --rootkey flag
 ```
 
