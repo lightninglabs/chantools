@@ -11,15 +11,17 @@ around the network).
 The network is set up as follows:
 
 ```
-    Alice ◄──► Bob ◄──► Charlie ◄──► Dave
+    Alice ◄──► Bob ◄──► Charlie ◄──► Dave*
        └───────►└──► Rusty ◄──┘
-       |     Nifty ◄──┘       |
-       └► Snyke ◄─────────────┘
+       |────► Nifty ◄──┘      |
+       └► Snyke* ◄────────────┘
 ```
 
 - Channel **Alice** - **Bob**: Remains open, used by `runZombieRecoveryLndLnd`.
 - Channel **Alice** - **Rusty**: Is force closed by Alice, used by
   `runSweepRemoteClosedCln`.
+- Channel **Alice** - **Nifty**: Is force closed by Alice, used by
+  `runForceClose`.
 - Channel **Alice** - **Snyke**: Remains open, used by
   `runTriggerForceCloseCln`.
 - Channel **Bob** - **Charlie**: Is force closed by Bob, used by
@@ -32,6 +34,7 @@ The network is set up as follows:
   `runZombieRecoveryClnLnd`.
 - Channel **Rusty** - **Nifty**: Remains open, used by
   `runZombieRecoveryClnCln`.
+- `*`: Node is kept running after initial test setup.
 
 All nodes except for Dave and Snyke are stopped before the integration tests
 are run.

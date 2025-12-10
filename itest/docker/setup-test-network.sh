@@ -34,7 +34,7 @@ wait_for_nodes alice bob charlie dave rusty nifty snyke
 do_for fund_node alice bob charlie dave rusty nifty snyke
 
 # Alice, Bob and Charlie will open more than one channel each.
-do_for fund_node alice alice bob charlie charlie
+do_for fund_node alice alice alice bob charlie charlie
 
 mine 6
 
@@ -54,6 +54,7 @@ connect_nodes rusty nifty
 
 open_channel alice bob
 open_channel alice rusty
+open_channel alice nifty
 open_channel bob charlie
 open_channel charlie dave
 open_channel bob rusty
@@ -64,15 +65,15 @@ open_channel alice snyke
 
 echo "🔗  Set up network:"
 cat << EOF
-    Alice ◄──► Bob ◄──► Charlie ◄──► Dave
+    Alice ◄──► Bob ◄──► Charlie ◄──► Dave*
        └───────►└──► Rusty ◄──┘
-       |     Nifty ◄──┘       |
-       └► Snyke ◄─────────────┘
+       |────► Nifty ◄──┘      |
+       └► Snyke* ◄────────────┘
 EOF
 
 mine 12
 
-num_channels=9
+num_channels=10
 
 wait_graph_sync alice $num_channels
 wait_graph_sync bob $num_channels
@@ -84,15 +85,17 @@ send_payment bob dave
 send_payment dave bob
 send_payment alice dave
 send_payment alice rusty
+send_payment alice nifty
 send_payment dave rusty
 send_payment alice snyke
 send_payment charlie snyke
 
-# Repeat the basic tests.
+# Repeat the basic sends.
 send_payment bob dave
 send_payment dave bob
 send_payment alice dave
 send_payment alice rusty
+send_payment alice nifty
 send_payment dave rusty
 send_payment alice snyke
 send_payment charlie snyke
