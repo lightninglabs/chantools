@@ -32,7 +32,7 @@ Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.14.1/chantools-linux-amd64-v0.14.1.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.14.2/chantools-linux-amd64-v0.14.2.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```
@@ -40,8 +40,8 @@ $ sudo mv chantools-*/chantools /usr/local/bin/
 ### Compile from source
 
 If there isn't a pre-built binary for your operating system or architecture
-available or you want to build `chantools` from source for another reason, you
-need to make sure you have `go 1.23.6` (or later) and `make` installed and can
+available, or you want to build `chantools` from source for another reason, you
+need to make sure you have `go 1.24.0` (or later) and `make` installed and can
 then run the following commands:
 
 ```shell
