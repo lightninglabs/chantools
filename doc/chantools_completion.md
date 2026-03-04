@@ -1,31 +1,17 @@
-## chantools dumpchannels
+## chantools completion
 
-Dump all channel information from an lnd channel database
+Generate the autocompletion script for the specified shell
 
 ### Synopsis
 
-This command dumps all open and pending channels from the
-given lnd channel.db gile in a human readable format.
+Generate the autocompletion script for chantools for the specified shell.
+See each sub-command's help for details on how to use the generated script.
 
-```
-chantools dumpchannels [flags]
-```
-
-### Examples
-
-```
-chantools dumpchannels \
-	--channeldb ~/.lnd/data/graph/mainnet/channel.db
-```
 
 ### Options
 
 ```
-      --channeldb string   lnd channel.db file to dump channels from
-      --closed             dump closed channels instead of open
-  -h, --help               help for dumpchannels
-      --pending            dump pending channels instead of open
-      --waiting_close      dump waiting close channels instead of open
+  -h, --help   help for completion
 ```
 
 ### Options inherited from parent commands
@@ -42,4 +28,8 @@ chantools dumpchannels \
 ### SEE ALSO
 
 * [chantools](chantools.md)	 - Chantools helps recover funds from lightning channels
+* [chantools completion bash](chantools_completion_bash.md)	 - Generate the autocompletion script for bash
+* [chantools completion fish](chantools_completion_fish.md)	 - Generate the autocompletion script for fish
+* [chantools completion powershell](chantools_completion_powershell.md)	 - Generate the autocompletion script for powershell
+* [chantools completion zsh](chantools_completion_zsh.md)	 - Generate the autocompletion script for zsh
 

@@ -33,6 +33,7 @@ chantools scbforceclose --multi_file channel.backup
 ```
       --apiurl string          API URL to use (must be esplora compatible) (default "https://api.node-recovery.com")
       --bip39                  read a classic BIP39 seed and passphrase from the terminal instead of asking for lnd seed format or providing the --rootkey flag
+      --channel_point string   a single channel point of a channel to force close, in case a multi backup or multi file was provided but not all channels should be force-closed
   -h, --help                   help for scbforceclose
       --multi_backup string    a hex encoded multi-channel backup obtained from exportchanbackup for force-closing channels
       --multi_file string      the path to a single-channel backup file (channel.backup)
@@ -51,6 +52,7 @@ chantools scbforceclose --multi_file channel.backup
       --resultsdir string   Directory where results should be stored (default "./results")
   -s, --signet              Indicates if the public signet parameters should be used
   -t, --testnet             Indicates if testnet parameters should be used
+      --testnet4            Indicates if testnet4 parameters should be used
 ```
 
 ### SEE ALSO

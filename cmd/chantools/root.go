@@ -49,6 +49,7 @@ const (
 
 var (
 	Testnet    bool
+	Testnet4   bool
 	Regtest    bool
 	Signet     bool
 	NoLogFile  bool
@@ -72,6 +73,9 @@ https://github.com/lightninglabs/chantools/.`,
 		case Testnet:
 			chainParams = &chaincfg.TestNet3Params
 
+		case Testnet4:
+			chainParams = &chaincfg.TestNet4Params
+
 		case Regtest:
 			chainParams = &chaincfg.RegressionNetParams
 
@@ -93,6 +97,10 @@ https://github.com/lightninglabs/chantools/.`,
 func main() {
 	rootCmd.PersistentFlags().BoolVarP(
 		&Testnet, "testnet", "t", false, "Indicates if testnet "+
+			"parameters should be used",
+	)
+	rootCmd.PersistentFlags().BoolVar(
+		&Testnet4, "testnet4", false, "Indicates if testnet4 "+
 			"parameters should be used",
 	)
 	rootCmd.PersistentFlags().BoolVarP(

@@ -35,6 +35,7 @@ chantools showrootkey
       --resultsdir string   Directory where results should be stored (default "./results")
   -s, --signet              Indicates if the public signet parameters should be used
   -t, --testnet             Indicates if testnet parameters should be used
+      --testnet4            Indicates if testnet4 parameters should be used
 ```
 
 ### SEE ALSO
