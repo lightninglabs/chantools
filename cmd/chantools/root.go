@@ -154,6 +154,7 @@ func main() {
 		newSummaryCommand(),
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
+		newSweepHtlcCommand(),
 		newSweepRemoteClosedCommand(),
 		newTriggerForceCloseCommand(),
 		newVanityGenCommand(),
