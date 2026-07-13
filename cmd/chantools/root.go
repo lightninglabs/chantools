@@ -159,6 +159,7 @@ func main() {
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
 		newZombieRecoveryCommand(),
+		dumphtlcsummary(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {
