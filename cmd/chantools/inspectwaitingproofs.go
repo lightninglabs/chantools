@@ -52,6 +52,12 @@ strictly read-only mode and inspects the waitingproofs bucket. It identifies
 records that the lnd v0.21 typed waiting-proof decoder would reject, including
 legacy remote proofs that are misread as V2 MuSig2 nonces.
 
+The report also prints the raw channel DB version key status. A
+db_version_status=db_version_key_missing result means the metadata bucket is
+present but metadata/dbp is absent. Affected lnd versions can interpret that
+missing key as the latest schema version, which can explain why legacy waiting
+proofs were left unmigrated.
+
 Always stop lnd and create a copy of channel.db first. This command does not
 repair or delete anything. Do not share channel.db because it contains
 sensitive channel state.`,
@@ -94,15 +100,16 @@ func (c *inspectWaitingProofsCommand) Execute(cmd *cobra.Command,
 }
 
 type waitingProofReport struct {
-	DBVersion    *uint32              `json:"db_version,omitempty"`
-	BucketState  string               `json:"bucket_state"`
-	Verdict      string               `json:"verdict"`
-	Records      []waitingProofRecord `json:"records,omitempty"`
-	Total        int                  `json:"total"`
-	V1OK         int                  `json:"v1_ok"`
-	V2Candidates int                  `json:"v2_candidates"`
-	Fatal        int                  `json:"fatal"`
-	ExactMatch   int                  `json:"exact_unsupported_format_3d"`
+	DBVersion       *uint32              `json:"db_version,omitempty"`
+	DBVersionStatus string               `json:"db_version_status"`
+	BucketState     string               `json:"bucket_state"`
+	Verdict         string               `json:"verdict"`
+	Records         []waitingProofRecord `json:"records,omitempty"`
+	Total           int                  `json:"total"`
+	V1OK            int                  `json:"v1_ok"`
+	V2Candidates    int                  `json:"v2_candidates"`
+	Fatal           int                  `json:"fatal"`
+	ExactMatch      int                  `json:"exact_unsupported_format_3d"`
 }
 
 type waitingProofRecord struct {
@@ -128,15 +135,27 @@ func inspectWaitingProofDB(path string) (*waitingProofReport, error) {
 	defer func() { _ = db.Close() }()
 
 	report := &waitingProofReport{
-		BucketState: "absent",
+		DBVersionStatus: "metadata_bucket_missing",
+		BucketState:     "absent",
 	}
 	err = db.View(func(tx *bbolt.Tx) error {
 		meta := tx.Bucket(metadataBucket)
 		if meta != nil {
 			versionBytes := meta.Get(dbVersionKey)
-			if len(versionBytes) == 4 {
+			switch {
+			case versionBytes == nil:
+				report.DBVersionStatus = "db_version_key_missing"
+
+			case len(versionBytes) == 4:
 				version := binary.BigEndian.Uint32(versionBytes)
 				report.DBVersion = &version
+				report.DBVersionStatus = "present"
+
+			default:
+				report.DBVersionStatus = fmt.Sprintf(
+					"db_version_key_malformed_len_%d",
+					len(versionBytes),
+				)
 			}
 		}
 
@@ -188,6 +207,7 @@ func classifyWaitingProof(k, v []byte) waitingProofRecord {
 		KeyLength:   len(k),
 		ValueLength: len(v),
 		ValuePrefix: hex.EncodeToString(v[:min(4, len(v))]),
+		Legacy:      classifyLegacyWaitingProof(k, v),
 	}
 
 	if len(v) < 2 {
@@ -216,6 +236,10 @@ func classifyWaitingProof(k, v []byte) waitingProofRecord {
 
 func classifyV1WaitingProof(record waitingProofRecord, k,
 	v []byte) waitingProofRecord {
+
+	if len(k) == legacyWaitingProofKeyLen {
+		record.KeyStatus = "legacy_length_key"
+	}
 
 	if len(v) < 2+announceSignatures1Len {
 		record.Classification = waitingProofClassDecodeError
@@ -248,7 +272,6 @@ func classifyV1WaitingProof(record waitingProofRecord, k,
 func classifyV2WaitingProof(record waitingProofRecord, k,
 	v []byte) waitingProofRecord {
 
-	record.Legacy = classifyLegacyWaitingProof(k, v)
 	record.KeyStatus = classifyV2WaitingProofKey(k)
 
 	if len(v) < 3 {
@@ -317,9 +340,15 @@ func classifyLegacyWaitingProof(k, v []byte) string {
 
 func writeWaitingProofReport(w io.Writer, report *waitingProofReport) {
 	if report.DBVersion == nil {
-		_, _ = fmt.Fprintln(w, "db_version=unknown")
+		_, _ = fmt.Fprintf(
+			w, "db_version=unknown db_version_status=%s\n",
+			report.DBVersionStatus,
+		)
 	} else {
-		_, _ = fmt.Fprintf(w, "db_version=%d\n", *report.DBVersion)
+		_, _ = fmt.Fprintf(
+			w, "db_version=%d db_version_status=%s\n",
+			*report.DBVersion, report.DBVersionStatus,
+		)
 	}
 	_, _ = fmt.Fprintf(w, "waitingproofs_bucket=%s\n", report.BucketState)
 

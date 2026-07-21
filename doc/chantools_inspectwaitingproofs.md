@@ -9,6 +9,12 @@ strictly read-only mode and inspects the waitingproofs bucket. It identifies
 records that the lnd v0.21 typed waiting-proof decoder would reject, including
 legacy remote proofs that are misread as V2 MuSig2 nonces.
 
+The report also prints the raw channel DB version key status. A
+`db_version_status=db_version_key_missing` result means the `metadata` bucket is
+present but `metadata/dbp` is absent. Affected lnd versions can interpret that
+missing key as the latest schema version, which can explain why legacy waiting
+proofs were left unmigrated.
+
 Always stop lnd and create a copy of channel.db first. This command does not
 repair or delete anything. Do not share channel.db because it contains
 sensitive channel state.

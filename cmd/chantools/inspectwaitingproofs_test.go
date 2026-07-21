@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -18,6 +20,7 @@ func TestInspectWaitingProofsExactLegacyCrash(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, report.DBVersion)
 	require.Equal(t, uint32(35), *report.DBVersion)
+	require.Equal(t, "present", report.DBVersionStatus)
 	require.Equal(t, "present", report.BucketState)
 	require.Equal(t, 2, report.Total)
 	require.Equal(t, 1, report.V1OK)
@@ -28,10 +31,63 @@ func TestInspectWaitingProofsExactLegacyCrash(t *testing.T) {
 	require.Equal(t, before, fileSHA256(t, path))
 }
 
+func TestInspectWaitingProofsMissingVersionAndTwoLegacyProofs(t *testing.T) {
+	path := createWaitingProofMissingVersionTestDB(t)
+	before := fileSHA256(t, path)
+
+	report, err := inspectWaitingProofDB(path)
+	require.NoError(t, err)
+	require.Nil(t, report.DBVersion)
+	require.Equal(t, "db_version_key_missing", report.DBVersionStatus)
+	require.Equal(t, "present", report.BucketState)
+	require.Equal(t, 2, report.Total)
+	require.Zero(t, report.V1OK)
+	require.Equal(t, 2, report.Fatal)
+	require.Equal(t, 1, report.ExactMatch)
+	require.Equal(t, "exact_reported_crash_reproduced", report.Verdict)
+
+	for _, record := range report.Records {
+		require.Equal(t, "clean_legacy_v1", record.Legacy)
+		require.Equal(t, "legacy_length_key", record.KeyStatus)
+	}
+
+	require.Equal(t, before, fileSHA256(t, path))
+}
+
+func TestInspectWaitingProofsCommandOutput(t *testing.T) {
+	path := createWaitingProofMissingVersionTestDB(t)
+
+	cmd := newInspectWaitingProofsCommand()
+	var output bytes.Buffer
+	cmd.SetOut(&output)
+	cmd.SetErr(&output)
+	cmd.SetArgs([]string{"--channeldb", path})
+
+	require.NoError(t, cmd.Execute())
+
+	lines := output.String()
+	require.Contains(
+		t, lines,
+		"db_version=unknown db_version_status=db_version_key_missing",
+	)
+	require.Contains(t, lines, "waitingproofs_bucket=present")
+	require.Contains(t, lines, "legacy=clean_legacy_v1")
+	require.Contains(t, lines, "key_status=\"legacy_length_key\"")
+	require.Contains(t, lines, "error=\"invalid public key: unsupported format: 3d\"")
+	require.Contains(
+		t, lines,
+		"summary total=2 v1_ok=0 v2_candidates=0 fatal=2 "+
+			"exact_unsupported_format_3d=1",
+	)
+	require.Contains(t, lines, "verdict=exact_reported_crash_reproduced")
+	require.Equal(t, 2, strings.Count(lines, "legacy=clean_legacy_v1"))
+}
+
 func TestInspectWaitingProofsAbsentAndEmpty(t *testing.T) {
 	absentPath := createWaitingProofTestDB(t, false)
 	report, err := inspectWaitingProofDB(absentPath)
 	require.NoError(t, err)
+	require.Equal(t, "present", report.DBVersionStatus)
 	require.Equal(t, "absent", report.BucketState)
 	require.Equal(t, "waiting_proof_store_ruled_out", report.Verdict)
 	require.Zero(t, report.Total)
@@ -47,6 +103,7 @@ func TestInspectWaitingProofsAbsentAndEmpty(t *testing.T) {
 
 	report, err = inspectWaitingProofDB(emptyPath)
 	require.NoError(t, err)
+	require.Equal(t, "metadata_bucket_missing", report.DBVersionStatus)
 	require.Equal(t, "empty", report.BucketState)
 	require.Equal(t, "waiting_proof_store_ruled_out", report.Verdict)
 	require.Zero(t, report.Total)
@@ -143,6 +200,46 @@ func createWaitingProofTestDB(t *testing.T, withBucket bool) string {
 		binary.BigEndian.PutUint64(badValue[33:41], scid)
 
 		return bucket.Put(badKey, badValue)
+	}))
+	require.NoError(t, db.Close())
+
+	return path
+}
+
+func createWaitingProofMissingVersionTestDB(t *testing.T) string {
+	t.Helper()
+
+	path := t.TempDir() + "/channel.db"
+	db, err := bbolt.Open(path, dbFilePermission, nil)
+	require.NoError(t, err)
+	require.NoError(t, db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucket(metadataBucket)
+		if err != nil {
+			return err
+		}
+
+		bucket, err := tx.CreateBucket(waitingProofsBucket)
+		if err != nil {
+			return err
+		}
+
+		localKey := make([]byte, legacyWaitingProofKeyLen)
+		binary.BigEndian.PutUint64(localKey[:8], 0x0e9a2f0005eb0001)
+		localValue := make([]byte, 1+announceSignatures1Len)
+		binary.BigEndian.PutUint64(localValue[33:41], 0x0e9a2f0005eb0001)
+		if err := bucket.Put(localKey, localValue); err != nil {
+			return err
+		}
+
+		remoteKey := make([]byte, legacyWaitingProofKeyLen)
+		binary.BigEndian.PutUint64(remoteKey[:8], 0x0e730200077f0001)
+		remoteKey[8] = 1
+		remoteValue := make([]byte, 1+announceSignatures1Len)
+		remoteValue[0] = 1
+		remoteValue[1], remoteValue[2], remoteValue[3] = 1, 1, 0x3d
+		binary.BigEndian.PutUint64(remoteValue[33:41], 0x0e730200077f0001)
+
+		return bucket.Put(remoteKey, remoteValue)
 	}))
 	require.NoError(t, db.Close())
 
