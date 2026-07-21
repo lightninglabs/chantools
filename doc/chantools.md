@@ -40,6 +40,7 @@ https://github.com/lightninglabs/chantools/.
 * [chantools fixoldbackup](chantools_fixoldbackup.md)	 - Fixes an old channel.backup file that is affected by the lnd issue #3881 (unable to derive shachain root key)
 * [chantools forceclose](chantools_forceclose.md)	 - Force-close the last state that is in the channel.db provided
 * [chantools genimportscript](chantools_genimportscript.md)	 - Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
+* [chantools inspectwaitingproofs](chantools_inspectwaitingproofs.md)	 - Inspect lnd waiting proofs for startup-fatal records without modifying the database
 * [chantools migratedb](chantools_migratedb.md)	 - Apply all recent lnd channel database migrations
 * [chantools pullanchor](chantools_pullanchor.md)	 - Attempt to CPFP an anchor output of a channel
 * [chantools recoverloopin](chantools_recoverloopin.md)	 - Recover a loop in swap that the loop daemon is not able to sweep

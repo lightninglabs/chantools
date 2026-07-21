@@ -237,6 +237,7 @@ Available Commands:
   forceclose          Force-close the last state that is in the channel.db provided
   scbforceclose       Force-close the last state that is in the SCB provided
   genimportscript     Generate a script containing the on-chain keys of an lnd wallet that can be imported into other software like bitcoind
+  inspectwaitingproofs Inspect lnd waiting proofs for startup-fatal records without modifying the database
   migratedb           Apply all recent lnd channel database migrations
   pullanchor          Attempt to CPFP an anchor output of a channel
   recoverloopin       Recover a loop in swap that the loop daemon is not able to sweep
@@ -306,6 +307,7 @@ Legend:
 | [fixoldbackup](doc/chantools_fixoldbackup.md)               | ✏️ ( 📌 ) Fixes an issue with old `channel.backup` files                                                                      |
 | [forceclose](doc/chantools_forceclose.md)                   | ✏️ ( ☠️ ⚠️ ) Publish an old channel state from a `channel.db` file                                                       |
 | [genimportscript](doc/chantools_genimportscript.md)         | ✏️ Create a script/text file that can be used to import `lnd` keys into other software                                               |
+| [inspectwaitingproofs](doc/chantools_inspectwaitingproofs.md) | Inspect the waiting proof store for records that can prevent `lnd` from starting                                                      |
 | [migratedb](doc/chantools_migratedb.md)                     | Upgrade the `channel.db` file to the latest version                                                                                        |
 | [pullanchor](doc/chantools_pullanchor.md)                   | ✏️ Attempt to CPFP an anchor output of a channel                                                                                     | 
 | [recoverloopin](doc/chantools_recoverloopin.md)             | ✏️ Recover funds from a failed Lightning Loop inbound swap                                                                           |

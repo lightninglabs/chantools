@@ -140,6 +140,7 @@ func main() {
 		newForceCloseCommand(),
 		newScbForceCloseCommand(),
 		newGenImportScriptCommand(),
+		newInspectWaitingProofsCommand(),
 		newMigrateDBCommand(),
 		newPullAnchorCommand(),
 		newRecoverLoopInCommand(),
