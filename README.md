@@ -241,6 +241,7 @@ Available Commands:
   migratedb           Apply all recent lnd channel database migrations
   pullanchor          Attempt to CPFP an anchor output of a channel
   recoverloopin       Recover a loop in swap that the loop daemon is not able to sweep
+  repairwaitingproofs Repair legacy lnd waiting proofs that can prevent startup
   removechannel       Remove a single channel from the given channel DB
   rescueclosed        Try finding the private keys for funds that are in outputs of remotely force-closed channels
   rescuefunding       Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
@@ -311,6 +312,7 @@ Legend:
 | [migratedb](doc/chantools_migratedb.md)                     | Upgrade the `channel.db` file to the latest version                                                                                        |
 | [pullanchor](doc/chantools_pullanchor.md)                   | ✏️ Attempt to CPFP an anchor output of a channel                                                                                     | 
 | [recoverloopin](doc/chantools_recoverloopin.md)             | ✏️ Recover funds from a failed Lightning Loop inbound swap                                                                           |
+| [repairwaitingproofs](doc/chantools_repairwaitingproofs.md) | Repair legacy waiting proofs that can prevent `lnd` from starting                                                                      |
 | [removechannel](doc/chantools_removechannel.md)             | (☠️ ⚠️) Remove a single channel from a `channel.db` file                                                                       |
 | [rescueclosed](doc/chantools_rescueclosed.md)               | ✏️ ( 📌 ) Rescue funds in a legacy (pre `STATIC_REMOTE_KEY`) channel output                                                   |
 | [rescuefunding](doc/chantools_rescuefunding.md)             | ✏️ ( 📌 ) Rescue funds from a funding transaction. Deprecated, use [zombierecovery](doc/chantools_zombierecovery.md) instead  |

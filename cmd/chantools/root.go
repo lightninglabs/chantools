@@ -144,6 +144,7 @@ func main() {
 		newMigrateDBCommand(),
 		newPullAnchorCommand(),
 		newRecoverLoopInCommand(),
+		newRepairWaitingProofsCommand(),
 		newRemoveChannelCommand(),
 		newRescueClosedCommand(),
 		newRescueFundingCommand(),

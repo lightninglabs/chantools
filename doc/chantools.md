@@ -45,6 +45,7 @@ https://github.com/lightninglabs/chantools/.
 * [chantools pullanchor](chantools_pullanchor.md)	 - Attempt to CPFP an anchor output of a channel
 * [chantools recoverloopin](chantools_recoverloopin.md)	 - Recover a loop in swap that the loop daemon is not able to sweep
 * [chantools removechannel](chantools_removechannel.md)	 - Remove a single channel from the given channel DB
+* [chantools repairwaitingproofs](chantools_repairwaitingproofs.md)	 - Repair legacy lnd waiting proofs that can prevent startup
 * [chantools rescueclosed](chantools_rescueclosed.md)	 - Try finding the private keys for funds that are in outputs of remotely force-closed channels
 * [chantools rescuefunding](chantools_rescuefunding.md)	 - Rescue funds locked in a funding multisig output that never resulted in a proper channel; this is the command the initiator of the channel needs to run
 * [chantools rescuetweakedkey](chantools_rescuetweakedkey.md)	 - Attempt to rescue funds locked in an address with a key that was affected by a specific bug in lnd

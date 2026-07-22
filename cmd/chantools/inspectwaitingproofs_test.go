@@ -226,6 +226,7 @@ func createWaitingProofMissingVersionTestDB(t *testing.T) string {
 		localKey := make([]byte, legacyWaitingProofKeyLen)
 		binary.BigEndian.PutUint64(localKey[:8], 0x0e9a2f0005eb0001)
 		localValue := make([]byte, 1+announceSignatures1Len)
+		localValue[1], localValue[2], localValue[3] = 0xd9, 0xd0, 0x75
 		binary.BigEndian.PutUint64(localValue[33:41], 0x0e9a2f0005eb0001)
 		if err := bucket.Put(localKey, localValue); err != nil {
 			return err
@@ -236,7 +237,7 @@ func createWaitingProofMissingVersionTestDB(t *testing.T) string {
 		remoteKey[8] = 1
 		remoteValue := make([]byte, 1+announceSignatures1Len)
 		remoteValue[0] = 1
-		remoteValue[1], remoteValue[2], remoteValue[3] = 1, 1, 0x3d
+		remoteValue[1], remoteValue[2], remoteValue[3] = 0x5e, 0x72, 0x3d
 		binary.BigEndian.PutUint64(remoteValue[33:41], 0x0e730200077f0001)
 
 		return bucket.Put(remoteKey, remoteValue)
