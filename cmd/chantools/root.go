@@ -155,6 +155,8 @@ func main() {
 		newSweepTimeLockCommand(),
 		newSweepTimeLockManualCommand(),
 		newSweepRemoteClosedCommand(),
+		newSweepTaprootAssetsCommand(),
+		newSweepTaprootAssetsFixedCommand(),
 		newTriggerForceCloseCommand(),
 		newVanityGenCommand(),
 		newWalletInfoCommand(),
