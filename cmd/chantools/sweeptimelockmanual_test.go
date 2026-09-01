@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
 	"encoding/hex"
+	"math"
 	"testing"
+	"time"
 
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/lightninglabs/chantools/lnd"
+	"github.com/lightningnetwork/lnd/input"
 	"github.com/stretchr/testify/require"
 )
 
@@ -119,4 +123,81 @@ func TestSweepTimeLockManual(t *testing.T) {
 		)
 		require.NoError(t, err)
 	}
+}
+
+// TestBruteForceDelayMaxCsvTimeout makes sure the brute force loop terminates
+// when the maximum CSV timeout value of math.MaxUint16 is used, which would
+// overflow the loop counter if it was a uint16 as well.
+func TestBruteForceDelayMaxCsvTimeout(t *testing.T) {
+	delayPubKey, err := pubKeyFromHex(
+		"03235261ed5aaaf9fec0e91d5e1a4d17f1a2c7442f1c43806d32c9bd34ab" +
+			"d002a3",
+	)
+	require.NoError(t, err)
+
+	revPubKey, err := pubKeyFromHex(
+		"03e82cdf164ce5aba253890e066129f134ca8d7e072ce5ad55c721b9a135" +
+			"45ee04",
+	)
+	require.NoError(t, err)
+
+	// The script we're looking for uses the largest possible CSV value, so
+	// the loop needs to run through the full uint16 range to find it.
+	script, err := input.CommitScriptToSelf(
+		math.MaxUint16, delayPubKey, revPubKey,
+	)
+	require.NoError(t, err)
+
+	scriptHash, err := input.WitnessScriptHash(script)
+	require.NoError(t, err)
+
+	// A script that doesn't correspond to any CSV value in the range, to
+	// make sure the loop also terminates if nothing is found at all.
+	unknownScript := bytes.Repeat([]byte{0xff}, 34)
+
+	// Runs the brute force loop in a goroutine and makes sure it returns
+	// within a reasonable amount of time instead of looping forever. The
+	// assertions on the result are done by the caller, which runs in the
+	// goroutine of the test function itself.
+	runBruteForce := func(target []byte) bruteForceResult {
+		t.Helper()
+
+		resultChan := make(chan bruteForceResult, 1)
+		go func() {
+			var res bruteForceResult
+			res.csvTimeout, res.script, res.scriptHash, res.err =
+				bruteForceDelay(
+					delayPubKey, revPubKey, target, 0,
+					math.MaxUint16,
+				)
+			resultChan <- res
+		}()
+
+		select {
+		case res := <-resultChan:
+			return res
+
+		case <-time.After(time.Minute):
+			require.Fail(t, "bruteForceDelay did not terminate")
+
+			return bruteForceResult{}
+		}
+	}
+
+	found := runBruteForce(scriptHash)
+	require.NoError(t, found.err)
+	require.EqualValues(t, math.MaxUint16, found.csvTimeout)
+	require.Equal(t, script, found.script)
+	require.Equal(t, scriptHash, found.scriptHash)
+
+	notFound := runBruteForce(unknownScript)
+	require.ErrorContains(t, notFound.err, "csv timeout not found")
+}
+
+// bruteForceResult holds the return values of a bruteForceDelay call.
+type bruteForceResult struct {
+	csvTimeout int32
+	script     []byte
+	scriptHash []byte
+	err        error
 }
