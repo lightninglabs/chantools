@@ -100,7 +100,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 		}
 
 		if match {
-			log.Infof("Success! Found private key %x for "+
+			fmt.Printf("Success! Found private key %x for "+
 				"address %v\n", currentKey.Serialize(),
 				targetAddr)
 			return nil
@@ -115,7 +115,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 		}
 
 		if match {
-			log.Infof("Success! Found private key %x for "+
+			fmt.Printf("Success! Found private key %x for "+
 				"address %v\n", currentKey.Serialize(),
 				targetAddr)
 			return nil
@@ -131,7 +131,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 		}
 
 		if match {
-			log.Infof("Success! Found private key %x for "+
+			fmt.Printf("Success! Found private key %x for "+
 				"address %v\n", keyCopy.Serialize(),
 				targetAddr)
 			return nil
@@ -148,7 +148,7 @@ func testPattern(startKey *btcec.PrivateKey, targetAddr btcutil.Address,
 	}
 
 	if match {
-		log.Infof("Success! Found private key %x for address %v\n",
+		fmt.Printf("Success! Found private key %x for address %v\n",
 			currentKey.Serialize(), targetAddr)
 		return nil
 	}

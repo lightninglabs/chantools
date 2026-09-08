@@ -359,9 +359,9 @@ func bruteForceDelay(delayPubkey, revocationPubkey *btcec.PublicKey,
 		return 0, nil, nil, fmt.Errorf("invalid target script: %s",
 			targetScript)
 	}
-	for i := startCsvTimeout; i <= maxCsvTimeout; i++ {
+	for i := uint32(startCsvTimeout); i <= uint32(maxCsvTimeout); i++ {
 		s, err := input.CommitScriptToSelf(
-			uint32(i), delayPubkey, revocationPubkey,
+			i, delayPubkey, revocationPubkey,
 		)
 		if err != nil {
 			return 0, nil, nil, fmt.Errorf("error creating "+

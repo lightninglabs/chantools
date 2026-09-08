@@ -357,7 +357,7 @@ func rescueClosedChannel(numKeys uint32, extendedKey *hdkeychain.ExtendedKey,
 	wif, err := addrInCache(numKeys, addr.String(), commitPoint)
 	switch {
 	case err == nil:
-		log.Infof("Found private key %s for address %v!", wif, addr)
+		fmt.Printf("Found private key %s for address %v!\n", wif, addr)
 
 		return nil
 
@@ -372,7 +372,7 @@ func rescueClosedChannel(numKeys uint32, extendedKey *hdkeychain.ExtendedKey,
 	wif, err = addrInCache(numKeys, addr.String(), nil)
 	switch {
 	case err == nil:
-		log.Infof("Found private key %s for address %v!", wif, addr)
+		fmt.Printf("Found private key %s for address %v!\n", wif, addr)
 
 		return nil
 
