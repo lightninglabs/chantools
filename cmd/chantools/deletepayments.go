@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/lightninglabs/chantools/lnd"
+	paymentsdb "github.com/lightningnetwork/lnd/payments/db"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +56,14 @@ func (c *deletePaymentsCommand) Execute(_ *cobra.Command, _ []string) error {
 	}
 	defer func() { _ = db.Close() }()
 
-	_, err = db.DeletePayments(c.FailedOnly, false)
+	paymentsDB, err := paymentsdb.NewKVStore(db.Backend)
+	if err != nil {
+		return fmt.Errorf("error opening payments DB: %w", err)
+	}
+
+	_, err = paymentsDB.DeletePayments(
+		context.Background(), c.FailedOnly, false,
+	)
 
 	return err
 }

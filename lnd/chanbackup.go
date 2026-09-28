@@ -2,6 +2,7 @@ package lnd
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -18,7 +19,7 @@ func CreateChannelBackup(db *channeldb.DB, multiFile *chanbackup.MultiFile,
 	ring keychain.KeyRing) error {
 
 	singles, err := chanbackup.FetchStaticChanBackups(
-		db.ChannelStateDB(), db,
+		context.Background(), db.ChannelStateDB(), db,
 	)
 	if err != nil {
 		return fmt.Errorf("error extracting channel backup: %w", err)

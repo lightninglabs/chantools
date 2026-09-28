@@ -129,9 +129,16 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		return nil, nil, err
 	}
 
-	graphDB, err := graphdb.NewChannelGraph(&graphdb.Config{
-		KVDB: backend,
-	})
+	graphStore, err := graphdb.NewKVStore(backend)
+	if err != nil {
+		_ = backend.Close()
+		_ = channelDB.Close()
+
+		return nil, nil, fmt.Errorf("unable to open graph store: %w",
+			err)
+	}
+
+	graphDB, err := graphdb.NewChannelGraph(graphStore)
 	if err != nil {
 		_ = backend.Close()
 		_ = channelDB.Close()
@@ -141,7 +148,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 	}
 
 	gossiper := discovery.New(discovery.Config{
-		ChainHash: *netParams.GenesisHash,
+		ChainParams: netParams,
 		Broadcast: func(_ map[route.Vertex]struct{},
 			_ ...lnwire.Message) error {
 
@@ -152,8 +159,8 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		NotifyWhenOffline: func(_ [33]byte) <-chan struct{} {
 			return make(chan struct{})
 		},
-		FetchSelfAnnouncement: func() lnwire.NodeAnnouncement {
-			return lnwire.NodeAnnouncement{}
+		FetchSelfAnnouncement: func() lnwire.NodeAnnouncement1 {
+			return lnwire.NodeAnnouncement1{}
 		},
 		ProofMatureDelta:    0,
 		TrickleDelay:        time.Millisecond * 50,
@@ -277,7 +284,7 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 			&mock.ChainNotifier{},
 		),
 		RoutingPolicy:   models.ForwardingPolicy{},
-		Sphinx:          nil,
+		SphinxPayment:   nil,
 		WitnessBeacon:   nil,
 		Invoices:        nil,
 		ChannelNotifier: channelNotifier,
@@ -289,9 +296,9 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 			return nil
 		},
 		GenNodeAnnouncement: func(_ ...netann.NodeAnnModifier) (
-			lnwire.NodeAnnouncement, error) {
+			lnwire.NodeAnnouncement1, error) {
 
-			return lnwire.NodeAnnouncement{},
+			return lnwire.NodeAnnouncement1{},
 				errors.New("unimplemented")
 		},
 		PrunePersistentPeerConnection: func(_ [33]byte) {},
@@ -326,24 +333,24 @@ func ConnectPeer(conn *brontide.Conn, connReq *connmgr.ConnReq,
 		RequestAlias: func() (lnwire.ShortChannelID, error) {
 			return lnwire.ShortChannelID{}, nil
 		},
-		AddLocalAlias: func(_, _ lnwire.ShortChannelID, _,
-			_ bool) error {
+		AddLocalAlias: func(_, _ lnwire.ShortChannelID, _, _ bool,
+			_ ...aliasmgr.AddLocalAliasOption) error {
 
 			return nil
 		},
-		AuxLeafStore:              fn.None[lnwallet.AuxLeafStore](),
-		AuxSigner:                 fn.None[lnwallet.AuxSigner](),
-		AuxResolver:               fn.None[lnwallet.AuxContractResolver](),
-		AuxTrafficShaper:          fn.None[htlcswitch.AuxTrafficShaper](),
-		PongBuf:                   pongBuf,
-		DisallowRouteBlinding:     false,
-		DisallowQuiescence:        false,
-		MaxFeeExposure:            0,
-		MsgRouter:                 fn.None[msgmux.Router](),
-		AuxChanCloser:             fn.None[chancloser.AuxChanCloser](),
-		ShouldFwdExpEndorsement:   nil,
-		NoDisconnectOnPongFailure: false,
-		Quit:                      make(chan struct{}),
+		AuxLeafStore:               fn.None[lnwallet.AuxLeafStore](),
+		AuxSigner:                  fn.None[lnwallet.AuxSigner](),
+		AuxResolver:                fn.None[lnwallet.AuxContractResolver](),
+		AuxTrafficShaper:           fn.None[htlcswitch.AuxTrafficShaper](),
+		PongBuf:                    pongBuf,
+		DisallowRouteBlinding:      false,
+		DisallowQuiescence:         false,
+		MaxFeeExposure:             0,
+		MsgRouter:                  fn.None[msgmux.Router](),
+		AuxChanCloser:              fn.None[chancloser.AuxChanCloser](),
+		ShouldFwdExpAccountability: nil,
+		NoDisconnectOnPongFailure:  false,
+		Quit:                       make(chan struct{}),
 	}
 
 	copy(pCfg.PubKeyBytes[:], peerAddr.IdentityKey.SerializeCompressed())

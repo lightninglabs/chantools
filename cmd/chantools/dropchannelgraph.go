@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	graphdb "github.com/lightningnetwork/lnd/graph/db"
 	"github.com/lightningnetwork/lnd/graph/db/models"
 	"github.com/lightningnetwork/lnd/keychain"
+	"github.com/lightningnetwork/lnd/kvdb"
 	"github.com/lightningnetwork/lnd/lnwire"
 	"github.com/spf13/cobra"
 )
@@ -80,6 +82,7 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.ChannelDB == "" {
 		return errors.New("channel DB is required")
 	}
+	ctx := context.Background()
 	channelDB, graphDB, err := lnd.OpenDB(c.ChannelDB, false)
 	if err != nil {
 		return fmt.Errorf("error opening channel DB: %w", err)
@@ -103,7 +106,8 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if c.SingleChannel != 0 {
 		log.Infof("Removing single channel %d", c.SingleChannel)
 		return graphDB.DeleteChannelEdges(
-			true, false, c.SingleChannel,
+			ctx, lnwire.GossipVersion1, true, false,
+			c.SingleChannel,
 		)
 	}
 
@@ -111,14 +115,14 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 	if !c.FixOnly {
 		log.Infof("Dropping all graph related buckets")
 
-		return graphDB.Wipe()
+		return wipeGraph(channelDB.Backend)
 	}
 
-	return insertOwnNodeAndChannels(idKey, channelDB, graphDB)
+	return insertOwnNodeAndChannels(ctx, idKey, channelDB, graphDB)
 }
 
-func insertOwnNodeAndChannels(idKey *btcec.PublicKey, channelDB *channeldb.DB,
-	graphDB *graphdb.ChannelGraph) error {
+func insertOwnNodeAndChannels(ctx context.Context, idKey *btcec.PublicKey,
+	channelDB *channeldb.DB, graphDB *graphdb.ChannelGraph) error {
 
 	openChannels, err := channelDB.ChannelStateDB().FetchAllOpenChannels()
 	if err != nil {
@@ -139,11 +143,11 @@ func insertOwnNodeAndChannels(idKey *btcec.PublicKey, channelDB *channeldb.DB,
 				err)
 		}
 
-		if err := graphDB.AddChannelEdge(edge); err != nil {
+		if err := graphDB.AddChannelEdge(ctx, edge); err != nil {
 			log.Warnf("Not adding channel edge %v because of "+
 				"error: %v", edge.ChannelPoint, err)
 		}
-		if err := graphDB.UpdateEdgePolicy(update); err != nil {
+		if err := graphDB.UpdateEdgePolicy(ctx, update); err != nil {
 			log.Warnf("Not updating edge policy %v because of "+
 				"error: %v", update.ChannelID, err)
 		}
@@ -202,24 +206,19 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 		chanFlags = 1
 	}
 
-	var featureBuf bytes.Buffer
-	if err := chanAnn.Features.Encode(&featureBuf); err != nil {
-		log.Errorf("unable to encode features: %w", err)
+	edge, err := models.NewV1Channel(
+		chanAnn.ShortChannelID.ToUint64(), chanAnn.ChainHash,
+		chanAnn.NodeID1, chanAnn.NodeID2, &models.ChannelV1Fields{
+			BitcoinKey1Bytes: chanAnn.BitcoinKey1,
+			BitcoinKey2Bytes: chanAnn.BitcoinKey2,
+			ExtraOpaqueData:  chanAnn.ExtraOpaqueData,
+		},
+		models.WithFeatures(chanAnn.Features),
+		models.WithCapacity(capacity),
+		models.WithChannelPoint(channelPoint),
+	)
+	if err != nil {
 		return nil, nil, err
-	}
-
-	edge := &models.ChannelEdgeInfo{
-		ChannelID:        chanAnn.ShortChannelID.ToUint64(),
-		ChainHash:        chanAnn.ChainHash,
-		NodeKey1Bytes:    chanAnn.NodeID1,
-		NodeKey2Bytes:    chanAnn.NodeID2,
-		BitcoinKey1Bytes: chanAnn.BitcoinKey1,
-		BitcoinKey2Bytes: chanAnn.BitcoinKey2,
-		AuthProof:        nil,
-		Features:         featureBuf.Bytes(),
-		ExtraOpaqueData:  chanAnn.ExtraOpaqueData,
-		Capacity:         capacity,
-		ChannelPoint:     channelPoint,
 	}
 
 	// Our channel update message flags will signal that we support the
@@ -247,6 +246,7 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 	}
 
 	update := &models.ChannelEdgePolicy{
+		Version:       lnwire.GossipVersion1,
 		SigBytes:      chanUpdateAnn.Signature.ToSignatureBytes(),
 		ChannelID:     chanAnn.ShortChannelID.ToUint64(),
 		LastUpdate:    time.Now(),
@@ -265,4 +265,35 @@ func newChanAnnouncement(localPubKey, remotePubKey *btcec.PublicKey,
 	}
 
 	return edge, update, nil
+}
+
+// wipeGraph deletes all top-level buckets of the channel graph and then
+// re-creates them empty. This is what lnd's KVStore.Wipe did before it was
+// removed.
+func wipeGraph(db kvdb.Backend) error {
+	graphBuckets := [][]byte{
+		[]byte("graph-node"), edgeBucket, []byte("graph-meta"),
+		[]byte("closed-scid"),
+	}
+	err := kvdb.Update(db, func(tx kvdb.RwTx) error {
+		for _, tlb := range graphBuckets {
+			err := tx.DeleteTopLevelBucket(tlb)
+			if err != nil &&
+				!errors.Is(err, kvdb.ErrBucketNotFound) {
+
+				return err
+			}
+		}
+
+		return nil
+	}, func() {})
+	if err != nil {
+		return err
+	}
+
+	// Creating a new KV store without the NoMigration option re-creates
+	// all graph buckets.
+	_, err = graphdb.NewKVStore(db)
+
+	return err
 }
