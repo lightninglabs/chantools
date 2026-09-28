@@ -706,7 +706,7 @@ func matchScript(address string, key1, key2 *btcec.PublicKey,
 func askAboutChannel(channel *channel, current, total int, ourAddr,
 	theirAddr string) (int64, int64, error) {
 
-	fundingTxid := strings.Split(channel.ChanPoint, ":")[0]
+	fundingTxid, _, _ := strings.Cut(channel.ChanPoint, ":")
 
 	fmt.Printf("Channel %s (%d of %d): \n\tCapacity: %d sat\n\t"+
 		"Funding TXID: https://blockstream.info/tx/%v\n\t"+
