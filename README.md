@@ -32,7 +32,7 @@ Example (make sure you always use the latest version!):
 
 ```shell
 $ cd /tmp
-$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.14.2/chantools-linux-amd64-v0.14.2.tar.gz
+$ wget -O chantools.tar.gz https://github.com/lightninglabs/chantools/releases/download/v0.14.3/chantools-linux-amd64-v0.14.2.tar.gz
 $ tar -zxvf chantools.tar.gz
 $ sudo mv chantools-*/chantools /usr/local/bin/
 ```
