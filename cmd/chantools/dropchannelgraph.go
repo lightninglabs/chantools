@@ -118,6 +118,14 @@ func (c *dropChannelGraphCommand) Execute(_ *cobra.Command, _ []string) error {
 		return wipeGraph(channelDB.Backend)
 	}
 
+	// Adding edges and policies publishes topology notifications to a
+	// goroutine that is only running once the graph is started. Without it
+	// the first AddChannelEdge call blocks forever.
+	if err := graphDB.Start(); err != nil {
+		return fmt.Errorf("error starting channel graph: %w", err)
+	}
+	defer func() { _ = graphDB.Stop() }()
+
 	return insertOwnNodeAndChannels(ctx, idKey, channelDB, graphDB)
 }
 
