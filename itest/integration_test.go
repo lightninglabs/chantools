@@ -46,6 +46,26 @@ var testCases = []testCase{
 		name: "scb force close",
 		fn:   runScbForceClose,
 	},
+	{
+		name: "delete payments",
+		fn:   runDeletePayments,
+	},
+	{
+		name: "drop channel graph single channel",
+		fn:   runDropChannelGraphSingle,
+	},
+	{
+		name: "drop channel graph full",
+		fn:   runDropChannelGraphFull,
+	},
+	{
+		name: "drop graph zombies",
+		fn:   runDropGraphZombies,
+	},
+	{
+		name: "remove channel",
+		fn:   runRemoveChannel,
+	},
 }
 
 // TestIntegration runs all integration test cases.

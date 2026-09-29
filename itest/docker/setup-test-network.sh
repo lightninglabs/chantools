@@ -97,6 +97,9 @@ send_payment dave rusty
 send_payment alice snyke
 send_payment charlie snyke
 
+# Create a failed payment, used by the deletepayments test.
+send_failing_payment alice dave
+
 # Store all the channel information in separate JSON files.
 alice listchannels > "$DIR/node-data/chantools/alice-channels.json"
 bob listchannels > "$DIR/node-data/chantools/bob-channels.json"

@@ -35,6 +35,8 @@ const (
 		"regtest/wallet.db"
 	scbFilePattern = "docker/node-data/%s/data/chain/bitcoin/" +
 		"regtest/channel.backup"
+	channelDBFilePattern = "docker/node-data/%s/data/graph/regtest/" +
+		"channel.db"
 	hsmSecretFilePattern    = "docker/node-data/%s/regtest/hsm_secret"
 	nodeIdentityFilePattern = "docker/node-data/chantools/identities.txt"
 	nodeURIPattern          = "%s@%s"
@@ -552,4 +554,21 @@ func getScbForceClose(t *testing.T, node, tempDir, multiBackup,
 	require.Contains(t, txHex, transactionHexIdent)
 
 	return txHex, cmdOutput
+}
+
+// findChannel returns the channel of the given lnd node with the given remote
+// peer, as exported during the test network setup.
+func findChannel(t *testing.T, node, remotePubKey string) *lnrpc.Channel {
+	t.Helper()
+
+	for _, c := range readChannelsJSON(t, node) {
+		if c.RemotePubkey == remotePubKey {
+			return c
+		}
+	}
+
+	require.Failf(t, "channel not found", "no channel between %s and %s",
+		node, remotePubKey)
+
+	return nil
 }
