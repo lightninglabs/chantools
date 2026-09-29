@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	withNoMigration = func(o *graphdb.KVStoreOptions) {
+	withNoMigration = func(o *graphdb.StoreOptions) {
 		o.NoMigration = true
 	}
 )
@@ -44,12 +44,14 @@ func OpenDB(dbPath string,
 		return nil, nil, err
 	}
 
-	graphDB, err := graphdb.NewChannelGraph(&graphdb.Config{
-		KVDB: backend,
-		KVStoreOpts: []graphdb.KVStoreOptionModifier{
-			withNoMigration,
-		},
-	})
+	graphStore, err := graphdb.NewKVStore(backend, withNoMigration)
+	if err != nil {
+		_ = channelDB.Close()
+
+		return nil, nil, err
+	}
+
+	graphDB, err := graphdb.NewChannelGraph(graphStore)
 	if err != nil {
 		_ = channelDB.Close()
 

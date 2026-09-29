@@ -38,7 +38,7 @@ const (
 	// lndVersion is the current version of lnd that we support. This is
 	// shown in some commands that affect the database and its migrations.
 	// Run "make docs" after changing this value.
-	lndVersion = "v0.19.0-beta"
+	lndVersion = "v0.21.3-beta"
 
 	Commit = ""
 

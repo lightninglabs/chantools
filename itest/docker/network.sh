@@ -233,6 +233,32 @@ function send_payment() {
   echo "💸  Payment sent from $from_node to $to_node"
 }
 
+# send_failing_payment creates a payment from an lnd node that is guaranteed to
+# fail (no route with a zero fee limit) so it is recorded as a failed payment in
+# the node's channel DB.
+function send_failing_payment() {
+  if [[ $# -ne 2 ]]; then
+      echo "❌  Error: send_failing_payment requires exactly 2 arguments (from_node and to_node)"
+      echo "Usage: send_failing_payment <from_node> <to_node>"
+      return 1
+  fi
+
+  local from_node="$1"
+  local to_node="$2"
+
+  local PAY_REQ
+  PAY_REQ=$($to_node addinvoice 10000 | jq -r '.payment_request')
+
+  # The destination is multiple hops away, so a zero fee limit makes path
+  # finding fail. We expect the command to fail, but the payment is persisted.
+  if $from_node payinvoice --force --fee_limit 0 "$PAY_REQ" > /dev/null 2>&1; then
+      echo "❌  Error: Payment from $from_node to $to_node unexpectedly succeeded"
+      return 1
+  fi
+
+  echo "💥  Failed payment sent from $from_node to $to_node"
+}
+
 # wait_for_active_chans waits for a node to have the expected number of active
 # channels.
 function wait_for_active_chans() {

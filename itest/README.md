@@ -36,6 +36,15 @@ The network is set up as follows:
 All nodes except for Dave and Snyke are stopped before the integration tests
 are run.
 
+Alice also makes one payment that is guaranteed to fail, so her channel DB
+contains both successful and failed payments.
+
+The commands that modify an lnd `channel.db` in place (`deletepayments`,
+`dropchannelgraph`, `dropgraphzombies` and `removechannel`) run against a copy
+of Alice's `channel.db` in a temporary directory, so they don't affect each other
+or the other test cases. The results are verified by re-opening that copy with
+lnd's own DB code, the same way lnd would on its next startup.
+
 Multiple channels are opened between the nodes, and several multi-hop payments
 are executed to ensure the network is fully operational and synchronized. After
 the setup, each node's channel information is exported to a JSON file in the
