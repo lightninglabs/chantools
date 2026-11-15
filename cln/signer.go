@@ -68,10 +68,8 @@ func (s *Signer) FindMultisigKey(targetPubkey, peerPubKey *btcec.PublicKey,
 	for index := range maxNumKeys {
 		privKey, err := s.FetchPrivateKey(&keychain.KeyDescriptor{
 			PubKey: peerPubKey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  index,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  index,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("error deriving funding "+
@@ -85,10 +83,8 @@ func (s *Signer) FindMultisigKey(targetPubkey, peerPubKey *btcec.PublicKey,
 
 		return &keychain.KeyDescriptor{
 			PubKey: peerPubKey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  index,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  index,
 		}, nil
 	}
 

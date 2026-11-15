@@ -132,9 +132,7 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 	}
 
 	nodePrivKey, err := signer.FetchPrivateKey(&keychain.KeyDescriptor{
-		KeyLocator: keychain.KeyLocator{
-			Family: keychain.KeyFamilyNodeKey,
-		},
+		Family: keychain.KeyFamilyNodeKey,
 	})
 	if err != nil {
 		return fmt.Errorf("error deriving identity private key: %w",
@@ -223,10 +221,8 @@ func (c *zombieRecoveryPrepareKeysCommand) Execute(_ *cobra.Command,
 	for index := range c.NumKeys {
 		privKey, err := signer.FetchPrivateKey(&keychain.KeyDescriptor{
 			PubKey: theirNodeKey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  index,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  index,
 		})
 		if err != nil {
 			return fmt.Errorf("error deriving funding private "+

@@ -131,10 +131,8 @@ func walletInfo(w *wallet.Wallet, dumpAddrs bool) (*btcec.PublicKey, string,
 
 	keyRing := keychain.NewBtcWalletKeyRing(w, chainParams.HDCoinType)
 	idPrivKey, err := keyRing.DerivePrivKey(keychain.KeyDescriptor{
-		KeyLocator: keychain.KeyLocator{
-			Family: keychain.KeyFamilyNodeKey,
-			Index:  0,
-		},
+		Family: keychain.KeyFamilyNodeKey,
+		Index:  0,
 	})
 	if err != nil {
 		return nil, "", fmt.Errorf("unable to open key ring for coin "+

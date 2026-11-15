@@ -2,7 +2,7 @@ version: "2"
 
 run:
   timeout: 5m
-  go: "1.23"
+  go: "1.27"
 
 linters:
   default: all
@@ -38,6 +38,8 @@ linters:
     - noinlineerr
     - revive
     - wsl_v5
+    - gomodguard
+    - exhaustruct_v5
 
   settings:
     govet:
@@ -67,3 +69,7 @@ linters:
         linters:
           - dupl
           - thelper
+          - goconst
+
+issues:
+  max-same-issues: 10

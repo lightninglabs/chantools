@@ -41,10 +41,8 @@ func (b *BasePoint) Desc() (*keychain.KeyDescriptor, error) {
 	}
 
 	return &keychain.KeyDescriptor{
-		KeyLocator: keychain.KeyLocator{
-			Family: keychain.KeyFamily(b.Family),
-			Index:  b.Index,
-		},
+		Family: keychain.KeyFamily(b.Family),
+		Index:  b.Index,
 		PubKey: pubKey,
 	}, nil
 }

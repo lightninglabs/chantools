@@ -43,10 +43,8 @@ func TestNodeKey(t *testing.T) {
 func TestFundingKey(t *testing.T) {
 	fundingKey, _, err := DeriveKeyPair(hsmSecret, &keychain.KeyDescriptor{
 		PubKey: peerPubKey,
-		KeyLocator: keychain.KeyLocator{
-			Family: keychain.KeyFamilyMultiSig,
-			Index:  1,
-		},
+		Family: keychain.KeyFamilyMultiSig,
+		Index:  1,
 	})
 	require.NoError(t, err)
 
@@ -84,10 +82,8 @@ func TestPaymentBasePointSecret(t *testing.T) {
 
 	fk, _, err := DeriveKeyPair(hsmSecret, &keychain.KeyDescriptor{
 		PubKey: basepointPeer,
-		KeyLocator: keychain.KeyLocator{
-			Family: keychain.KeyFamilyMultiSig,
-			Index:  1,
-		},
+		Family: keychain.KeyFamilyMultiSig,
+		Index:  1,
 	})
 	require.NoError(t, err)
 
@@ -96,10 +92,8 @@ func TestPaymentBasePointSecret(t *testing.T) {
 	paymentBasePoint, _, err := DeriveKeyPair(
 		hsmSecret, &keychain.KeyDescriptor{
 			PubKey: basepointPeer,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyPaymentBase,
-				Index:  1,
-			},
+			Family: keychain.KeyFamilyPaymentBase,
+			Index:  1,
 		},
 	)
 	require.NoError(t, err)

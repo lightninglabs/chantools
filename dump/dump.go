@@ -211,7 +211,7 @@ func openChannelDump(channel *channeldb.OpenChannel,
 		RemoteCurrentRevocation: PubKeyToString(
 			channel.RemoteCurrentRevocation,
 		),
-		RemoteNextRevocation: PubKeyToString(
+		RemoteNextRevocation: PubKeyOptToString(
 			channel.RemoteNextRevocation,
 		),
 		FundingTxn:           hex.EncodeToString(buf.Bytes()),
@@ -371,7 +371,7 @@ func ClosedChannelDump(channels []*channeldb.ChannelCloseSummary,
 			RemoteCurrentRevocation: PubKeyToString(
 				channel.RemoteCurrentRevocation,
 			),
-			RemoteNextRevocation: PubKeyToString(
+			RemoteNextRevocation: PubKeyOptToString(
 				channel.RemoteNextRevocation,
 			),
 			LocalChanConfig: ToChannelConfig(
@@ -490,4 +490,13 @@ func PubKeyToString(pubkey *btcec.PublicKey) string {
 		return "<nil>"
 	}
 	return hex.EncodeToString(pubkey.SerializeCompressed())
+}
+
+func PubKeyOptToString(pubkey fn.Option[btcec.PublicKey]) string {
+	value := "<nil>"
+	pubkey.WhenSome(func(key btcec.PublicKey) {
+		value = hex.EncodeToString(key.SerializeCompressed())
+	})
+
+	return value
 }

@@ -462,10 +462,8 @@ func findAnchorKey(rootKey *hdkeychain.ExtendedKey,
 
 		return &keychain.KeyDescriptor{
 			PubKey: currentPubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: family,
-				Index:  index,
-			},
+			Family: family,
+			Index:  index,
 		}, script, nil
 	}
 
@@ -520,10 +518,8 @@ func findTaprootAnchorKey(rootKey *hdkeychain.ExtendedKey,
 
 		return &keychain.KeyDescriptor{
 			PubKey: currentPubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: family,
-				Index:  index,
-			},
+			Family: family,
+			Index:  index,
 		}, scriptTree, nil
 	}
 

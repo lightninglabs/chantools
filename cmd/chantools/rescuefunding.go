@@ -205,10 +205,8 @@ func (c *rescueFundingCommand) Execute(_ *cobra.Command, _ []string) error {
 		}
 
 		localKeyDesc = &keychain.KeyDescriptor{
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  c.LocalKeyIndex,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  c.LocalKeyIndex,
 		}
 		privKey, err := signer.FetchPrivateKey(localKeyDesc)
 		if err != nil {
