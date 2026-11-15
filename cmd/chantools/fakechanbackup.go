@@ -347,50 +347,36 @@ func newSingle(fundingOutPoint wire.OutPoint, shortChanID lnwire.ShortChannelID,
 
 func fakeChanCfg(nodePubkey *btcec.PublicKey) channeldb.ChannelConfig {
 	return channeldb.ChannelConfig{
-		ChannelStateBounds: channeldb.ChannelStateBounds{
-			ChanReserve:      5000,
-			MaxPendingAmount: 1,
-			MinHTLC:          1,
-			MaxAcceptedHtlcs: 200,
-		},
-		CommitmentParams: channeldb.CommitmentParams{
-			DustLimit: 500,
-			CsvDelay:  144,
-		},
+		ChanReserve:      5000,
+		MaxPendingAmount: 1,
+		MinHTLC:          1,
+		MaxAcceptedHtlcs: 200,
+		DustLimit:        500,
+		CsvDelay:         144,
 		MultiSigKey: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  0,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  0,
 		},
 		RevocationBasePoint: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyRevocationBase,
-				Index:  0,
-			},
+			Family: keychain.KeyFamilyRevocationBase,
+			Index:  0,
 		},
 		PaymentBasePoint: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyPaymentBase,
-				Index:  0,
-			},
+			Family: keychain.KeyFamilyPaymentBase,
+			Index:  0,
 		},
 		DelayBasePoint: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyDelayBase,
-				Index:  0,
-			},
+			Family: keychain.KeyFamilyDelayBase,
+			Index:  0,
 		},
 		HtlcBasePoint: keychain.KeyDescriptor{
 			PubKey: nodePubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyHtlcBase,
-				Index:  0,
-			},
+			Family: keychain.KeyFamilyHtlcBase,
+			Index:  0,
 		},
 	}
 }

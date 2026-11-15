@@ -309,10 +309,8 @@ func findTargetsLnd(extendedKey *hdkeychain.ExtendedKey, apiURL string,
 		foundTargets, err := queryAddressBalances(
 			privKey.PubKey(), &keychain.KeyDescriptor{
 				PubKey: privKey.PubKey(),
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyPaymentBase,
-					Index:  index,
-				},
+				Family: keychain.KeyFamilyPaymentBase,
+				Index:  index,
 			}, api, knownOutputs,
 		)
 		if err != nil {
@@ -354,10 +352,8 @@ func findTargetsCln(hsmSecret [32]byte, pubKeys []*btcec.PublicKey,
 		for index := range recoveryWindow {
 			desc := &keychain.KeyDescriptor{
 				PubKey: pubKey,
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyPaymentBase,
-					Index:  index,
-				},
+				Family: keychain.KeyFamilyPaymentBase,
+				Index:  index,
 			}
 			_, privKey, err := cln.DeriveKeyPair(hsmSecret, desc)
 			if err != nil {

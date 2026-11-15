@@ -467,10 +467,8 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 		return csvTimeout, script, scriptHash, commitPoint,
 			&keychain.KeyDescriptor{
 				PubKey: delayPrivKey.PubKey(),
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyDelayBase,
-					Index:  idx,
-				},
+				Family: keychain.KeyFamilyDelayBase,
+				Index:  idx,
 			}, nil
 	}
 
@@ -532,10 +530,8 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 		return csvTimeout, script, scriptHash, commitPoint,
 			&keychain.KeyDescriptor{
 				PubKey: delayPrivKey.PubKey(),
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyDelayBase,
-					Index:  idx,
-				},
+				Family: keychain.KeyFamilyDelayBase,
+				Index:  idx,
 			}, nil
 	}
 
@@ -564,10 +560,8 @@ func tryKey(baseKey *hdkeychain.ExtendedKey, remoteRevPoint *btcec.PublicKey,
 		return csvTimeout, script, scriptHash, commitPoint,
 			&keychain.KeyDescriptor{
 				PubKey: delayPrivKey.PubKey(),
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyDelayBase,
-					Index:  idx,
-				},
+				Family: keychain.KeyFamilyDelayBase,
+				Index:  idx,
 			}, nil
 	}
 

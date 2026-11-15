@@ -589,10 +589,8 @@ func (r *HDKeyRing) DeriveKey(keyLoc keychain.KeyLocator) (
 		return empty, err
 	}
 	return keychain.KeyDescriptor{
-		KeyLocator: keychain.KeyLocator{
-			Family: keyLoc.Family,
-			Index:  keyLoc.Index,
-		},
+		Family: keyLoc.Family,
+		Index:  keyLoc.Index,
 		PubKey: derivedPubKey,
 	}, nil
 }

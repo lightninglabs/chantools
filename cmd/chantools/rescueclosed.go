@@ -203,9 +203,9 @@ func commitPointsFromDB(chanDb *channeldb.ChannelStateDB) ([]*btcec.PublicKey,
 
 	// Try naive/lucky guess with information from channel DB.
 	for _, channel := range channels {
-		if channel.RemoteNextRevocation != nil {
-			result = append(result, channel.RemoteNextRevocation)
-		}
+		channel.RemoteNextRevocation.WhenSome(func(k btcec.PublicKey) {
+			result = append(result, &k)
+		})
 
 		if channel.RemoteCurrentRevocation != nil {
 			result = append(result, channel.RemoteCurrentRevocation)
@@ -509,10 +509,8 @@ func fillCache(numKeys uint32, extendedKey *hdkeychain.ExtendedKey) error {
 		cache[i] = &cacheEntry{
 			privKey: privKey,
 			keyDesc: &keychain.KeyDescriptor{
-				KeyLocator: keychain.KeyLocator{
-					Family: keychain.KeyFamilyPaymentBase,
-					Index:  i,
-				},
+				Family: keychain.KeyFamilyPaymentBase,
+				Index:  i,
 				PubKey: pubKey,
 			},
 		}

@@ -18,8 +18,8 @@ defaults:
     shell: bash
 
 env:
-  GO_VERSION: 1.25.13
-  LINT_VERSION: v2.6.2
+  GO_VERSION: 1.27.4
+  LINT_VERSION: v2.15.0
 
 jobs:
   ########################

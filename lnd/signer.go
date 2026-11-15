@@ -199,10 +199,8 @@ func (s *Signer) FindMultisigKey(targetPubkey, _ *btcec.PublicKey,
 
 		return &keychain.KeyDescriptor{
 			PubKey: currentPubkey,
-			KeyLocator: keychain.KeyLocator{
-				Family: keychain.KeyFamilyMultiSig,
-				Index:  index,
-			},
+			Family: keychain.KeyFamilyMultiSig,
+			Index:  index,
 		}, nil
 	}
 
